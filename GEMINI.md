@@ -13,12 +13,18 @@ This is a WinUI 3 application designed to interface with Microsoft Flight Simula
 - **Pattern:** MVVM (using CommunityToolkit.Mvvm)
 - **Services:**
   - `ISimConnectService`: Manages the low-level connection to MSFS.
+  - `ITraccarService`: Handles data transmission to the Airsports/Traccar server.
   - `IAuthService`: Handles user authentication via Firebase.
   - `IProfileService`: Manages user profile data.
 
 ## SimConnect Implementation
 - **Polling:** The application uses a `DispatcherTimer` in `MainWindow.xaml.cs` (100ms interval) to call `ReceiveMessage()` on the `SimConnectService`.
 - **Data Requests:** Flight data is requested periodically (`SIMCONNECT_PERIOD.SECOND`) to ensure a steady stream of updates without overwhelming the bus.
+
+## Traccar Integration
+- **Tracking ID:** The `simulator_tracking_id` from the user profile is used as the device identifier.
+- **Data Transmission:** When tracking is enabled, position and speed data are sent to `https://traccar.airsports.no/` via POST requests with URL-encoded parameters.
+- **Thread Safety:** Traccar updates are executed on background threads to ensure the UI remains responsive.
 
 ## UI Conventions
 - **Converters:** Use the custom converters in `msfsclient.Helpers.Converters` for data formatting and status visualization.

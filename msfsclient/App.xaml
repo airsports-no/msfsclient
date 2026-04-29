@@ -18,6 +18,10 @@
             <conv:ConnectionStatusToColorConverter x:Key="ConnectionStatusToColorConverter" />
             <conv:ConnectionStatusToTextConverter x:Key="ConnectionStatusToTextConverter" />
             <conv:DoubleFormatConverter x:Key="DoubleFormatConverter" />
+            <conv:TrackingToIconConverter x:Key="TrackingToIconConverter" />
+            <conv:TrackingToTextConverter x:Key="TrackingToTextConverter" />
+            <conv:StringFormatConverter x:Key="StringFormatConverter" />
+            <conv:BoolToOpacityConverter x:Key="BoolToOpacityConverter" />
 
             <Style TargetType="TextBlock" x:Key="CaptionTextBlockStyle">
                 <Setter Property="FontSize" Value="12"/>

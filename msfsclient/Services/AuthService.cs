@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Firebase.Auth;
 using Firebase.Auth.Providers;
 using msfsclient.Contracts.Services;
+using Firebase.Auth.Repository;
 
 namespace msfsclient.Services
 {
@@ -15,13 +16,16 @@ namespace msfsclient.Services
         private const string ApiKey = "AIzaSyD_LDULS2RvLvhTtnLyEzARtbs-WgtFOAo";
         private const string AuthDomain = "airsports-613ce.firebaseapp.com";
 
-        public bool IsAuthenticated => _userCredential?.User != null;
-        public User? CurrentUser => _userCredential?.User;
-        public string? JwtToken => _userCredential?.User?.Credential?.IdToken;
+        public bool IsAuthenticated => _client.User != null;
+        public User? CurrentUser => _client.User;
+        public string? JwtToken => _client.User?.Credential?.IdToken;
         public string? LastErrorMessage { get; private set; }
 
         public AuthService()
         {
+            var localFolder = Windows.Storage.ApplicationData.Current.LocalFolder.Path;
+            var userFilePath = System.IO.Path.Combine(localFolder, "user.json");
+
             var config = new FirebaseAuthConfig
             {
                 ApiKey = ApiKey,
@@ -29,7 +33,8 @@ namespace msfsclient.Services
                 Providers = new FirebaseAuthProvider[]
                 {
                     new EmailProvider()
-                }
+                },
+                UserRepository = new FileUserRepository(userFilePath)
             };
 
             _client = new FirebaseAuthClient(config);
@@ -40,8 +45,7 @@ namespace msfsclient.Services
             try
             {
                 LastErrorMessage = null;
-                var credential = await _client.SignInWithEmailAndPasswordAsync(email, password);
-                _userCredential = credential;
+                _userCredential = await _client.SignInWithEmailAndPasswordAsync(email, password);
                 return IsAuthenticated;
             }
             catch (FirebaseAuthHttpException ex)

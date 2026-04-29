@@ -13,6 +13,16 @@ namespace msfsclient.Views
             this.InitializeComponent();
         }
 
+        protected override void OnNavigatedTo(Microsoft.UI.Xaml.Navigation.NavigationEventArgs e)
+        {
+            base.OnNavigatedTo(e);
+
+            if (App.GetService<msfsclient.Contracts.Services.IAuthService>().IsAuthenticated)
+            {
+                Frame.Navigate(typeof(MainPage));
+            }
+        }
+
         private async void LoginButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
         {
             if (ViewModel.IsBusy) return;

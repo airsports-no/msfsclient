@@ -27,6 +27,7 @@ namespace msfsclient
             services.AddSingleton<IAuthService, AuthService>();
             services.AddSingleton<IProfileService, ProfileService>();
             services.AddSingleton<ISimConnectService, SimConnectService>();
+            services.AddSingleton<ITraccarService, TraccarService>();
 
             // ViewModels
             services.AddTransient<LoginViewModel>();

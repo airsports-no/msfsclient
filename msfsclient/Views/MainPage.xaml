@@ -58,19 +58,44 @@
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
-            <!-- Connection Status -->
-            <Border Background="{ThemeResource SystemControlBackgroundChromeMediumLowBrush}" 
-                    CornerRadius="4" 
-                    Padding="12,8" 
-                    HorizontalAlignment="Left" 
-                    Margin="0,0,0,20">
-                <StackPanel Orientation="Horizontal" Spacing="10">
-                    <Ellipse Width="12" Height="12" Fill="{x:Bind ViewModel.IsSimConnected, Mode=OneWay, Converter={StaticResource ConnectionStatusToColorConverter}}"/>
-                    <TextBlock Text="{x:Bind ViewModel.IsSimConnected, Mode=OneWay, Converter={StaticResource ConnectionStatusToTextConverter}}" 
-                               Style="{StaticResource BodyTextBlockStyle}"
-                               VerticalAlignment="Center"/>
-                </StackPanel>
-            </Border>
+            <!-- Connection Status & Tracking -->
+            <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,0,0,20">
+                <Border Background="{ThemeResource SystemControlBackgroundChromeMediumLowBrush}" 
+                        CornerRadius="4" 
+                        Padding="12,8">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <Ellipse Width="12" Height="12" Fill="{x:Bind ViewModel.IsSimConnected, Mode=OneWay, Converter={StaticResource ConnectionStatusToColorConverter}}"/>
+                        <TextBlock Text="{x:Bind ViewModel.IsSimConnected, Mode=OneWay, Converter={StaticResource ConnectionStatusToTextConverter}}" 
+                                   Style="{StaticResource BodyTextBlockStyle}"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+
+                <Button Command="{x:Bind ViewModel.ToggleTrackingCommand, Mode=OneWay}" 
+                        Style="{StaticResource AccentButtonStyle}"
+                        Padding="15,8">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <FontIcon Glyph="{x:Bind ViewModel.IsTracking, Mode=OneWay, Converter={StaticResource TrackingToIconConverter}}" FontSize="16"/>
+                        <TextBlock Text="{x:Bind ViewModel.IsTracking, Mode=OneWay, Converter={StaticResource TrackingToTextConverter}}"/>
+                    </StackPanel>
+                </Button>
+
+                <!-- Traccar Pulse Indicator -->
+                <Ellipse Width="12" Height="12" 
+                         VerticalAlignment="Center"
+                         Fill="{x:Bind ViewModel.LastTraccarUpdateSuccessful, Mode=OneWay, Converter={StaticResource ConnectionStatusToColorConverter}}"
+                         Opacity="{x:Bind ViewModel.IsTraccarPulseActive, Mode=OneWay, Converter={StaticResource BoolToOpacityConverter}}"
+                         Visibility="{x:Bind ViewModel.IsTracking, Mode=OneWay, Converter={StaticResource StringVisibilityConverter}}">
+                    <ToolTipService.ToolTip>
+                        <ToolTip Content="Traccar Transmission Status"/>
+                    </ToolTipService.ToolTip>
+                </Ellipse>
+            </StackPanel>
+
+            <TextBlock Text="{x:Bind ViewModel.Profile.SimulatorTrackingId, Mode=OneWay, Converter={StaticResource StringFormatConverter}, ConverterParameter='Tracking ID: {0}'}" 
+                       Style="{StaticResource CaptionTextBlockStyle}" 
+                       Margin="0,-15,0,20"
+                       Visibility="{x:Bind ViewModel.Profile.SimulatorTrackingId, Mode=OneWay, Converter={StaticResource StringVisibilityConverter}}"/>
 
             <!-- Dashboard -->
             <Grid Grid.Row="1" ColumnSpacing="20" RowSpacing="10" Margin="0,0,0,20">
