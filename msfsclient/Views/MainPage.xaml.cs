@@ -1,3 +1,4 @@
+using System;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 using msfsclient.ViewModels;
@@ -11,17 +12,28 @@ namespace msfsclient.Views
         public MainPage()
         {
             ViewModel = App.GetService<MainViewModel>();
+            ViewModel.LogoutRequested += ViewModel_LogoutRequested;
             this.InitializeComponent();
+        }
+
+        private void ViewModel_LogoutRequested(object? sender, System.EventArgs e)
+        {
+            Frame.Navigate(typeof(LoginPage));
         }
 
         protected override async void OnNavigatedTo(NavigationEventArgs e)
         {
             base.OnNavigatedTo(e);
-            await ViewModel.InitializeAsync();
+
+            var window = (App.Current as App)?.Window;
+            var handle = window != null ? WinRT.Interop.WindowNative.GetWindowHandle(window) : IntPtr.Zero;
+
+            await ViewModel.InitializeAsync(handle);
             
-            if (ViewModel.Profile == null)
+            if (ViewModel.Profile != null)
             {
-                // Optionally show a message if profile fails to load
+                System.Diagnostics.Debug.WriteLine($"Profile Loaded: {ViewModel.Profile.FullName}");
+                System.Diagnostics.Debug.WriteLine($"Picture URL: {ViewModel.Profile.ProfilePictureUrl ?? "NULL"}");
             }
         }
     }

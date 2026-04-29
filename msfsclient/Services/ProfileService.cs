@@ -44,11 +44,20 @@ namespace msfsclient.Services
                     
                     if (profile != null && !string.IsNullOrEmpty(profile.ProfilePictureUrl))
                     {
-                        // Ensure the URL is absolute
+                        System.Diagnostics.Debug.WriteLine($"Raw ProfilePictureUrl: {profile.ProfilePictureUrl}");
+                        
+                        // Handle relative paths from the API
                         if (profile.ProfilePictureUrl.StartsWith("/"))
                         {
                             profile.ProfilePictureUrl = "https://airsports.no" + profile.ProfilePictureUrl;
                         }
+                        else if (!profile.ProfilePictureUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+                        {
+                            // If it's a relative path without a leading slash
+                            profile.ProfilePictureUrl = "https://airsports.no/" + profile.ProfilePictureUrl;
+                        }
+                        
+                        System.Diagnostics.Debug.WriteLine($"Final ProfilePictureUrl: {profile.ProfilePictureUrl}");
                     }
                     
                     return profile;

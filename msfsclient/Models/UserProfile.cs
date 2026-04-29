@@ -21,5 +21,8 @@ namespace msfsclient.Models
 
         [JsonPropertyName("profile_picture")]
         public string? ProfilePictureUrl { get; set; }
+
+        [JsonPropertyName("simulator_tracking_id")]
+        public string? SimulatorTrackingId { get; set; }
     }
 }

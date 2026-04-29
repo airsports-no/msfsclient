@@ -15,8 +15,11 @@ namespace msfsclient.Views
 
         private async void LoginButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
         {
+            if (ViewModel.IsBusy) return;
+
             await ViewModel.LoginCommand.ExecuteAsync(null);
-            if (!ViewModel.IsBusy && string.IsNullOrEmpty(ViewModel.ErrorMessage))
+            
+            if (!ViewModel.IsBusy && string.IsNullOrEmpty(ViewModel.ErrorMessage) && App.GetService<msfsclient.Contracts.Services.IAuthService>().IsAuthenticated)
             {
                 Frame.Navigate(typeof(MainPage));
             }

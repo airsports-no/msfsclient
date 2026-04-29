@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using msfsclient.Contracts.Services;
 using msfsclient.Services;
@@ -9,7 +9,7 @@ namespace msfsclient
 {
     public partial class App : Application
     {
-        private Window? _window;
+        public Window? Window { get; private set; }
 
         public IServiceProvider Services { get; }
 
@@ -26,6 +26,7 @@ namespace msfsclient
             // Services
             services.AddSingleton<IAuthService, AuthService>();
             services.AddSingleton<IProfileService, ProfileService>();
+            services.AddSingleton<ISimConnectService, SimConnectService>();
 
             // ViewModels
             services.AddTransient<LoginViewModel>();
@@ -47,8 +48,8 @@ namespace msfsclient
 
         protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
         {
-            _window = new MainWindow();
-            _window.Activate();
+            Window = new MainWindow();
+            Window.Activate();
         }
     }
 }

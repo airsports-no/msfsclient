@@ -15,6 +15,9 @@
             <conv:StringVisibilityConverter x:Key="StringVisibilityConverter" />
             <conv:InverseBoolConverter x:Key="InverseBoolConverter" />
             <conv:UrlToImageSourceConverter x:Key="UrlToImageSourceConverter" />
+            <conv:ConnectionStatusToColorConverter x:Key="ConnectionStatusToColorConverter" />
+            <conv:ConnectionStatusToTextConverter x:Key="ConnectionStatusToTextConverter" />
+            <conv:DoubleFormatConverter x:Key="DoubleFormatConverter" />
 
             <Style TargetType="TextBlock" x:Key="CaptionTextBlockStyle">
                 <Setter Property="FontSize" Value="12"/>

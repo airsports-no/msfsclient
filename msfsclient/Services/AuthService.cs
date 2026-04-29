@@ -40,7 +40,8 @@ namespace msfsclient.Services
             try
             {
                 LastErrorMessage = null;
-                _userCredential = await _client.SignInWithEmailAndPasswordAsync(email, password);
+                var credential = await _client.SignInWithEmailAndPasswordAsync(email, password);
+                _userCredential = credential;
                 return IsAuthenticated;
             }
             catch (FirebaseAuthHttpException ex)
@@ -65,7 +66,8 @@ namespace msfsclient.Services
             try
             {
                 LastErrorMessage = null;
-                _userCredential = await _client.CreateUserWithEmailAndPasswordAsync(email, password, displayName);
+                var credential = await _client.CreateUserWithEmailAndPasswordAsync(email, password, displayName);
+                _userCredential = credential;
                 return IsAuthenticated;
             }
             catch (FirebaseAuthHttpException ex)
@@ -136,7 +138,10 @@ namespace msfsclient.Services
         {
             try
             {
-                _client.SignOut();
+                if (_client.User != null)
+                {
+                    _client.SignOut();
+                }
             }
             catch (Exception ex)
             {

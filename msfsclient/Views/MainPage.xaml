@@ -51,13 +51,82 @@
             </Button.Flyout>
         </Button>
 
-        <Grid Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center">
-            <StackPanel Spacing="10">
-                <TextBlock Text="Welcome to Air Sports MSFS Client" Style="{StaticResource TitleTextBlockStyle}" HorizontalAlignment="Center"/>
-                <TextBlock Text="SimConnect integration and tracking will appear here." HorizontalAlignment="Center" Opacity="0.7"/>
-            </StackPanel>
+        <Grid Grid.Row="1" Margin="0,20,0,0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Connection Status -->
+            <Border Background="{ThemeResource SystemControlBackgroundChromeMediumLowBrush}" 
+                    CornerRadius="4" 
+                    Padding="12,8" 
+                    HorizontalAlignment="Left" 
+                    Margin="0,0,0,20">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                    <Ellipse Width="12" Height="12" Fill="{x:Bind ViewModel.IsSimConnected, Mode=OneWay, Converter={StaticResource ConnectionStatusToColorConverter}}"/>
+                    <TextBlock Text="{x:Bind ViewModel.IsSimConnected, Mode=OneWay, Converter={StaticResource ConnectionStatusToTextConverter}}" 
+                               Style="{StaticResource BodyTextBlockStyle}"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Dashboard -->
+            <Grid Grid.Row="1" ColumnSpacing="20" RowSpacing="10" Margin="0,0,0,20">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <StackPanel Grid.Column="0" Grid.Row="0">
+                    <TextBlock Text="Latitude" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.7"/>
+                    <TextBlock Text="{x:Bind ViewModel.CurrentFlightData.Latitude, Mode=OneWay, Converter={StaticResource DoubleFormatConverter}, ConverterParameter='F4'}" Style="{StaticResource SubtitleTextBlockStyle}"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Grid.Row="0">
+                    <TextBlock Text="Longitude" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.7"/>
+                    <TextBlock Text="{x:Bind ViewModel.CurrentFlightData.Longitude, Mode=OneWay, Converter={StaticResource DoubleFormatConverter}, ConverterParameter='F4'}" Style="{StaticResource SubtitleTextBlockStyle}"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="0" Grid.Row="1">
+                    <TextBlock Text="Altitude (ft)" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.7"/>
+                    <TextBlock Text="{x:Bind ViewModel.CurrentFlightData.Altitude, Mode=OneWay, Converter={StaticResource DoubleFormatConverter}, ConverterParameter='F0'}" Style="{StaticResource SubtitleTextBlockStyle}"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Grid.Row="1">
+                    <TextBlock Text="Ground Speed (kt)" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.7"/>
+                    <TextBlock Text="{x:Bind ViewModel.CurrentFlightData.GroundVelocity, Mode=OneWay, Converter={StaticResource DoubleFormatConverter}, ConverterParameter='F1'}" Style="{StaticResource SubtitleTextBlockStyle}"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="0" Grid.Row="2">
+                    <TextBlock Text="Heading" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.7"/>
+                    <TextBlock Text="{x:Bind ViewModel.CurrentFlightData.HeadingDegrees, Mode=OneWay, Converter={StaticResource DoubleFormatConverter}, ConverterParameter='F1'}" Style="{StaticResource SubtitleTextBlockStyle}"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- Logs -->
+            <Grid Grid.Row="2">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <TextBlock Text="Flight Logs" Style="{StaticResource BodyStrongTextBlockStyle}" Margin="0,0,0,5"/>
+                <ListView Grid.Row="1" ItemsSource="{x:Bind ViewModel.FlightLogs}" BorderThickness="1" BorderBrush="{ThemeResource SystemControlForegroundBaseLowBrush}">
+                    <ListView.ItemTemplate>
+                        <DataTemplate x:DataType="x:String">
+                            <TextBlock Text="{Binding}" Style="{StaticResource CaptionTextBlockStyle}" FontFamily="Consolas"/>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+            </Grid>
             
-            <ProgressRing IsActive="{x:Bind ViewModel.IsBusy, Mode=OneWay}"/>
+            <ProgressRing IsActive="{x:Bind ViewModel.IsBusy, Mode=OneWay}" VerticalAlignment="Center" HorizontalAlignment="Center"/>
         </Grid>
     </Grid>
 </Page>
