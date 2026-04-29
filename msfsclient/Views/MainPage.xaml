@@ -28,25 +28,71 @@
             
             <Button.Flyout>
                 <Flyout>
-                    <StackPanel Spacing="15" MinWidth="200" HorizontalAlignment="Center">
-                        <PersonPicture ProfilePicture="{x:Bind ViewModel.Profile.ProfilePictureUrl, Mode=OneWay, Converter={StaticResource UrlToImageSourceConverter}}" 
-                                       DisplayName="{x:Bind ViewModel.Profile.FullName, Mode=OneWay}"
-                                       Height="100" Width="100"/>
-                        <TextBlock Text="{x:Bind ViewModel.Profile.FullName, Mode=OneWay}" 
-                                   Style="{StaticResource SubtitleTextBlockStyle}" 
-                                   HorizontalAlignment="Center"/>
-                        <TextBlock Text="{x:Bind ViewModel.Profile.Email, Mode=OneWay}" 
-                                   Style="{StaticResource CaptionTextBlockStyle}" 
-                                   HorizontalAlignment="Center" 
-                                   Opacity="0.7"/>
-                        
-                        <MenuFlyoutSeparator/>
-                        
-                        <Button Content="Logout" 
-                                Command="{x:Bind ViewModel.LogoutCommand}" 
-                                HorizontalAlignment="Stretch"
-                                Style="{StaticResource AccentButtonStyle}"/>
-                    </StackPanel>
+                    <Grid MinWidth="250" MaxWidth="300">
+                        <!-- View Mode -->
+                        <StackPanel Spacing="15" HorizontalAlignment="Center" 
+                                    Visibility="{x:Bind ViewModel.IsEditingProfile, Mode=OneWay, Converter={StaticResource NegatedBoolToVisibilityConverter}}">
+                            <PersonPicture ProfilePicture="{x:Bind ViewModel.Profile.ProfilePictureUrl, Mode=OneWay, Converter={StaticResource UrlToImageSourceConverter}}" 
+                                           DisplayName="{x:Bind ViewModel.Profile.FullName, Mode=OneWay}"
+                                           Height="100" Width="100"/>
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="{x:Bind ViewModel.Profile.FullName, Mode=OneWay}" 
+                                           Style="{StaticResource SubtitleTextBlockStyle}" 
+                                           HorizontalAlignment="Center"/>
+                                <TextBlock Text="{x:Bind ViewModel.Profile.Email, Mode=OneWay}" 
+                                           Style="{StaticResource CaptionTextBlockStyle}" 
+                                           HorizontalAlignment="Center" 
+                                           Opacity="0.7"/>
+                            </StackPanel>
+
+                            <TextBlock Text="{x:Bind ViewModel.Profile.Biography, Mode=OneWay}" 
+                                       Style="{StaticResource BodyTextBlockStyle}" 
+                                       TextWrapping="Wrap" 
+                                       HorizontalAlignment="Center"
+                                       Visibility="{x:Bind ViewModel.Profile.Biography, Mode=OneWay, Converter={StaticResource StringVisibilityConverter}}"/>
+                            
+                            <MenuFlyoutSeparator/>
+                            
+                            <Button Content="Edit Profile" 
+                                    Command="{x:Bind ViewModel.StartEditProfileCommand}"
+                                    HorizontalAlignment="Stretch"/>
+
+                            <Button Content="Logout" 
+                                    Command="{x:Bind ViewModel.LogoutCommand}" 
+                                    HorizontalAlignment="Stretch"
+                                    Style="{StaticResource AccentButtonStyle}"/>
+                        </StackPanel>
+
+                        <!-- Edit Mode -->
+                        <StackPanel Spacing="12" Visibility="{x:Bind ViewModel.IsEditingProfile, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <TextBlock Text="Edit Profile" Style="{StaticResource BodyStrongTextBlockStyle}"/>
+                            
+                            <TextBox Header="First Name" Text="{x:Bind ViewModel.EditFirstName, Mode=TwoWay}"/>
+                            <TextBox Header="Last Name" Text="{x:Bind ViewModel.EditLastName, Mode=TwoWay}"/>
+                            <TextBox Header="Profile Picture URL" Text="{x:Bind ViewModel.EditProfilePictureUrl, Mode=TwoWay}"/>
+                            <TextBox Header="Biography" Text="{x:Bind ViewModel.EditBiography, Mode=TwoWay}" 
+                                     AcceptsReturn="True" Height="80" TextWrapping="Wrap"/>
+
+                            <TextBlock Text="{x:Bind ViewModel.ProfileErrorMessage, Mode=OneWay}" 
+                                       Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                                       Style="{StaticResource CaptionTextBlockStyle}"
+                                       Visibility="{x:Bind ViewModel.ProfileErrorMessage, Mode=OneWay, Converter={StaticResource StringVisibilityConverter}}"/>
+
+                            <Grid ColumnSpacing="10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Button Grid.Column="0" Content="Save" 
+                                        Command="{x:Bind ViewModel.SaveProfileCommand}"
+                                        HorizontalAlignment="Stretch"
+                                        Style="{StaticResource AccentButtonStyle}"/>
+                                <Button Grid.Column="1" Content="Cancel" 
+                                        Command="{x:Bind ViewModel.CancelEditProfileCommand}"
+                                        HorizontalAlignment="Stretch"/>
+                            </Grid>
+                        </StackPanel>
+                    </Grid>
                 </Flyout>
             </Button.Flyout>
         </Button>
@@ -64,11 +110,42 @@
                     <Border Background="{ThemeResource SystemControlBackgroundChromeMediumLowBrush}" 
                             CornerRadius="4" 
                             Padding="12,8">
-                        <StackPanel Orientation="Horizontal" Spacing="10">
-                            <Ellipse Width="12" Height="12" Fill="{x:Bind ViewModel.IsSimConnected, Mode=OneWay, Converter={StaticResource ConnectionStatusToColorConverter}}"/>
-                            <TextBlock Text="{x:Bind ViewModel.IsSimConnected, Mode=OneWay, Converter={StaticResource ConnectionStatusToTextConverter}}" 
-                                       Style="{StaticResource BodyTextBlockStyle}"
-                                       VerticalAlignment="Center"/>
+                        <StackPanel Orientation="Horizontal" Spacing="15">
+                            <!-- SimConnect Status -->
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Ellipse Width="12" Height="12" 
+                                         Fill="{x:Bind ViewModel.IsSimConnected, Mode=OneWay, Converter={StaticResource ConnectionStatusToColorConverter}}"/>
+                                <TextBlock Text="SimConnect" 
+                                           Style="{StaticResource BodyTextBlockStyle}"
+                                           VerticalAlignment="Center"/>
+                                <!-- SimConnect Pulse Indicator -->
+                                <Ellipse Width="8" Height="8" 
+                                         VerticalAlignment="Center"
+                                         Fill="{x:Bind ViewModel.LastSimConnectUpdateSuccessful, Mode=OneWay, Converter={StaticResource ConnectionStatusToColorConverter}}"
+                                         Opacity="{x:Bind ViewModel.IsSimConnectPulseActive, Mode=OneWay, Converter={StaticResource BoolToOpacityConverter}}">
+                                    <ToolTipService.ToolTip>
+                                        <ToolTip Content="SimConnect Fetch Status"/>
+                                    </ToolTipService.ToolTip>
+                                </Ellipse>
+                            </StackPanel>
+
+                            <MenuFlyoutSeparator Opacity="0.2"/>
+
+                            <!-- Traccar Status -->
+                            <StackPanel Orientation="Horizontal" Spacing="8" Visibility="{x:Bind ViewModel.IsTracking, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <TextBlock Text="Traccar" 
+                                           Style="{StaticResource BodyTextBlockStyle}"
+                                           VerticalAlignment="Center"/>
+                                <!-- Traccar Pulse Indicator -->
+                                <Ellipse Width="8" Height="8" 
+                                         VerticalAlignment="Center"
+                                         Fill="{x:Bind ViewModel.LastTraccarUpdateSuccessful, Mode=OneWay, Converter={StaticResource ConnectionStatusToColorConverter}}"
+                                         Opacity="{x:Bind ViewModel.IsTraccarPulseActive, Mode=OneWay, Converter={StaticResource BoolToOpacityConverter}}">
+                                    <ToolTipService.ToolTip>
+                                        <ToolTip Content="Traccar Transmission Status"/>
+                                    </ToolTipService.ToolTip>
+                                </Ellipse>
+                            </StackPanel>
                         </StackPanel>
                     </Border>
 
@@ -80,17 +157,19 @@
                             <TextBlock Text="{x:Bind ViewModel.IsTracking, Mode=OneWay, Converter={StaticResource TrackingToTextConverter}}"/>
                         </StackPanel>
                     </Button>
+                </StackPanel>
 
-                    <!-- Traccar Pulse Indicator -->
-                    <Ellipse Width="12" Height="12" 
-                             VerticalAlignment="Center"
-                             Fill="{x:Bind ViewModel.LastTraccarUpdateSuccessful, Mode=OneWay, Converter={StaticResource ConnectionStatusToColorConverter}}"
-                             Opacity="{x:Bind ViewModel.IsTraccarPulseActive, Mode=OneWay, Converter={StaticResource BoolToOpacityConverter}}"
-                             Visibility="{x:Bind ViewModel.IsTracking, Mode=OneWay, Converter={StaticResource StringVisibilityConverter}}">
-                        <ToolTipService.ToolTip>
-                            <ToolTip Content="Traccar Transmission Status"/>
-                        </ToolTipService.ToolTip>
-                    </Ellipse>
+                <!-- Error Messages -->
+                <StackPanel Spacing="5" Margin="5,0,0,0">
+                    <TextBlock Text="{x:Bind ViewModel.SimConnectErrorMessage, Mode=OneWay}" 
+                               Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                               Style="{StaticResource CaptionTextBlockStyle}"
+                               Visibility="{x:Bind ViewModel.SimConnectErrorMessage, Mode=OneWay, Converter={StaticResource StringVisibilityConverter}}"/>
+                    
+                    <TextBlock Text="{x:Bind ViewModel.TraccarErrorMessage, Mode=OneWay}" 
+                               Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                               Style="{StaticResource CaptionTextBlockStyle}"
+                               Visibility="{x:Bind ViewModel.TraccarErrorMessage, Mode=OneWay, Converter={StaticResource StringVisibilityConverter}}"/>
                 </StackPanel>
 
                 <TextBlock Text="{x:Bind ViewModel.Profile.SimulatorTrackingId, Mode=OneWay, Converter={StaticResource StringFormatConverter}, ConverterParameter='Tracking ID: {0}'}" 

@@ -19,10 +19,37 @@ namespace msfsclient.ViewModels
         public partial UserProfile? Profile { get; set; }
 
         [ObservableProperty]
+        public partial bool IsEditingProfile { get; set; }
+
+        [ObservableProperty]
+        public partial string? EditFirstName { get; set; }
+
+        [ObservableProperty]
+        public partial string? EditLastName { get; set; }
+
+        [ObservableProperty]
+        public partial string? EditProfilePictureUrl { get; set; }
+
+        [ObservableProperty]
+        public partial string? EditBiography { get; set; }
+
+        [ObservableProperty]
+        public partial string? ProfileErrorMessage { get; set; }
+
+        [ObservableProperty]
         public partial bool IsBusy { get; set; }
 
         [ObservableProperty]
         public partial bool IsSimConnected { get; set; }
+
+        [ObservableProperty]
+        public partial bool LastSimConnectUpdateSuccessful { get; set; } = true;
+
+        [ObservableProperty]
+        public partial bool IsSimConnectPulseActive { get; set; }
+
+        [ObservableProperty]
+        public partial string? SimConnectErrorMessage { get; set; }
 
         [ObservableProperty]
         public partial bool IsTracking { get; set; }
@@ -32,6 +59,9 @@ namespace msfsclient.ViewModels
 
         [ObservableProperty]
         public partial bool IsTraccarPulseActive { get; set; }
+
+        [ObservableProperty]
+        public partial string? TraccarErrorMessage { get; set; }
 
         [ObservableProperty]
         public partial FlightDataStruct CurrentFlightData { get; set; }
@@ -46,13 +76,26 @@ namespace msfsclient.ViewModels
             _traccarService = traccarService;
             _dispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
 
-            _simConnectService.ConnectionStatusChanged += (s, e) => _dispatcherQueue.TryEnqueue(() => IsSimConnected = e);
+            _simConnectService.ConnectionStatusChanged += (s, e) => _dispatcherQueue.TryEnqueue(() => 
+            {
+                IsSimConnected = e;
+                if (e) SimConnectErrorMessage = null;
+            });
+
+            _simConnectService.ErrorOccurred += (s, e) => _dispatcherQueue.TryEnqueue(() => 
+            {
+                SimConnectErrorMessage = e;
+                LastSimConnectUpdateSuccessful = false;
+            });
+
             _simConnectService.FlightDataReceived += (s, e) => 
             {
                 // UI Update
-                _dispatcherQueue.TryEnqueue(() => 
+                _dispatcherQueue.TryEnqueue(async () => 
                 {
                     CurrentFlightData = e;
+                    LastSimConnectUpdateSuccessful = true;
+                    SimConnectErrorMessage = null;
                     
                     var logEntry = $"[{DateTime.Now:HH:mm:ss}] Lat: {e.Latitude:F4}, Lon: {e.Longitude:F4}, Alt: {e.Altitude:F0}ft, Spd: {e.GroundVelocity:F1}kt";
                     FlightLogs.Insert(0, logEntry);
@@ -60,6 +103,11 @@ namespace msfsclient.ViewModels
                     {
                         FlightLogs.RemoveAt(10);
                     }
+
+                    // SimConnect Pulse
+                    IsSimConnectPulseActive = true;
+                    await Task.Delay(400);
+                    IsSimConnectPulseActive = false;
                 });
 
                 // Traccar Update - Run on background thread
@@ -72,6 +120,7 @@ namespace msfsclient.ViewModels
                         _dispatcherQueue.TryEnqueue(async () => 
                         {
                             LastTraccarUpdateSuccessful = result.Success;
+                            TraccarErrorMessage = result.Success ? null : result.Message;
                             
                             if (!result.Success)
                             {
@@ -130,6 +179,57 @@ namespace msfsclient.ViewModels
             await LoadProfileAsync();
             System.Diagnostics.Debug.WriteLine($"Profile loaded. ID: {Profile?.SimulatorTrackingId ?? "NULL"}");
             _simConnectService.Connect(windowHandle);
+        }
+
+        [RelayCommand]
+        private void StartEditProfile()
+        {
+            if (Profile == null) return;
+
+            EditFirstName = Profile.FirstName;
+            EditLastName = Profile.LastName;
+            EditProfilePictureUrl = Profile.ProfilePictureUrl;
+            EditBiography = Profile.Biography;
+            ProfileErrorMessage = null;
+            IsEditingProfile = true;
+        }
+
+        [RelayCommand]
+        private void CancelEditProfile()
+        {
+            IsEditingProfile = false;
+            ProfileErrorMessage = null;
+        }
+
+        [RelayCommand]
+        private async Task SaveProfileAsync()
+        {
+            if (string.IsNullOrWhiteSpace(EditFirstName) || string.IsNullOrWhiteSpace(EditLastName))
+            {
+                ProfileErrorMessage = "First and last name are required.";
+                return;
+            }
+
+            IsBusy = true;
+            ProfileErrorMessage = null;
+
+            var success = await _profileService.UpdateProfileAsync(
+                EditFirstName, 
+                EditLastName, 
+                EditProfilePictureUrl, 
+                EditBiography);
+
+            if (success)
+            {
+                await LoadProfileAsync();
+                IsEditingProfile = false;
+            }
+            else
+            {
+                ProfileErrorMessage = "Failed to update profile. Please try again.";
+            }
+
+            IsBusy = false;
         }
 
         [RelayCommand]

@@ -76,12 +76,18 @@ namespace msfsclient.Services
             return null;
         }
 
-        public async Task<bool> UpdateProfileAsync(string firstName, string lastName)
+        public async Task<bool> UpdateProfileAsync(string firstName, string lastName, string? profilePictureUrl, string? biography)
         {
             try
             {
                 SetAuthorizationHeader();
-                var data = new { first_name = firstName, last_name = lastName };
+                var data = new 
+                { 
+                    first_name = firstName, 
+                    last_name = lastName,
+                    profile_picture = profilePictureUrl,
+                    biography = biography
+                };
                 var response = await _httpClient.PutAsJsonAsync($"{BaseUrl}update_profile/", data);
                 
                 return response.IsSuccessStatusCode;

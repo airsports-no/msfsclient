@@ -39,10 +39,7 @@ namespace msfsclient
 
         private void SimConnectTimer_Tick(object? sender, object e)
         {
-            if (_simConnectService is msfsclient.Services.SimConnectService service)
-            {
-                service.ReceiveMessage();
-            }
+            _simConnectService.ReceiveMessage();
         }
     }
 }

@@ -8,8 +8,10 @@ namespace msfsclient.Contracts.Services
         bool IsConnected { get; }
         event EventHandler<FlightDataStruct>? FlightDataReceived;
         event EventHandler<bool>? ConnectionStatusChanged;
+        event EventHandler<string>? ErrorOccurred;
 
         void Connect(IntPtr windowHandle);
         void Disconnect();
+        void ReceiveMessage();
     }
 }

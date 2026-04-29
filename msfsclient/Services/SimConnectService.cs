@@ -14,6 +14,7 @@ namespace msfsclient.Services
         public bool IsConnected { get; private set; }
         public event EventHandler<FlightDataStruct>? FlightDataReceived;
         public event EventHandler<bool>? ConnectionStatusChanged;
+        public event EventHandler<string>? ErrorOccurred;
 
         public void Connect(IntPtr windowHandle)
         {
@@ -33,6 +34,11 @@ namespace msfsclient.Services
                 _simConnect.OnRecvQuit += (SimConnect sender, SIMCONNECT_RECV data) =>
                 {
                     Disconnect();
+                };
+
+                _simConnect.OnRecvException += (SimConnect sender, SIMCONNECT_RECV_EXCEPTION data) =>
+                {
+                    ErrorOccurred?.Invoke(this, $"SimConnect Exception: {(SIMCONNECT_EXCEPTION)data.dwException}");
                 };
 
                 _simConnect.OnRecvSimobjectDataBytype += (SimConnect sender, SIMCONNECT_RECV_SIMOBJECT_DATA_BYTYPE data) =>
@@ -59,7 +65,9 @@ namespace msfsclient.Services
             }
             catch (COMException ex)
             {
-                System.Diagnostics.Debug.WriteLine($"SimConnect Connection Error: {ex.Message}");
+                var errorMsg = $"SimConnect Connection Error: {ex.Message}";
+                System.Diagnostics.Debug.WriteLine(errorMsg);
+                ErrorOccurred?.Invoke(this, errorMsg);
             }
         }
 
@@ -67,16 +75,23 @@ namespace msfsclient.Services
         {
             if (_simConnect == null) return;
 
-            _simConnect.AddToDataDefinition(SimConnectDefinitions.FlightData, "PLANE LATITUDE", "degrees", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
-            _simConnect.AddToDataDefinition(SimConnectDefinitions.FlightData, "PLANE LONGITUDE", "degrees", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
-            _simConnect.AddToDataDefinition(SimConnectDefinitions.FlightData, "PLANE ALTITUDE", "feet", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
-            _simConnect.AddToDataDefinition(SimConnectDefinitions.FlightData, "GROUND VELOCITY", "knots", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
-            _simConnect.AddToDataDefinition(SimConnectDefinitions.FlightData, "PLANE HEADING DEGREES TRUE", "radians", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
+            try
+            {
+                _simConnect.AddToDataDefinition(SimConnectDefinitions.FlightData, "PLANE LATITUDE", "degrees", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
+                _simConnect.AddToDataDefinition(SimConnectDefinitions.FlightData, "PLANE LONGITUDE", "degrees", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
+                _simConnect.AddToDataDefinition(SimConnectDefinitions.FlightData, "PLANE ALTITUDE", "feet", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
+                _simConnect.AddToDataDefinition(SimConnectDefinitions.FlightData, "GROUND VELOCITY", "knots", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
+                _simConnect.AddToDataDefinition(SimConnectDefinitions.FlightData, "PLANE HEADING DEGREES TRUE", "radians", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
 
-            _simConnect.RegisterDataDefineStruct<FlightDataStruct>(SimConnectDefinitions.FlightData);
+                _simConnect.RegisterDataDefineStruct<FlightDataStruct>(SimConnectDefinitions.FlightData);
 
-            // Request data every second (1000ms)
-            _simConnect.RequestDataOnSimObject(SimConnectRequests.FlightData, SimConnectDefinitions.FlightData, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.SECOND, SIMCONNECT_DATA_REQUEST_FLAG.DEFAULT, 0, 0, 0);
+                // Request data every second (1000ms)
+                _simConnect.RequestDataOnSimObject(SimConnectRequests.FlightData, SimConnectDefinitions.FlightData, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.SECOND, SIMCONNECT_DATA_REQUEST_FLAG.DEFAULT, 0, 0, 0);
+            }
+            catch (Exception ex)
+            {
+                ErrorOccurred?.Invoke(this, $"Data Definition Error: {ex.Message}");
+            }
         }
 
         public void Disconnect()
@@ -98,7 +113,9 @@ namespace msfsclient.Services
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"SimConnect ReceiveMessage Error: {ex.Message}");
+                var errorMsg = $"SimConnect Receive Error: {ex.Message}";
+                System.Diagnostics.Debug.WriteLine(errorMsg);
+                ErrorOccurred?.Invoke(this, errorMsg);
                 Disconnect();
             }
         }

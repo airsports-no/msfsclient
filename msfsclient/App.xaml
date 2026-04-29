@@ -13,6 +13,8 @@
             </ResourceDictionary.MergedDictionaries>
 
             <conv:StringVisibilityConverter x:Key="StringVisibilityConverter" />
+            <conv:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+            <conv:NegatedBoolToVisibilityConverter x:Key="NegatedBoolToVisibilityConverter" />
             <conv:InverseBoolConverter x:Key="InverseBoolConverter" />
             <conv:UrlToImageSourceConverter x:Key="UrlToImageSourceConverter" />
             <conv:ConnectionStatusToColorConverter x:Key="ConnectionStatusToColorConverter" />

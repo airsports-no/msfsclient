@@ -24,5 +24,8 @@ namespace msfsclient.Models
 
         [JsonPropertyName("simulator_tracking_id")]
         public string? SimulatorTrackingId { get; set; }
+
+        [JsonPropertyName("biography")]
+        public string? Biography { get; set; }
     }
 }
