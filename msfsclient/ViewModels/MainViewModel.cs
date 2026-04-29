@@ -19,6 +19,9 @@ namespace msfsclient.ViewModels
         public partial UserProfile? Profile { get; set; }
 
         [ObservableProperty]
+        public partial NavigationTask? CurrentNavigationTask { get; set; }
+
+        [ObservableProperty]
         public partial bool IsEditingProfile { get; set; }
 
         [ObservableProperty]
@@ -139,7 +142,7 @@ namespace msfsclient.ViewModels
         }
 
         [RelayCommand]
-        public void ToggleTracking()
+        public async Task ToggleTracking()
         {
             try
             {
@@ -147,6 +150,13 @@ namespace msfsclient.ViewModels
                 
                 if (!IsTracking)
                 {
+                    if (Profile == null || !Profile.Validated)
+                    {
+                        var logEntryErr = $"[{DateTime.Now:HH:mm:ss}] Error: Please update profile to enable tracking.";
+                        FlightLogs.Insert(0, logEntryErr);
+                        return;
+                    }
+
                     if (string.IsNullOrEmpty(Profile?.SimulatorTrackingId))
                     {
                         var logEntryErr = $"[{DateTime.Now:HH:mm:ss}] Error: Simulator Tracking ID is missing in profile.";
@@ -154,6 +164,8 @@ namespace msfsclient.ViewModels
                         System.Diagnostics.Debug.WriteLine("ToggleTracking: Missing ID, aborting.");
                         return;
                     }
+
+                    await LoadNavigationTaskAsync();
                     
                     IsTracking = true;
                     FlightLogs.Insert(0, $"[{DateTime.Now:HH:mm:ss}] Tracking Started (ID: {Profile.SimulatorTrackingId})");
@@ -176,9 +188,28 @@ namespace msfsclient.ViewModels
         public async Task InitializeAsync(IntPtr windowHandle)
         {
             System.Diagnostics.Debug.WriteLine("MainViewModel.InitializeAsync started");
-            await LoadProfileAsync();
+            await Task.WhenAll(LoadProfileAsync(), LoadNavigationTaskAsync());
             System.Diagnostics.Debug.WriteLine($"Profile loaded. ID: {Profile?.SimulatorTrackingId ?? "NULL"}");
             _simConnectService.Connect(windowHandle);
+        }
+
+        [RelayCommand]
+        private async Task LoadNavigationTaskAsync()
+        {
+            var task = await _profileService.GetCurrentNavigationTaskAsync();
+            _dispatcherQueue.TryEnqueue(() =>
+            {
+                CurrentNavigationTask = task;
+            });
+        }
+
+        [RelayCommand]
+        private async Task OpenTrackingLink()
+        {
+            if (CurrentNavigationTask?.TrackingLink != null)
+            {
+                await Windows.System.Launcher.LaunchUriAsync(new Uri(CurrentNavigationTask.TrackingLink));
+            }
         }
 
         [RelayCommand]

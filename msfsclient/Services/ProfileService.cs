@@ -86,7 +86,8 @@ namespace msfsclient.Services
                     first_name = firstName, 
                     last_name = lastName,
                     profile_picture = profilePictureUrl,
-                    biography = biography
+                    biography = biography,
+                    validated = true
                 };
                 var response = await _httpClient.PutAsJsonAsync($"{BaseUrl}update_profile/", data);
                 
@@ -96,6 +97,26 @@ namespace msfsclient.Services
             {
                 return false;
             }
+        }
+
+        public async Task<NavigationTask?> GetCurrentNavigationTaskAsync()
+        {
+            try
+            {
+                SetAuthorizationHeader();
+                var response = await _httpClient.GetAsync($"{BaseUrl}get_current_sim_navigation_task/");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    return await response.Content.ReadFromJsonAsync<NavigationTask>();
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Navigation Task API Exception: {ex.Message}");
+            }
+
+            return null;
         }
     }
 }

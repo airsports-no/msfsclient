@@ -175,6 +175,45 @@
                 <TextBlock Text="{x:Bind ViewModel.Profile.SimulatorTrackingId, Mode=OneWay, Converter={StaticResource StringFormatConverter}, ConverterParameter='Tracking ID: {0}'}" 
                            Style="{StaticResource CaptionTextBlockStyle}" 
                            Visibility="{x:Bind ViewModel.Profile.SimulatorTrackingId, Mode=OneWay, Converter={StaticResource StringVisibilityConverter}}"/>
+                
+                <!-- Navigation Task Section -->
+                <Border Background="{ThemeResource SystemControlBackgroundChromeMediumLowBrush}" 
+                        CornerRadius="4" Padding="12" Margin="0,5,0,0">
+                    <StackPanel Spacing="5">
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Stretch">
+                            <TextBlock Text="Current Task:" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.7"/>
+                            <HyperlinkButton Content="{x:Bind ViewModel.CurrentNavigationTask.Name, Mode=OneWay}" 
+                                             Command="{x:Bind ViewModel.LoadNavigationTaskCommand}"
+                                             Margin="5,-2,0,0"
+                                             Padding="0"
+                                             Visibility="{x:Bind ViewModel.CurrentNavigationTask, Mode=OneWay, Converter={StaticResource NotNullToVisibilityConverter}}"/>
+                            <TextBlock Text="None" 
+                                       Style="{StaticResource BodyTextBlockStyle}" 
+                                       Margin="5,0,0,0"
+                                       Visibility="{x:Bind ViewModel.CurrentNavigationTask, Mode=OneWay, Converter={StaticResource NullToVisibilityConverter}}"/>
+                        </StackPanel>
+                        
+                        <Grid Visibility="{x:Bind ViewModel.CurrentNavigationTask, Mode=OneWay, Converter={StaticResource NotNullToVisibilityConverter}}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Start" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.5"/>
+                                <TextBlock Text="{x:Bind ViewModel.CurrentNavigationTask.StartTime, Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Text="Finish" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.5"/>
+                                <TextBlock Text="{x:Bind ViewModel.CurrentNavigationTask.FinishTime, Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <HyperlinkButton Content="View Tracking Link" 
+                                         Command="{x:Bind ViewModel.OpenTrackingLinkCommand}"
+                                         Padding="0" Margin="0,5,0,0"
+                                         Visibility="{x:Bind ViewModel.CurrentNavigationTask.TrackingLink, Mode=OneWay, Converter={StaticResource StringVisibilityConverter}}"/>
+                    </StackPanel>
+                </Border>
             </StackPanel>
 
             <!-- Dashboard -->

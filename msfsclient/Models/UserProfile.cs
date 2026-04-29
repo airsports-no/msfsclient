@@ -27,5 +27,8 @@ namespace msfsclient.Models
 
         [JsonPropertyName("biography")]
         public string? Biography { get; set; }
+
+        [JsonPropertyName("validated")]
+        public bool Validated { get; set; }
     }
 }

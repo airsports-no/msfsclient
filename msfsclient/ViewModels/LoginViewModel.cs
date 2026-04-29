@@ -1,3 +1,4 @@
+using System;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -72,6 +73,22 @@ namespace msfsclient.ViewModels
             catch
             {
                 ErrorMessage = "Error sending password reset email.";
+            }
+            IsBusy = false;
+        }
+
+        [RelayCommand]
+        private async Task ResendVerificationEmailAsync()
+        {
+            IsBusy = true;
+            try
+            {
+                await _authService.SendEmailVerificationAsync();
+                ErrorMessage = "Verification email resent. Please check your inbox.";
+            }
+            catch (Exception ex)
+            {
+                ErrorMessage = $"Error: {ex.Message}";
             }
             IsBusy = false;
         }

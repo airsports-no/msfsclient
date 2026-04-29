@@ -36,6 +36,11 @@
                              Command="{x:Bind ViewModel.ResetPasswordCommand}" 
                              HorizontalAlignment="Center"/>
 
+            <HyperlinkButton Content="Resend Verification Email" 
+                             Command="{x:Bind ViewModel.ResendVerificationEmailCommand}" 
+                             HorizontalAlignment="Center"
+                             Visibility="{x:Bind ViewModel.ErrorMessage, Mode=OneWay, Converter={StaticResource StringVisibilityConverter}}"/>
+
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                 <TextBlock Text="Don't have an account?" VerticalAlignment="Center"/>
                 <HyperlinkButton Content="Sign Up" Click="SignUp_Click"/>

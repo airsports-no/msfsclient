@@ -7,5 +7,6 @@ namespace msfsclient.Contracts.Services
     {
         Task<UserProfile?> GetProfileAsync();
         Task<bool> UpdateProfileAsync(string firstName, string lastName, string? profilePictureUrl, string? biography);
+        Task<NavigationTask?> GetCurrentNavigationTaskAsync();
     }
 }
