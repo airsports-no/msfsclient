@@ -13,6 +13,7 @@ namespace msfsclient.ViewModels
         private readonly IProfileService _profileService;
         private readonly ISimConnectService _simConnectService;
         private readonly ITraccarService _traccarService;
+        private readonly Microsoft.UI.Dispatching.DispatcherQueue _dispatcherQueue;
 
         [ObservableProperty]
         public partial UserProfile? Profile { get; set; }
@@ -43,12 +44,13 @@ namespace msfsclient.ViewModels
             _profileService = profileService;
             _simConnectService = simConnectService;
             _traccarService = traccarService;
+            _dispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
 
-            _simConnectService.ConnectionStatusChanged += (s, e) => IsSimConnected = e;
+            _simConnectService.ConnectionStatusChanged += (s, e) => _dispatcherQueue.TryEnqueue(() => IsSimConnected = e);
             _simConnectService.FlightDataReceived += (s, e) => 
             {
                 // UI Update
-                Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread().TryEnqueue(() => 
+                _dispatcherQueue.TryEnqueue(() => 
                 {
                     CurrentFlightData = e;
                     
@@ -65,18 +67,22 @@ namespace msfsclient.ViewModels
                 {
                     _ = Task.Run(async () => 
                     {
-                        var success = await _traccarService.SendDataAsync(Profile.SimulatorTrackingId, e);
+                        var result = await _traccarService.SendDataAsync(Profile.SimulatorTrackingId, e);
                         
-                        Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread().TryEnqueue(async () => 
+                        _dispatcherQueue.TryEnqueue(async () => 
                         {
-                            LastTraccarUpdateSuccessful = success;
-                            if (success)
+                            LastTraccarUpdateSuccessful = result.Success;
+                            
+                            if (!result.Success)
                             {
-                                // Pulse effect
-                                IsTraccarPulseActive = true;
-                                await Task.Delay(200);
-                                IsTraccarPulseActive = false;
+                                var logEntryErr = $"[{DateTime.Now:HH:mm:ss}] Traccar Error: {result.Message}";
+                                FlightLogs.Insert(0, logEntryErr);
                             }
+
+                            // Pulse effect for both success and failure
+                            IsTraccarPulseActive = true;
+                            await Task.Delay(400); // 400ms pulse for better visibility
+                            IsTraccarPulseActive = false;
                         });
                     });
                 }
@@ -86,21 +92,36 @@ namespace msfsclient.ViewModels
         [RelayCommand]
         public void ToggleTracking()
         {
-            System.Diagnostics.Debug.WriteLine($"ToggleTracking called. Current IsTracking: {IsTracking}, ID: {Profile?.SimulatorTrackingId ?? "NULL"}");
-            
-            if (!IsTracking && string.IsNullOrEmpty(Profile?.SimulatorTrackingId))
+            try
             {
-                var logEntryErr = $"[{DateTime.Now:HH:mm:ss}] Error: Simulator Tracking ID is missing.";
-                FlightLogs.Insert(0, logEntryErr);
-                System.Diagnostics.Debug.WriteLine("ToggleTracking: Missing ID, aborting.");
-                return;
+                System.Diagnostics.Debug.WriteLine($"ToggleTracking called. Current IsTracking: {IsTracking}, ID: {Profile?.SimulatorTrackingId ?? "NULL"}");
+                
+                if (!IsTracking)
+                {
+                    if (string.IsNullOrEmpty(Profile?.SimulatorTrackingId))
+                    {
+                        var logEntryErr = $"[{DateTime.Now:HH:mm:ss}] Error: Simulator Tracking ID is missing in profile.";
+                        FlightLogs.Insert(0, logEntryErr);
+                        System.Diagnostics.Debug.WriteLine("ToggleTracking: Missing ID, aborting.");
+                        return;
+                    }
+                    
+                    IsTracking = true;
+                    FlightLogs.Insert(0, $"[{DateTime.Now:HH:mm:ss}] Tracking Started (ID: {Profile.SimulatorTrackingId})");
+                }
+                else
+                {
+                    IsTracking = false;
+                    FlightLogs.Insert(0, $"[{DateTime.Now:HH:mm:ss}] Tracking Stopped");
+                }
+                
+                System.Diagnostics.Debug.WriteLine($"ToggleTracking: New status: {IsTracking}");
             }
-
-            IsTracking = !IsTracking;
-            var status = IsTracking ? "Started" : "Stopped";
-            var logEntryStatus = $"[{DateTime.Now:HH:mm:ss}] Tracking {status}";
-            FlightLogs.Insert(0, logEntryStatus);
-            System.Diagnostics.Debug.WriteLine($"ToggleTracking: New status: {status}");
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"ToggleTracking Exception: {ex}");
+                FlightLogs.Insert(0, $"[{DateTime.Now:HH:mm:ss}] Error: {ex.Message}");
+            }
         }
 
         public async Task InitializeAsync(IntPtr windowHandle)
@@ -118,7 +139,7 @@ namespace msfsclient.ViewModels
             var profile = await _profileService.GetProfileAsync();
             
             // Ensure the update happens on the UI thread to avoid WinRT ArgumentException
-            Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread().TryEnqueue(() =>
+            _dispatcherQueue.TryEnqueue(() =>
             {
                 Profile = profile;
                 IsBusy = false;

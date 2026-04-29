@@ -5,6 +5,6 @@ namespace msfsclient.Contracts.Services
 {
     public interface ITraccarService
     {
-        Task<bool> SendDataAsync(string trackingId, FlightDataStruct data);
+        Task<(bool Success, string Message)> SendDataAsync(string trackingId, FlightDataStruct data);
     }
 }

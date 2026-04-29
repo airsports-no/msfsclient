@@ -17,7 +17,7 @@ namespace msfsclient.Services
             _httpClient = new HttpClient();
         }
 
-        public async Task<bool> SendDataAsync(string trackingId, FlightDataStruct data)
+        public async Task<(bool Success, string Message)> SendDataAsync(string trackingId, FlightDataStruct data)
         {
             try
             {
@@ -37,17 +37,19 @@ namespace msfsclient.Services
                 
                 if (response.IsSuccessStatusCode)
                 {
-                    return true;
+                    return (true, "OK");
                 }
                 
                 var content = await response.Content.ReadAsStringAsync();
-                System.Diagnostics.Debug.WriteLine($"Traccar Error: {response.StatusCode} - {content}");
-                return false;
+                var errorMsg = $"HTTP {response.StatusCode}: {content}";
+                System.Diagnostics.Debug.WriteLine($"Traccar Error: {errorMsg}");
+                return (false, errorMsg);
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Traccar Exception: {ex.Message}");
-                return false;
+                var errorMsg = ex.Message;
+                System.Diagnostics.Debug.WriteLine($"Traccar Exception: {errorMsg}");
+                return (false, errorMsg);
             }
         }
     }

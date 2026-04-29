@@ -21,6 +21,11 @@ namespace msfsclient.Views
             Frame.Navigate(typeof(LoginPage));
         }
 
+        private void StartStopTracking_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+        {
+            ViewModel.ToggleTrackingCommand.Execute(null);
+        }
+
         protected override async void OnNavigatedTo(NavigationEventArgs e)
         {
             base.OnNavigatedTo(e);
