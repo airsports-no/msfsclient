@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="msfsclient.Views.MainPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:msfsclient.Views"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Button HorizontalAlignment="Right" Background="Transparent" BorderThickness="0" Padding="0">
+            <StackPanel Orientation="Horizontal" Spacing="20">
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Right">
+                    <TextBlock Text="{x:Bind ViewModel.Profile.FullName, Mode=OneWay}" Style="{StaticResource BodyStrongTextBlockStyle}"/>
+                    <TextBlock Text="{x:Bind ViewModel.Profile.Email, Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}"/>
+                </StackPanel>
+                <PersonPicture ProfilePicture="{x:Bind ViewModel.Profile.ProfilePictureUrl, Mode=OneWay, Converter={StaticResource UrlToImageSourceConverter}}" 
+                               DisplayName="{x:Bind ViewModel.Profile.FullName, Mode=OneWay}"
+                               Height="40" Width="40"/>
+            </StackPanel>
+            
+            <Button.Flyout>
+                <Flyout>
+                    <StackPanel Spacing="15" MinWidth="200" HorizontalAlignment="Center">
+                        <PersonPicture ProfilePicture="{x:Bind ViewModel.Profile.ProfilePictureUrl, Mode=OneWay, Converter={StaticResource UrlToImageSourceConverter}}" 
+                                       DisplayName="{x:Bind ViewModel.Profile.FullName, Mode=OneWay}"
+                                       Height="100" Width="100"/>
+                        <TextBlock Text="{x:Bind ViewModel.Profile.FullName, Mode=OneWay}" 
+                                   Style="{StaticResource SubtitleTextBlockStyle}" 
+                                   HorizontalAlignment="Center"/>
+                        <TextBlock Text="{x:Bind ViewModel.Profile.Email, Mode=OneWay}" 
+                                   Style="{StaticResource CaptionTextBlockStyle}" 
+                                   HorizontalAlignment="Center" 
+                                   Opacity="0.7"/>
+                        
+                        <MenuFlyoutSeparator/>
+                        
+                        <Button Content="Logout" 
+                                Command="{x:Bind ViewModel.LogoutCommand}" 
+                                HorizontalAlignment="Stretch"
+                                Style="{StaticResource AccentButtonStyle}"/>
+                    </StackPanel>
+                </Flyout>
+            </Button.Flyout>
+        </Button>
+
+        <Grid Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center">
+            <StackPanel Spacing="10">
+                <TextBlock Text="Welcome to Air Sports MSFS Client" Style="{StaticResource TitleTextBlockStyle}" HorizontalAlignment="Center"/>
+                <TextBlock Text="SimConnect integration and tracking will appear here." HorizontalAlignment="Center" Opacity="0.7"/>
+            </StackPanel>
+            
+            <ProgressRing IsActive="{x:Bind ViewModel.IsBusy, Mode=OneWay}"/>
+        </Grid>
+    </Grid>
+</Page>

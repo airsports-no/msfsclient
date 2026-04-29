@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="msfsclient.Views.LoginPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:msfsclient.Views"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+    <Grid VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="400" Width="400">
+        <StackPanel Spacing="20" Margin="20">
+            <TextBlock Text="Login" Style="{StaticResource TitleTextBlockStyle}" HorizontalAlignment="Center"/>
+            
+            <TextBox Header="Email" 
+                     Text="{x:Bind ViewModel.Email, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                     PlaceholderText="Enter your email"/>
+            
+            <PasswordBox Header="Password" 
+                         Password="{x:Bind ViewModel.Password, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                         PlaceholderText="Enter your password"/>
+            
+            <TextBlock Text="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}" 
+                       Foreground="Red" 
+                       HorizontalAlignment="Center"
+                       Visibility="{x:Bind ViewModel.ErrorMessage, Converter={StaticResource StringVisibilityConverter}, Mode=OneWay}"/>
+
+            <Button Content="Login" 
+                    Click="LoginButton_Click" 
+                    HorizontalAlignment="Stretch" 
+                    Style="{StaticResource AccentButtonStyle}"
+                    IsEnabled="{x:Bind ViewModel.IsBusy, Converter={StaticResource InverseBoolConverter}, Mode=OneWay}"/>
+            
+            <HyperlinkButton Content="Forgot Password?" 
+                             Command="{x:Bind ViewModel.ResetPasswordCommand}" 
+                             HorizontalAlignment="Center"/>
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                <TextBlock Text="Don't have an account?" VerticalAlignment="Center"/>
+                <HyperlinkButton Content="Sign Up" Click="SignUp_Click"/>
+            </StackPanel>
+
+            <ProgressRing IsActive="{x:Bind ViewModel.IsBusy, Mode=OneWay}" 
+                          HorizontalAlignment="Center"/>
+        </StackPanel>
+    </Grid>
+</Page>

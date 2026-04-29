@@ -1,0 +1,47 @@
+## Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+## Build results
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Tt]est[Rr]esult*/
+
+## NuGet Packages
+*.nupkg
+# The packages folder can be ignored because of PackageReference usage
+**/packages/*
+!**/packages/build/
+
+## Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+## MSIX / Windows App SDK
+AppPackages/
+BundleArtifacts/
+_pkg.visualstudio.xml
+Generated Files/
+*.msix
+*.appx
+*.appxbundle
+*.msixbundle
+
+## User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.userprefs
+
+## Temporary files
+*.tmp
+*.bak
+*.swp
+*~

@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "msfsclient (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "msfsclient (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
