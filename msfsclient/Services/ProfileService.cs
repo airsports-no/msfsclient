@@ -101,14 +101,20 @@ namespace msfsclient.Services
                 if (profileImageData != null && !string.IsNullOrEmpty(imageFileName))
                 {
                     var imageContent = new ByteArrayContent(profileImageData);
-                    imageContent.Headers.ContentType = new MediaTypeHeaderValue("image/png"); // Default to PNG as per Python example
-                    content.Add(imageContent, "profile_picture", imageFileName);
+                    // Determine content type based on extension
+                    string contentType = "image/png";
+                    if (imageFileName.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) || imageFileName.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase))
+                        contentType = "image/jpeg";
+                    else if (imageFileName.EndsWith(".gif", StringComparison.OrdinalIgnoreCase))
+                        contentType = "image/gif";
+
+                    imageContent.Headers.ContentType = new MediaTypeHeaderValue(contentType);
+                    content.Add(imageContent, "picture", imageFileName);
                 }
                 else if (!string.IsNullOrEmpty(profilePictureUrl))
                 {
-                    // If we only have a URL, the API might handle it as a string, but 
-                    // multipart/form-data usually expects files or strings.
-                    content.Add(new StringContent(profilePictureUrl), "profile_picture_url");
+                    // If we only have a URL, we don't send it back as a file
+                    // Most DRF ImageFields will ignore a string URL during an update if it hasn't changed
                 }
 
                 var response = await _httpClient.PutAsync($"{BaseUrl}update_profile/", content);
