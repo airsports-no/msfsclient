@@ -16,7 +16,7 @@ namespace msfsclient.Services
         private const string ApiKey = "AIzaSyD_LDULS2RvLvhTtnLyEzARtbs-WgtFOAo";
         private const string AuthDomain = "airsports-613ce.firebaseapp.com";
 
-        public bool IsAuthenticated => _client.User != null;
+        public bool IsAuthenticated => _client.User != null && _client.User.Info.IsEmailVerified;
         public User? CurrentUser => _client.User;
         public string? JwtToken => _client.User?.Credential?.IdToken;
         public string? LastErrorMessage { get; private set; }
@@ -46,6 +46,13 @@ namespace msfsclient.Services
             {
                 LastErrorMessage = null;
                 _userCredential = await _client.SignInWithEmailAndPasswordAsync(email, password);
+                
+                if (_client.User != null && !_client.User.Info.IsEmailVerified)
+                {
+                    LastErrorMessage = "Your email address has not been verified. Please check your inbox for a verification email.";
+                    return false;
+                }
+                
                 return IsAuthenticated;
             }
             catch (FirebaseAuthHttpException ex)
@@ -72,7 +79,8 @@ namespace msfsclient.Services
                 LastErrorMessage = null;
                 var credential = await _client.CreateUserWithEmailAndPasswordAsync(email, password, displayName);
                 _userCredential = credential;
-                return IsAuthenticated;
+                // Success if user was created, even if not yet verified
+                return _client.User != null;
             }
             catch (FirebaseAuthHttpException ex)
             {
