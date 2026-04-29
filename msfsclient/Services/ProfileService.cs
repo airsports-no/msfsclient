@@ -40,24 +40,30 @@ namespace msfsclient.Services
                 
                 if (response.IsSuccessStatusCode)
                 {
-                    var profile = await response.Content.ReadFromJsonAsync<UserProfile>();
+                    var json = await response.Content.ReadAsStringAsync();
+                    System.Diagnostics.Debug.WriteLine($"Raw Profile JSON: {json}");
                     
-                    if (profile != null && !string.IsNullOrEmpty(profile.ProfilePictureUrl))
+                    var profile = System.Text.Json.JsonSerializer.Deserialize<UserProfile>(json);
+                    
+                    if (profile != null)
                     {
-                        System.Diagnostics.Debug.WriteLine($"Raw ProfilePictureUrl: {profile.ProfilePictureUrl}");
-                        
-                        // Handle relative paths from the API
-                        if (profile.ProfilePictureUrl.StartsWith("/"))
+                        // Handle Profile Picture
+                        if (!string.IsNullOrEmpty(profile.ProfilePictureUrl))
                         {
-                            profile.ProfilePictureUrl = "https://airsports.no" + profile.ProfilePictureUrl;
+                            if (profile.ProfilePictureUrl.StartsWith("/"))
+                                profile.ProfilePictureUrl = "https://airsports.no" + profile.ProfilePictureUrl;
+                            else if (!profile.ProfilePictureUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+                                profile.ProfilePictureUrl = "https://airsports.no/" + profile.ProfilePictureUrl;
                         }
-                        else if (!profile.ProfilePictureUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+
+                        // Handle Country Flag
+                        if (!string.IsNullOrEmpty(profile.CountryFlagUrl))
                         {
-                            // If it's a relative path without a leading slash
-                            profile.ProfilePictureUrl = "https://airsports.no/" + profile.ProfilePictureUrl;
+                            if (profile.CountryFlagUrl.StartsWith("/"))
+                                profile.CountryFlagUrl = "https://airsports.no" + profile.CountryFlagUrl;
+                            else if (!profile.CountryFlagUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+                                profile.CountryFlagUrl = "https://airsports.no/" + profile.CountryFlagUrl;
                         }
-                        
-                        System.Diagnostics.Debug.WriteLine($"Final ProfilePictureUrl: {profile.ProfilePictureUrl}");
                     }
                     
                     return profile;
@@ -76,25 +82,48 @@ namespace msfsclient.Services
             return null;
         }
 
-        public async Task<bool> UpdateProfileAsync(string firstName, string lastName, string? profilePictureUrl, string? biography)
+        public async Task<bool> UpdateProfileAsync(string firstName, string lastName, string? profilePictureUrl, string? biography, byte[]? profileImageData = null, string? imageFileName = null)
         {
             try
             {
                 SetAuthorizationHeader();
-                var data = new 
-                { 
-                    first_name = firstName, 
-                    last_name = lastName,
-                    profile_picture = profilePictureUrl,
-                    biography = biography,
-                    validated = true
-                };
-                var response = await _httpClient.PutAsJsonAsync($"{BaseUrl}update_profile/", data);
                 
+                using var content = new MultipartFormDataContent();
+                
+                content.Add(new StringContent(firstName), "first_name");
+                content.Add(new StringContent(lastName), "last_name");
+                
+                if (biography != null)
+                    content.Add(new StringContent(biography), "biography");
+                
+                content.Add(new StringContent("true"), "validated");
+
+                if (profileImageData != null && !string.IsNullOrEmpty(imageFileName))
+                {
+                    var imageContent = new ByteArrayContent(profileImageData);
+                    imageContent.Headers.ContentType = new MediaTypeHeaderValue("image/png"); // Default to PNG as per Python example
+                    content.Add(imageContent, "profile_picture", imageFileName);
+                }
+                else if (!string.IsNullOrEmpty(profilePictureUrl))
+                {
+                    // If we only have a URL, the API might handle it as a string, but 
+                    // multipart/form-data usually expects files or strings.
+                    content.Add(new StringContent(profilePictureUrl), "profile_picture_url");
+                }
+
+                var response = await _httpClient.PutAsync($"{BaseUrl}update_profile/", content);
+                
+                if (!response.IsSuccessStatusCode)
+                {
+                    var error = await response.Content.ReadAsStringAsync();
+                    System.Diagnostics.Debug.WriteLine($"Profile Update Error: {response.StatusCode} - {error}");
+                }
+
                 return response.IsSuccessStatusCode;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"Profile Update Exception: {ex.Message}");
                 return false;
             }
         }

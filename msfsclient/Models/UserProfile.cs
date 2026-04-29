@@ -19,8 +19,14 @@ namespace msfsclient.Models
         [JsonPropertyName("full_name")]
         public string FullName => $"{FirstName} {LastName}".Trim();
 
-        [JsonPropertyName("profile_picture")]
+        [JsonPropertyName("picture")]
         public string? ProfilePictureUrl { get; set; }
+
+        [JsonPropertyName("country_flag_url")]
+        public string? CountryFlagUrl { get; set; }
+
+        [JsonPropertyName("country")]
+        public string? CountryCode { get; set; }
 
         [JsonPropertyName("simulator_tracking_id")]
         public string? SimulatorTrackingId { get; set; }

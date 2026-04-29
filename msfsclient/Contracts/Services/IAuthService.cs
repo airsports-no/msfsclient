@@ -14,6 +14,7 @@ namespace msfsclient.Contracts.Services
         Task<bool> RegisterAsync(string email, string password, string displayName);
         Task SendEmailVerificationAsync();
         Task ResetPasswordAsync(string email);
+        Task ReloadUserAsync();
         void Logout();
     }
 }

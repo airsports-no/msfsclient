@@ -37,6 +37,12 @@ namespace msfsclient.ViewModels
         public partial string? EditBiography { get; set; }
 
         [ObservableProperty]
+        public partial byte[]? PendingProfileImageData { get; set; }
+
+        [ObservableProperty]
+        public partial string? PendingProfileImageFileName { get; set; }
+
+        [ObservableProperty]
         public partial string? ProfileErrorMessage { get; set; }
 
         [ObservableProperty]
@@ -248,10 +254,14 @@ namespace msfsclient.ViewModels
                 EditFirstName, 
                 EditLastName, 
                 EditProfilePictureUrl, 
-                EditBiography);
+                EditBiography,
+                PendingProfileImageData,
+                PendingProfileImageFileName);
 
             if (success)
             {
+                PendingProfileImageData = null;
+                PendingProfileImageFileName = null;
                 await LoadProfileAsync();
                 IsEditingProfile = false;
             }

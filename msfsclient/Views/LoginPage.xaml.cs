@@ -13,11 +13,22 @@ namespace msfsclient.Views
             this.InitializeComponent();
         }
 
-        protected override void OnNavigatedTo(Microsoft.UI.Xaml.Navigation.NavigationEventArgs e)
+        protected override async void OnNavigatedTo(Microsoft.UI.Xaml.Navigation.NavigationEventArgs e)
         {
             base.OnNavigatedTo(e);
 
-            if (App.GetService<msfsclient.Contracts.Services.IAuthService>().IsAuthenticated)
+            var authService = App.GetService<msfsclient.Contracts.Services.IAuthService>();
+            
+            // If we have a restored user but they aren't marked as authenticated (e.g. verification pending or expired)
+            // try to reload the user state to see if they've been verified or if the token can be refreshed.
+            if (authService.CurrentUser != null)
+            {
+                ViewModel.IsBusy = true;
+                await authService.ReloadUserAsync();
+                ViewModel.IsBusy = false;
+            }
+
+            if (authService.IsAuthenticated)
             {
                 Frame.Navigate(typeof(MainPage));
             }

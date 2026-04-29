@@ -18,7 +18,11 @@
         <Button HorizontalAlignment="Right" Background="Transparent" BorderThickness="0" Padding="0">
             <StackPanel Orientation="Horizontal" Spacing="20">
                 <StackPanel VerticalAlignment="Center" HorizontalAlignment="Right">
-                    <TextBlock Text="{x:Bind ViewModel.Profile.FullName, Mode=OneWay}" Style="{StaticResource BodyStrongTextBlockStyle}"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="5">
+                        <Image Source="{x:Bind ViewModel.Profile.CountryFlagUrl, Mode=OneWay, Converter={StaticResource UrlToImageSourceConverter}}" 
+                               Width="16" Height="12" VerticalAlignment="Center" Stretch="UniformToFill"/>
+                        <TextBlock Text="{x:Bind ViewModel.Profile.FullName, Mode=OneWay}" Style="{StaticResource BodyStrongTextBlockStyle}"/>
+                    </StackPanel>
                     <TextBlock Text="{x:Bind ViewModel.Profile.Email, Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}"/>
                 </StackPanel>
                 <PersonPicture ProfilePicture="{x:Bind ViewModel.Profile.ProfilePictureUrl, Mode=OneWay, Converter={StaticResource UrlToImageSourceConverter}}" 
@@ -36,9 +40,13 @@
                                            DisplayName="{x:Bind ViewModel.Profile.FullName, Mode=OneWay}"
                                            Height="100" Width="100"/>
                             <StackPanel Spacing="2">
-                                <TextBlock Text="{x:Bind ViewModel.Profile.FullName, Mode=OneWay}" 
-                                           Style="{StaticResource SubtitleTextBlockStyle}" 
-                                           HorizontalAlignment="Center"/>
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="5">
+                                    <Image Source="{x:Bind ViewModel.Profile.CountryFlagUrl, Mode=OneWay, Converter={StaticResource UrlToImageSourceConverter}}" 
+                                           Width="20" Height="15" VerticalAlignment="Center" Stretch="UniformToFill"/>
+                                    <TextBlock Text="{x:Bind ViewModel.Profile.FullName, Mode=OneWay}" 
+                                               Style="{StaticResource SubtitleTextBlockStyle}" 
+                                               HorizontalAlignment="Center"/>
+                                </StackPanel>
                                 <TextBlock Text="{x:Bind ViewModel.Profile.Email, Mode=OneWay}" 
                                            Style="{StaticResource CaptionTextBlockStyle}" 
                                            HorizontalAlignment="Center" 
@@ -69,7 +77,16 @@
                             
                             <TextBox Header="First Name" Text="{x:Bind ViewModel.EditFirstName, Mode=TwoWay}"/>
                             <TextBox Header="Last Name" Text="{x:Bind ViewModel.EditLastName, Mode=TwoWay}"/>
-                            <TextBox Header="Profile Picture URL" Text="{x:Bind ViewModel.EditProfilePictureUrl, Mode=TwoWay}"/>
+                            
+                            <StackPanel Spacing="5">
+                                <TextBlock Text="Profile Picture" Style="{StaticResource BodyTextBlockStyle}"/>
+                                <Button Content="Choose Image..." Click="SelectProfileImage_Click" HorizontalAlignment="Stretch"/>
+                                <TextBlock Text="{x:Bind ViewModel.PendingProfileImageFileName, Mode=OneWay}" 
+                                           Style="{StaticResource CaptionTextBlockStyle}" 
+                                           Visibility="{x:Bind ViewModel.PendingProfileImageFileName, Mode=OneWay, Converter={StaticResource StringVisibilityConverter}}"
+                                           FontStyle="Italic"/>
+                            </StackPanel>
+
                             <TextBox Header="Biography" Text="{x:Bind ViewModel.EditBiography, Mode=TwoWay}" 
                                      AcceptsReturn="True" Height="80" TextWrapping="Wrap"/>
 

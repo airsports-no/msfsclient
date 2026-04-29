@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
@@ -23,8 +24,24 @@ namespace msfsclient.Services
 
         public AuthService()
         {
-            var localFolder = Windows.Storage.ApplicationData.Current.LocalFolder.Path;
-            var userFilePath = System.IO.Path.Combine(localFolder, "user.json");
+            string localFolder;
+            try
+            {
+                // Try to get the packaged app local folder
+                localFolder = Windows.Storage.ApplicationData.Current.LocalFolder.Path;
+            }
+            catch (Exception)
+            {
+                // Fallback for unpackaged mode
+                localFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "msfsclient");
+                if (!Directory.Exists(localFolder))
+                {
+                    Directory.CreateDirectory(localFolder);
+                }
+            }
+
+            var userFilePath = Path.Combine(localFolder, "user.json");
+            System.Diagnostics.Debug.WriteLine($"AuthService: Using user file path: {userFilePath}");
 
             var config = new FirebaseAuthConfig
             {
@@ -38,6 +55,15 @@ namespace msfsclient.Services
             };
 
             _client = new FirebaseAuthClient(config);
+
+            if (_client.User != null)
+            {
+                System.Diagnostics.Debug.WriteLine($"AuthService: Restored user: {_client.User.Info.Email}, Verified: {_client.User.Info.IsEmailVerified}");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine("AuthService: No user restored from repository.");
+            }
         }
 
         public async Task<bool> LoginAsync(string email, string password)
@@ -47,10 +73,15 @@ namespace msfsclient.Services
                 LastErrorMessage = null;
                 _userCredential = await _client.SignInWithEmailAndPasswordAsync(email, password);
                 
-                if (_client.User != null && !_client.User.Info.IsEmailVerified)
+                if (_client.User != null)
                 {
-                    LastErrorMessage = "Your email address has not been verified. Please check your inbox for a verification email.";
-                    return false;
+                    System.Diagnostics.Debug.WriteLine($"AuthService: Login successful for {_client.User.Info.Email}. Verified: {_client.User.Info.IsEmailVerified}");
+                    
+                    if (!_client.User.Info.IsEmailVerified)
+                    {
+                        LastErrorMessage = "Your email address has not been verified. Please check your inbox for a verification email.";
+                        return false;
+                    }
                 }
                 
                 return IsAuthenticated;
@@ -58,16 +89,19 @@ namespace msfsclient.Services
             catch (FirebaseAuthHttpException ex)
             {
                 LastErrorMessage = $"HTTP Error: {ex.Reason} - {ex.Message}";
+                System.Diagnostics.Debug.WriteLine($"AuthService: Login failed: {LastErrorMessage}");
                 return false;
             }
             catch (FirebaseAuthException ex)
             {
                 LastErrorMessage = $"Auth Error: {ex.Reason}";
+                System.Diagnostics.Debug.WriteLine($"AuthService: Login failed: {LastErrorMessage}");
                 return false;
             }
             catch (Exception ex)
             {
                 LastErrorMessage = $"General Error: {ex.Message}";
+                System.Diagnostics.Debug.WriteLine($"AuthService: Login failed: {LastErrorMessage}");
                 return false;
             }
         }
@@ -79,44 +113,55 @@ namespace msfsclient.Services
                 LastErrorMessage = null;
                 var credential = await _client.CreateUserWithEmailAndPasswordAsync(email, password, displayName);
                 _userCredential = credential;
+                System.Diagnostics.Debug.WriteLine($"AuthService: Registration successful for {email}");
                 // Success if user was created, even if not yet verified
                 return _client.User != null;
             }
             catch (FirebaseAuthHttpException ex)
             {
                 LastErrorMessage = $"HTTP Error: {ex.Reason} - {ex.Message}";
+                System.Diagnostics.Debug.WriteLine($"AuthService: Registration failed: {LastErrorMessage}");
                 return false;
             }
             catch (FirebaseAuthException ex)
             {
                 LastErrorMessage = $"Auth Error: {ex.Reason}";
+                System.Diagnostics.Debug.WriteLine($"AuthService: Registration failed: {LastErrorMessage}");
                 return false;
             }
             catch (Exception ex)
             {
                 LastErrorMessage = $"General Error: {ex.Message}";
+                System.Diagnostics.Debug.WriteLine($"AuthService: Registration failed: {LastErrorMessage}");
                 return false;
             }
         }
 
         public async Task SendEmailVerificationAsync()
         {
-            if (_userCredential?.User?.Credential?.IdToken == null) return;
+            if (_client.User == null) return;
+
+            // In Firebase.Auth 4.x, we can use the client or user object if supported, 
+            // but the direct REST API call is also fine if we have the token.
+            var token = await _client.User.GetIdTokenAsync();
+            if (token == null) return;
 
             using var httpClient = new HttpClient();
             var url = $"https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key={ApiKey}";
             var payload = new
             {
                 requestType = "VERIFY_EMAIL",
-                idToken = _userCredential.User.Credential.IdToken
+                idToken = token
             };
 
             var response = await httpClient.PostAsJsonAsync(url, payload);
             if (!response.IsSuccessStatusCode)
             {
                 var error = await response.Content.ReadAsStringAsync();
+                System.Diagnostics.Debug.WriteLine($"AuthService: Failed to send verification email: {error}");
                 throw new Exception($"Failed to send verification email: {error}");
             }
+            System.Diagnostics.Debug.WriteLine("AuthService: Verification email sent.");
         }
 
         public async Task ResetPasswordAsync(string email)
@@ -136,13 +181,34 @@ namespace msfsclient.Services
                 {
                     var error = await response.Content.ReadAsStringAsync();
                     LastErrorMessage = $"Reset Password Error: {error}";
+                    System.Diagnostics.Debug.WriteLine($"AuthService: Reset password failed: {error}");
                     throw new Exception(error);
                 }
+                System.Diagnostics.Debug.WriteLine($"AuthService: Password reset email sent to {email}");
             }
             catch (Exception ex)
             {
                 LastErrorMessage = $"General Error: {ex.Message}";
+                System.Diagnostics.Debug.WriteLine($"AuthService: Reset password exception: {ex.Message}");
                 throw;
+            }
+        }
+
+        public async Task ReloadUserAsync()
+        {
+            if (_client.User != null)
+            {
+                try
+                {
+                    System.Diagnostics.Debug.WriteLine("AuthService: Reloading user state...");
+                    // This will refresh the token and user info (like IsEmailVerified)
+                    await _client.User.GetIdTokenAsync(true);
+                    System.Diagnostics.Debug.WriteLine($"AuthService: User state reloaded. Verified: {_client.User.Info.IsEmailVerified}");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"AuthService: Failed to reload user state: {ex.Message}");
+                }
             }
         }
 
@@ -152,6 +218,7 @@ namespace msfsclient.Services
             {
                 if (_client.User != null)
                 {
+                    System.Diagnostics.Debug.WriteLine($"AuthService: Logging out user {_client.User.Info.Email}");
                     _client.SignOut();
                 }
             }
