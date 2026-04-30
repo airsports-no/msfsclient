@@ -26,6 +26,7 @@
             <conv:TrackingToTextConverter x:Key="TrackingToTextConverter" />
             <conv:StringFormatConverter x:Key="StringFormatConverter" />
             <conv:BoolToOpacityConverter x:Key="BoolToOpacityConverter" />
+            <conv:CollectionEmptyToVisibilityConverter x:Key="CollectionEmptyToVisibilityConverter" />
 
             <Style TargetType="TextBlock" x:Key="CaptionTextBlockStyle">
                 <Setter Property="FontSize" Value="12"/>

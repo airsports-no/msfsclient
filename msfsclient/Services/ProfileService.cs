@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -12,21 +13,22 @@ namespace msfsclient.Services
     {
         private readonly HttpClient _httpClient;
         private readonly IAuthService _authService;
-        private const string BaseUrl = "https://airsports.no/api/v1/userprofile/";
+        private readonly IAppConfigService _appConfig;
 
-        public ProfileService(IAuthService authService, HttpClient httpClient)
+        public ProfileService(IAuthService authService, HttpClient httpClient, IAppConfigService appConfig)
         {
             _authService = authService;
             _httpClient = httpClient;
+            _appConfig = appConfig;
         }
 
-        private void SetAuthorizationHeader()
+        private void SetAuthorizationHeader(HttpRequestMessage request)
         {
             var token = _authService.JwtToken;
             if (!string.IsNullOrEmpty(token))
             {
                 // The API specifically requires the 'JWT' scheme
-                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("JWT", token);
+                request.Headers.Authorization = new AuthenticationHeaderValue("JWT", token);
             }
         }
 
@@ -34,35 +36,43 @@ namespace msfsclient.Services
         {
             try
             {
-                SetAuthorizationHeader();
-                System.Diagnostics.Debug.WriteLine($"Fetching profile with token: {_httpClient.DefaultRequestHeaders.Authorization?.Parameter?[..10]}...");
-                var response = await _httpClient.GetAsync($"{BaseUrl}retrieve_profile/");
+                var url = $"{_appConfig.ApiBaseUrl}retrieve_profile/";
+                using var request = new HttpRequestMessage(HttpMethod.Get, url);
+                SetAuthorizationHeader(request);
+
+                System.Diagnostics.Debug.WriteLine($"Fetching profile from: {url}");
+                var tokenPreview = request.Headers.Authorization?.Parameter?.Length > 50 
+                    ? request.Headers.Authorization.Parameter.Substring(0, 50) + "..." 
+                    : request.Headers.Authorization?.Parameter;
+                System.Diagnostics.Debug.WriteLine($"Token scheme: {request.Headers.Authorization?.Scheme}, Preview: {tokenPreview}");
+
+                var response = await _httpClient.SendAsync(request);
                 
                 if (response.IsSuccessStatusCode)
                 {
                     var json = await response.Content.ReadAsStringAsync();
-                    System.Diagnostics.Debug.WriteLine($"Raw Profile JSON: {json}");
-                    
                     var profile = System.Text.Json.JsonSerializer.Deserialize<UserProfile>(json);
                     
                     if (profile != null)
                     {
+                        var webBase = _appConfig.WebBaseUrl.TrimEnd('/');
+
                         // Handle Profile Picture
                         if (!string.IsNullOrEmpty(profile.ProfilePictureUrl))
                         {
                             if (profile.ProfilePictureUrl.StartsWith("/"))
-                                profile.ProfilePictureUrl = "https://airsports.no" + profile.ProfilePictureUrl;
+                                profile.ProfilePictureUrl = webBase + profile.ProfilePictureUrl;
                             else if (!profile.ProfilePictureUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase))
-                                profile.ProfilePictureUrl = "https://airsports.no/" + profile.ProfilePictureUrl;
+                                profile.ProfilePictureUrl = webBase + "/" + profile.ProfilePictureUrl;
                         }
 
                         // Handle Country Flag
                         if (!string.IsNullOrEmpty(profile.CountryFlagUrl))
                         {
                             if (profile.CountryFlagUrl.StartsWith("/"))
-                                profile.CountryFlagUrl = "https://airsports.no" + profile.CountryFlagUrl;
+                                profile.CountryFlagUrl = webBase + profile.CountryFlagUrl;
                             else if (!profile.CountryFlagUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase))
-                                profile.CountryFlagUrl = "https://airsports.no/" + profile.CountryFlagUrl;
+                                profile.CountryFlagUrl = webBase + "/" + profile.CountryFlagUrl;
                         }
                     }
                     
@@ -86,7 +96,9 @@ namespace msfsclient.Services
         {
             try
             {
-                SetAuthorizationHeader();
+                var url = $"{_appConfig.ApiBaseUrl}update_profile/";
+                using var request = new HttpRequestMessage(HttpMethod.Patch, url);
+                SetAuthorizationHeader(request);
                 
                 using var content = new MultipartFormDataContent();
                 
@@ -104,7 +116,6 @@ namespace msfsclient.Services
                 if (profileImageData != null && !string.IsNullOrEmpty(imageFileName))
                 {
                     var imageContent = new ByteArrayContent(profileImageData);
-                    // Determine content type based on extension
                     string contentType = "image/png";
                     if (imageFileName.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) || imageFileName.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase))
                         contentType = "image/jpeg";
@@ -115,8 +126,8 @@ namespace msfsclient.Services
                     content.Add(imageContent, "picture", imageFileName);
                 }
 
-                // Use PATCH instead of PUT for partial updates
-                var response = await _httpClient.PatchAsync($"{BaseUrl}update_profile/", content);
+                request.Content = content;
+                var response = await _httpClient.SendAsync(request);
                 
                 if (!response.IsSuccessStatusCode)
                 {
@@ -133,18 +144,21 @@ namespace msfsclient.Services
             }
         }
 
-        public async Task<NavigationTask?> GetCurrentNavigationTaskAsync()
+        public async System.Threading.Tasks.Task<System.Collections.Generic.List<msfsclient.Models.NavigationTaskResponse>> GetCurrentNavigationTasksAsync()
         {
             try
             {
-                SetAuthorizationHeader();
-                var response = await _httpClient.GetAsync($"{BaseUrl}get_current_sim_navigation_task/");
+                var url = $"{_appConfig.ApiBaseUrl}get_current_sim_navigation_task/";
+                using var request = new HttpRequestMessage(HttpMethod.Get, url);
+                SetAuthorizationHeader(request);
+
+                var response = await _httpClient.SendAsync(request);
 
                 if (response.IsSuccessStatusCode)
                 {
                     var json = await response.Content.ReadAsStringAsync();
                     System.Diagnostics.Debug.WriteLine($"Navigation Task JSON: {json}");
-                    return System.Text.Json.JsonSerializer.Deserialize<NavigationTask>(json);
+                    return System.Text.Json.JsonSerializer.Deserialize<System.Collections.Generic.List<msfsclient.Models.NavigationTaskResponse>>(json) ?? new System.Collections.Generic.List<msfsclient.Models.NavigationTaskResponse>();
                 }
             }
             catch (Exception ex)
@@ -152,7 +166,7 @@ namespace msfsclient.Services
                 System.Diagnostics.Debug.WriteLine($"Navigation Task API Exception: {ex.Message}");
             }
 
-            return null;
+            return new System.Collections.Generic.List<msfsclient.Models.NavigationTaskResponse>();
         }
     }
 }

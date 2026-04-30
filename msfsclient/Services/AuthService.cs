@@ -18,9 +18,10 @@ namespace msfsclient.Services
         private const string ApiKey = "AIzaSyD_LDULS2RvLvhTtnLyEzARtbs-WgtFOAo";
         private const string AuthDomain = "airsports-613ce.firebaseapp.com";
 
+        private string? _cachedToken;
         public bool IsAuthenticated => _client.User != null && _client.User.Info.IsEmailVerified;
         public User? CurrentUser => _client.User;
-        public string? JwtToken => _client.User?.Credential?.IdToken;
+        public string? JwtToken => _cachedToken ?? _client.User?.Credential?.IdToken;
         public string? LastErrorMessage { get; private set; }
 
         public AuthService(HttpClient httpClient)
@@ -73,6 +74,7 @@ namespace msfsclient.Services
             try
             {
                 LastErrorMessage = null;
+                _cachedToken = null; // Clear cached token on new login
                 _userCredential = await _client.SignInWithEmailAndPasswordAsync(email, password);
                 
                 if (_client.User != null)
@@ -206,7 +208,7 @@ namespace msfsclient.Services
                     var reloadTask = _client.User.GetIdTokenAsync(true);
                     if (await Task.WhenAny(reloadTask, Task.Delay(5000)) == reloadTask)
                     {
-                        await reloadTask;
+                        _cachedToken = await reloadTask;
                         System.Diagnostics.Debug.WriteLine($"AuthService: User state reloaded. Verified: {_client.User.Info.IsEmailVerified}");
                     }
                     else
@@ -238,6 +240,7 @@ namespace msfsclient.Services
             finally
             {
                 _userCredential = null;
+                _cachedToken = null;
             }
         }
     }

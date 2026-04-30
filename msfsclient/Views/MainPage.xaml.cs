@@ -3,6 +3,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 using msfsclient.Contracts.Services;
+using msfsclient.Models;
 using msfsclient.ViewModels;
 
 namespace msfsclient.Views
@@ -45,7 +46,18 @@ namespace msfsclient.Views
 
         private void TaskName_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
         {
-            ViewModel.OpenTaskDetailsCommand.Execute(null);
+            if (sender is HyperlinkButton btn && btn.DataContext is NavigationTaskResponse response)
+            {
+                ViewModel.OpenTaskDetailsCommand.Execute(response.NavigationTask);
+            }
+        }
+
+        private void TrackingLink_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+        {
+            if (sender is HyperlinkButton btn && btn.DataContext is NavigationTaskResponse response)
+            {
+                ViewModel.OpenTrackingLinkCommand.Execute(response.NavigationTask);
+            }
         }
 
         protected override async void OnNavigatedTo(NavigationEventArgs e)

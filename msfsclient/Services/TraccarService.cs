@@ -10,11 +10,12 @@ namespace msfsclient.Services
     public class TraccarService : ITraccarService
     {
         private readonly HttpClient _httpClient;
-        private const string BaseUrl = "https://traccar.airsports.no/";
+        private readonly IAppConfigService _appConfig;
 
-        public TraccarService(HttpClient httpClient)
+        public TraccarService(HttpClient httpClient, IAppConfigService appConfig)
         {
             _httpClient = httpClient;
+            _appConfig = appConfig;
         }
 
         public async Task<(bool Success, string Message)> SendDataAsync(string trackingId, FlightDataStruct data)
@@ -30,7 +31,7 @@ namespace msfsclient.Services
                 query["altitude"] = data.Altitude.ToString("F0");
                 query["heading"] = data.HeadingDegrees.ToString("F2");
 
-                var url = $"{BaseUrl}?{query}";
+                var url = $"{_appConfig.TraccarBaseUrl}?{query}";
                 
                 // The python example uses POST but parameters are in the query string
                 var response = await _httpClient.PostAsync(url, null);

@@ -6,6 +6,7 @@
     xmlns:local="using:msfsclient.Views"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:models="using:msfsclient.Models"
     mc:Ignorable="d"
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
 
@@ -204,46 +205,87 @@
                 </StackPanel>
 
 
-                <!-- Navigation Task Section -->
-                <Border Background="{ThemeResource SystemControlBackgroundChromeMediumLowBrush}" 
-                        CornerRadius="4" Padding="12" Margin="0,5,0,0">
-                    <StackPanel Spacing="5">
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Stretch">
-                            <TextBlock Text="Current Task:" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.7"/>
-                            <HyperlinkButton Content="{x:Bind ViewModel.CurrentNavigationTask.Name, Mode=OneWay}" 
-                                             Click="TaskName_Click"
-                                             Margin="5,-2,0,0"
-                                             Padding="0"
-                                             Visibility="{x:Bind ViewModel.CurrentNavigationTask, Mode=OneWay, Converter={StaticResource NotNullToVisibilityConverter}}"/>
-                            <TextBlock Text="None" 
-                                       Style="{StaticResource BodyTextBlockStyle}" 
-                                       Margin="5,0,0,0"
-                                       Visibility="{x:Bind ViewModel.CurrentNavigationTask, Mode=OneWay, Converter={StaticResource NullToVisibilityConverter}}"/>
-                        </StackPanel>
-                        
-                        <StackPanel Visibility="{x:Bind ViewModel.CurrentNavigationTask, Mode=OneWay, Converter={StaticResource NotNullToVisibilityConverter}}">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <StackPanel Grid.Column="0">
-                                    <TextBlock Text="Start" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.5"/>
-                                    <TextBlock Text="{x:Bind ViewModel.CurrentNavigationTask.StartTime, Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="1">
-                                    <TextBlock Text="Finish" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.5"/>
-                                    <TextBlock Text="{x:Bind ViewModel.CurrentNavigationTask.FinishTime, Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}"/>
-                                </StackPanel>
-                            </Grid>
+                <!-- Navigation Tasks Section -->
+                <ItemsControl ItemsSource="{x:Bind ViewModel.NavigationTasks, Mode=OneWay}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="models:NavigationTaskResponse">
+                            <Border Background="{ThemeResource SystemControlBackgroundChromeMediumLowBrush}" 
+                                    CornerRadius="8" Padding="16" Margin="0,0,0,12"
+                                    BorderThickness="1" BorderBrush="{ThemeResource SystemControlForegroundBaseLowBrush}">
+                                <StackPanel Spacing="12">
+                                    <!-- Task Header -->
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="NAVIGATION TASK" Style="{StaticResource CaptionTextBlockStyle}" FontWeight="Bold" Foreground="{ThemeResource SystemAccentColorLight2}"/>
+                                            <HyperlinkButton Content="{x:Bind NavigationTask.Name, Mode=OneWay}" 
+                                                             Click="TaskName_Click"
+                                                             Padding="0"
+                                                             FontSize="18"
+                                                             FontWeight="SemiBold"
+                                                             VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                        
+                                        <HyperlinkButton Grid.Column="1" 
+                                                         Content="Live Tracking Map" 
+                                                         Click="TrackingLink_Click"
+                                                         Padding="8,4" 
+                                                         VerticalAlignment="Top"
+                                                         Style="{StaticResource DefaultHyperlinkButtonStyle}"
+                                                         Visibility="{x:Bind NavigationTask.TrackingLink, Mode=OneWay, Converter={StaticResource StringVisibilityConverter}}"/>
+                                    </Grid>
 
-                            <HyperlinkButton Content="View Tracking Link" 
-                                             Command="{x:Bind ViewModel.OpenTrackingLinkCommand}"
-                                             Padding="0" Margin="0,5,0,0"
-                                             Visibility="{x:Bind ViewModel.CurrentNavigationTask.TrackingLink, Mode=OneWay, Converter={StaticResource StringVisibilityConverter}}"/>
-                        </StackPanel>
-                    </StackPanel>
-                </Border>
+                                    <!-- Contestant Details -->
+                                    <ItemsControl ItemsSource="{x:Bind ActiveContestants, Mode=OneWay}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="models:ContestantDetail">
+                                                <Border Background="{ThemeResource SystemControlBackgroundAltMediumLowBrush}" 
+                                                        CornerRadius="4" Padding="12" Margin="0,4,0,0">
+                                                    <Grid ColumnSpacing="20">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        
+                                                        <StackPanel Grid.Column="0" Spacing="2">
+                                                            <TextBlock Text="TRACKING INTERVAL" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.5" FontWeight="Bold"/>
+                                                            <TextBlock Text="{x:Bind IntervalDisplay, Mode=OneWay}" FontSize="14"/>
+                                                        </StackPanel>
+
+                                                        <StackPanel Grid.Column="1" Spacing="2">
+                                                            <TextBlock Text="START METHOD" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.5" FontWeight="Bold"/>
+                                                            <TextBlock Text="{x:Bind StartMethodDisplay, Mode=OneWay}" FontSize="14"
+                                                                       Foreground="{x:Bind AdaptiveStart, Mode=OneWay, Converter={StaticResource ConnectionStatusToColorConverter}}"/>
+                                                        </StackPanel>
+
+                                                        <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
+                                                            <TextBlock Text="TIME ZONE" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.5" FontWeight="Bold" HorizontalAlignment="Right"/>
+                                                            <TextBlock Text="{x:Bind TimeZoneDisplay, Mode=OneWay}" FontSize="12" HorizontalAlignment="Right"/>
+                                                        </StackPanel>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- No Tasks Message -->
+                <StackPanel Visibility="{x:Bind ViewModel.IsNavigationTasksEmpty, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                            Margin="0,20" Spacing="10">
+                    <FontIcon Glyph="&#xE773;" FontSize="32" Opacity="0.3"/>
+                    <TextBlock Text="No active navigation tasks found." 
+                               Style="{StaticResource BodyTextBlockStyle}" 
+                               HorizontalAlignment="Center"
+                               Opacity="0.5"/>
+                </StackPanel>
             </StackPanel>
 
             <!-- Dashboard -->

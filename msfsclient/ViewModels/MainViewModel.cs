@@ -14,6 +14,7 @@ namespace msfsclient.ViewModels
         private readonly ISimConnectService _simConnectService;
         private readonly ITraccarService _traccarService;
         private readonly ISettingsService _settingsService;
+        private readonly IAppConfigService _appConfig;
         private readonly Microsoft.UI.Dispatching.DispatcherQueue _dispatcherQueue;
         private readonly Microsoft.UI.Xaml.DispatcherTimer _watchdogTimer;
         private readonly Microsoft.UI.Xaml.DispatcherTimer _taskRefreshTimer;
@@ -22,8 +23,10 @@ namespace msfsclient.ViewModels
         [ObservableProperty]
         public partial UserProfile? Profile { get; set; }
 
+        public System.Collections.ObjectModel.ObservableCollection<NavigationTaskResponse> NavigationTasks { get; } = new();
+
         [ObservableProperty]
-        public partial NavigationTask? CurrentNavigationTask { get; set; }
+        public partial bool IsNavigationTasksEmpty { get; set; } = true;
 
         [ObservableProperty]
         public partial bool IsEditingProfile { get; set; }
@@ -98,13 +101,14 @@ namespace msfsclient.ViewModels
 
         public System.Collections.ObjectModel.ObservableCollection<string> FlightLogs { get; } = new();
 
-        public MainViewModel(IAuthService authService, IProfileService profileService, ISimConnectService simConnectService, ITraccarService traccarService, ISettingsService settingsService)
+        public MainViewModel(IAuthService authService, IProfileService profileService, ISimConnectService simConnectService, ITraccarService traccarService, ISettingsService settingsService, IAppConfigService appConfig)
         {
             _authService = authService;
             _profileService = profileService;
             _simConnectService = simConnectService;
             _traccarService = traccarService;
             _settingsService = settingsService;
+            _appConfig = appConfig;
             _dispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
 
             // Initialize Watchdog Timer (checks every 10 seconds)
@@ -120,6 +124,11 @@ namespace msfsclient.ViewModels
 
             // Load settings safely
             ShowFlightLogs = _settingsService.GetValue("ShowFlightLogs", false);
+
+            if (_appConfig.IsTestMode)
+            {
+                FlightLogs.Insert(0, $"[SYSTEM] TEST MODE ACTIVE: Using {_appConfig.WebBaseUrl}");
+            }
 
             _simConnectService.ConnectionStatusChanged += (s, e) => _dispatcherQueue.TryEnqueue(() => 
             {
@@ -249,6 +258,10 @@ namespace msfsclient.ViewModels
             try
             {
                 System.Diagnostics.Debug.WriteLine("MainViewModel.InitializeAsync started");
+                
+                // Ensure token is fresh before making API calls
+                await _authService.ReloadUserAsync();
+                
                 await Task.WhenAll(LoadProfileAsync(), LoadNavigationTaskAsync());
                 System.Diagnostics.Debug.WriteLine($"Profile loaded. ID: {Profile?.SimulatorTrackingId ?? "NULL"}");
                 
@@ -308,29 +321,34 @@ namespace msfsclient.ViewModels
         [RelayCommand]
         private async Task LoadNavigationTaskAsync()
         {
-            var task = await _profileService.GetCurrentNavigationTaskAsync();
+            var tasks = await _profileService.GetCurrentNavigationTasksAsync();
             _dispatcherQueue.TryEnqueue(() =>
             {
-                CurrentNavigationTask = task;
+                NavigationTasks.Clear();
+                foreach (var task in tasks)
+                {
+                    NavigationTasks.Add(task);
+                }
+                IsNavigationTasksEmpty = NavigationTasks.Count == 0;
             });
         }
 
         [RelayCommand]
-        private async Task OpenTaskDetails()
+        private async Task OpenTaskDetails(NavigationTaskDetail? task)
         {
-            System.Diagnostics.Debug.WriteLine($"OpenTaskDetails called. URL: {CurrentNavigationTask?.Url ?? "NULL"}");
-            if (CurrentNavigationTask?.Url != null)
+            if (task?.Url != null)
             {
-                var link = CurrentNavigationTask.Url;
+                var link = task.Url;
                 if (!link.StartsWith("http", StringComparison.OrdinalIgnoreCase))
                 {
+                    var webBase = _appConfig.WebBaseUrl.TrimEnd('/');
                     if (link.StartsWith("/"))
                     {
-                        link = "https://app.airsports.no" + link;
+                        link = webBase + link;
                     }
                     else
                     {
-                        link = "https://app.airsports.no/" + link;
+                        link = webBase + "/" + link;
                     }
                 }
 
@@ -346,20 +364,21 @@ namespace msfsclient.ViewModels
         }
 
         [RelayCommand]
-        private async Task OpenTrackingLink()
+        private async Task OpenTrackingLink(NavigationTaskDetail? task)
         {
-            if (CurrentNavigationTask?.TrackingLink != null)
+            if (task?.TrackingLink != null)
             {
-                var link = CurrentNavigationTask.TrackingLink;
+                var link = task.TrackingLink;
                 if (!link.StartsWith("http", StringComparison.OrdinalIgnoreCase))
                 {
+                    var webBase = _appConfig.WebBaseUrl.TrimEnd('/');
                     if (link.StartsWith("/"))
                     {
-                        link = "https://app.airsports.no" + link;
+                        link = webBase + link;
                     }
                     else
                     {
-                        link = "https://app.airsports.no/" + link;
+                        link = webBase + "/" + link;
                     }
                 }
 

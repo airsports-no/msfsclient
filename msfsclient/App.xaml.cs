@@ -28,6 +28,7 @@ namespace msfsclient
             services.AddSingleton<HttpClient>();
 
             // Services
+            services.AddSingleton<IAppConfigService, AppConfigService>();
             services.AddSingleton<ISettingsService, SettingsService>();
             services.AddSingleton<IAuthService, AuthService>();
             services.AddSingleton<IProfileService, ProfileService>();
