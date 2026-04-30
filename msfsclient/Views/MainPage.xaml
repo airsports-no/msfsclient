@@ -211,7 +211,7 @@
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Stretch">
                             <TextBlock Text="Current Task:" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.7"/>
                             <HyperlinkButton Content="{x:Bind ViewModel.CurrentNavigationTask.Name, Mode=OneWay}" 
-                                             Command="{x:Bind ViewModel.LoadNavigationTaskCommand}"
+                                             Click="TaskName_Click"
                                              Margin="5,-2,0,0"
                                              Padding="0"
                                              Visibility="{x:Bind ViewModel.CurrentNavigationTask, Mode=OneWay, Converter={StaticResource NotNullToVisibilityConverter}}"/>

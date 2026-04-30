@@ -43,6 +43,11 @@ namespace msfsclient.Views
             ViewModel.ToggleTrackingCommand.Execute(null);
         }
 
+        private void TaskName_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+        {
+            ViewModel.OpenTaskDetailsCommand.Execute(null);
+        }
+
         protected override async void OnNavigatedTo(NavigationEventArgs e)
         {
             base.OnNavigatedTo(e);

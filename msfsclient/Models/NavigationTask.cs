@@ -13,6 +13,9 @@ namespace msfsclient.Models
         [JsonPropertyName("finish_time")]
         public string? FinishTime { get; set; }
 
+        [JsonPropertyName("url")]
+        public string? Url { get; set; }
+
         [JsonPropertyName("tracking_link")]
         public string? TrackingLink { get; set; }
     }

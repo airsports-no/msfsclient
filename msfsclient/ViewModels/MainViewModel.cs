@@ -16,6 +16,7 @@ namespace msfsclient.ViewModels
         private readonly ISettingsService _settingsService;
         private readonly Microsoft.UI.Dispatching.DispatcherQueue _dispatcherQueue;
         private readonly Microsoft.UI.Xaml.DispatcherTimer _watchdogTimer;
+        private readonly Microsoft.UI.Xaml.DispatcherTimer _taskRefreshTimer;
         private IntPtr _windowHandle;
 
         [ObservableProperty]
@@ -111,6 +112,11 @@ namespace msfsclient.ViewModels
             _watchdogTimer.Interval = TimeSpan.FromSeconds(10);
             _watchdogTimer.Tick += WatchdogTimer_Tick;
             _watchdogTimer.Start();
+
+            // Initialize Task Refresh Timer (checks every 5 minutes)
+            _taskRefreshTimer = new Microsoft.UI.Xaml.DispatcherTimer();
+            _taskRefreshTimer.Interval = TimeSpan.FromMinutes(5);
+            _taskRefreshTimer.Tick += TaskRefreshTimer_Tick;
 
             // Load settings safely
             ShowFlightLogs = _settingsService.GetValue("ShowFlightLogs", false);
@@ -246,6 +252,9 @@ namespace msfsclient.ViewModels
                 await Task.WhenAll(LoadProfileAsync(), LoadNavigationTaskAsync());
                 System.Diagnostics.Debug.WriteLine($"Profile loaded. ID: {Profile?.SimulatorTrackingId ?? "NULL"}");
                 
+                // Start periodic task refresh
+                _taskRefreshTimer.Start();
+
                 // Run SimConnect connection in a background thread to prevent UI hang on startup
                 // if the simulator is not running or slow to respond.
                 _ = Task.Run(() => 
@@ -268,6 +277,12 @@ namespace msfsclient.ViewModels
                     FlightLogs.Insert(0, $"[{DateTime.Now:HH:mm:ss}] Error during initialization: {ex.Message}");
                 });
             }
+        }
+
+        private async void TaskRefreshTimer_Tick(object? sender, object e)
+        {
+            System.Diagnostics.Debug.WriteLine("Periodic Task Refresh: Reloading navigation task...");
+            await LoadNavigationTaskAsync();
         }
 
         private void WatchdogTimer_Tick(object? sender, object e)
@@ -301,11 +316,65 @@ namespace msfsclient.ViewModels
         }
 
         [RelayCommand]
+        private async Task OpenTaskDetails()
+        {
+            System.Diagnostics.Debug.WriteLine($"OpenTaskDetails called. URL: {CurrentNavigationTask?.Url ?? "NULL"}");
+            if (CurrentNavigationTask?.Url != null)
+            {
+                var link = CurrentNavigationTask.Url;
+                if (!link.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (link.StartsWith("/"))
+                    {
+                        link = "https://app.airsports.no" + link;
+                    }
+                    else
+                    {
+                        link = "https://app.airsports.no/" + link;
+                    }
+                }
+
+                try
+                {
+                    await Windows.System.Launcher.LaunchUriAsync(new Uri(link));
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Failed to open task details link: {ex.Message}");
+                }
+            }
+        }
+
+        [RelayCommand]
         private async Task OpenTrackingLink()
         {
             if (CurrentNavigationTask?.TrackingLink != null)
             {
-                await Windows.System.Launcher.LaunchUriAsync(new Uri(CurrentNavigationTask.TrackingLink));
+                var link = CurrentNavigationTask.TrackingLink;
+                if (!link.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (link.StartsWith("/"))
+                    {
+                        link = "https://app.airsports.no" + link;
+                    }
+                    else
+                    {
+                        link = "https://app.airsports.no/" + link;
+                    }
+                }
+
+                try
+                {
+                    await Windows.System.Launcher.LaunchUriAsync(new Uri(link));
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Failed to open tracking link: {ex.Message}");
+                    _dispatcherQueue.TryEnqueue(() => 
+                    {
+                        FlightLogs.Insert(0, $"[{DateTime.Now:HH:mm:ss}] Error: Could not open tracking link.");
+                    });
+                }
             }
         }
 
@@ -399,6 +468,7 @@ namespace msfsclient.ViewModels
         private void Logout()
         {
             _watchdogTimer.Stop();
+            _taskRefreshTimer.Stop();
             _authService.Logout();
             LogoutRequested?.Invoke(this, EventArgs.Empty);
         }

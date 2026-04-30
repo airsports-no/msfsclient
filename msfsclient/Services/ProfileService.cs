@@ -142,7 +142,9 @@ namespace msfsclient.Services
 
                 if (response.IsSuccessStatusCode)
                 {
-                    return await response.Content.ReadFromJsonAsync<NavigationTask>();
+                    var json = await response.Content.ReadAsStringAsync();
+                    System.Diagnostics.Debug.WriteLine($"Navigation Task JSON: {json}");
+                    return System.Text.Json.JsonSerializer.Deserialize<NavigationTask>(json);
                 }
             }
             catch (Exception ex)
