@@ -155,7 +155,7 @@
                                          Fill="{x:Bind ViewModel.LastSimConnectUpdateSuccessful, Mode=OneWay, Converter={StaticResource ConnectionStatusToColorConverter}}"
                                          Opacity="{x:Bind ViewModel.IsSimConnectPulseActive, Mode=OneWay, Converter={StaticResource BoolToOpacityConverter}}">
                                     <ToolTipService.ToolTip>
-                                        <ToolTip Content="SimConnect Fetch Status"/>
+                                        <ToolTip Content="{x:Bind ViewModel.LastSimConnectUpdateTime, Mode=OneWay, Converter={StaticResource StringFormatConverter}, ConverterParameter='Last Updated: {0}'}"/>
                                     </ToolTipService.ToolTip>
                                 </Ellipse>
                             </StackPanel>
@@ -173,7 +173,7 @@
                                          Fill="{x:Bind ViewModel.LastTraccarUpdateSuccessful, Mode=OneWay, Converter={StaticResource ConnectionStatusToColorConverter}}"
                                          Opacity="{x:Bind ViewModel.IsTraccarPulseActive, Mode=OneWay, Converter={StaticResource BoolToOpacityConverter}}">
                                     <ToolTipService.ToolTip>
-                                        <ToolTip Content="Traccar Transmission Status"/>
+                                        <ToolTip Content="{x:Bind ViewModel.LastTraccarUpdateTime, Mode=OneWay, Converter={StaticResource StringFormatConverter}, ConverterParameter='Last Updated: {0}'}"/>
                                     </ToolTipService.ToolTip>
                                 </Ellipse>
                             </StackPanel>

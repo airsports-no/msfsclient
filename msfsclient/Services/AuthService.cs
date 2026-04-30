@@ -13,6 +13,7 @@ namespace msfsclient.Services
     public class AuthService : IAuthService
     {
         private readonly FirebaseAuthClient _client;
+        private readonly HttpClient _httpClient;
         private UserCredential? _userCredential;
         private const string ApiKey = "AIzaSyD_LDULS2RvLvhTtnLyEzARtbs-WgtFOAo";
         private const string AuthDomain = "airsports-613ce.firebaseapp.com";
@@ -22,8 +23,9 @@ namespace msfsclient.Services
         public string? JwtToken => _client.User?.Credential?.IdToken;
         public string? LastErrorMessage { get; private set; }
 
-        public AuthService()
+        public AuthService(HttpClient httpClient)
         {
+            _httpClient = httpClient;
             string localFolder;
             try
             {
@@ -146,7 +148,6 @@ namespace msfsclient.Services
             var token = await _client.User.GetIdTokenAsync();
             if (token == null) return;
 
-            using var httpClient = new HttpClient();
             var url = $"https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key={ApiKey}";
             var payload = new
             {
@@ -154,7 +155,7 @@ namespace msfsclient.Services
                 idToken = token
             };
 
-            var response = await httpClient.PostAsJsonAsync(url, payload);
+            var response = await _httpClient.PostAsJsonAsync(url, payload);
             if (!response.IsSuccessStatusCode)
             {
                 var error = await response.Content.ReadAsStringAsync();
@@ -168,7 +169,6 @@ namespace msfsclient.Services
         {
             try
             {
-                using var httpClient = new HttpClient();
                 var url = $"https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key={ApiKey}";
                 var payload = new
                 {
@@ -176,7 +176,7 @@ namespace msfsclient.Services
                     email = email
                 };
 
-                var response = await httpClient.PostAsJsonAsync(url, payload);
+                var response = await _httpClient.PostAsJsonAsync(url, payload);
                 if (!response.IsSuccessStatusCode)
                 {
                     var error = await response.Content.ReadAsStringAsync();

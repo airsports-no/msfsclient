@@ -4,6 +4,7 @@ using msfsclient.Contracts.Services;
 using msfsclient.Services;
 using msfsclient.ViewModels;
 using System;
+using System.Net.Http;
 
 namespace msfsclient
 {
@@ -23,7 +24,11 @@ namespace msfsclient
         {
             var services = new ServiceCollection();
 
+            // HTTP Client
+            services.AddSingleton<HttpClient>();
+
             // Services
+            services.AddSingleton<ISettingsService, SettingsService>();
             services.AddSingleton<IAuthService, AuthService>();
             services.AddSingleton<IProfileService, ProfileService>();
             services.AddSingleton<ISimConnectService, SimConnectService>();

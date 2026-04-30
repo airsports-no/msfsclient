@@ -13,7 +13,10 @@ namespace msfsclient.ViewModels
         private readonly IProfileService _profileService;
         private readonly ISimConnectService _simConnectService;
         private readonly ITraccarService _traccarService;
+        private readonly ISettingsService _settingsService;
         private readonly Microsoft.UI.Dispatching.DispatcherQueue _dispatcherQueue;
+        private readonly Microsoft.UI.Xaml.DispatcherTimer _watchdogTimer;
+        private IntPtr _windowHandle;
 
         [ObservableProperty]
         public partial UserProfile? Profile { get; set; }
@@ -56,15 +59,7 @@ namespace msfsclient.ViewModels
 
         partial void OnShowFlightLogsChanged(bool value)
         {
-            try
-            {
-                var localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
-                localSettings.Values["ShowFlightLogs"] = value;
-            }
-            catch (Exception)
-            {
-                // Fallback or ignore for unpackaged mode
-            }
+            _settingsService.SetValue("ShowFlightLogs", value);
         }
 
         [ObservableProperty]
@@ -80,6 +75,9 @@ namespace msfsclient.ViewModels
         public partial string? SimConnectErrorMessage { get; set; }
 
         [ObservableProperty]
+        public partial string? LastSimConnectUpdateTime { get; set; }
+
+        [ObservableProperty]
         public partial bool IsTracking { get; set; }
 
         [ObservableProperty]
@@ -92,35 +90,30 @@ namespace msfsclient.ViewModels
         public partial string? TraccarErrorMessage { get; set; }
 
         [ObservableProperty]
+        public partial string? LastTraccarUpdateTime { get; set; }
+
+        [ObservableProperty]
         public partial FlightDataStruct CurrentFlightData { get; set; }
 
         public System.Collections.ObjectModel.ObservableCollection<string> FlightLogs { get; } = new();
 
-        public MainViewModel(IAuthService authService, IProfileService profileService, ISimConnectService simConnectService, ITraccarService traccarService)
+        public MainViewModel(IAuthService authService, IProfileService profileService, ISimConnectService simConnectService, ITraccarService traccarService, ISettingsService settingsService)
         {
             _authService = authService;
             _profileService = profileService;
             _simConnectService = simConnectService;
             _traccarService = traccarService;
+            _settingsService = settingsService;
             _dispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
 
+            // Initialize Watchdog Timer (checks every 10 seconds)
+            _watchdogTimer = new Microsoft.UI.Xaml.DispatcherTimer();
+            _watchdogTimer.Interval = TimeSpan.FromSeconds(10);
+            _watchdogTimer.Tick += WatchdogTimer_Tick;
+            _watchdogTimer.Start();
+
             // Load settings safely
-            try
-            {
-                var localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
-                if (localSettings.Values.TryGetValue("ShowFlightLogs", out var showLogs))
-                {
-                    ShowFlightLogs = (bool)showLogs;
-                }
-                else
-                {
-                    ShowFlightLogs = false; // Hidden by default
-                }
-            }
-            catch (Exception)
-            {
-                ShowFlightLogs = false; // Default for unpackaged if settings fail
-            }
+            ShowFlightLogs = _settingsService.GetValue("ShowFlightLogs", false);
 
             _simConnectService.ConnectionStatusChanged += (s, e) => _dispatcherQueue.TryEnqueue(() => 
             {
@@ -136,14 +129,17 @@ namespace msfsclient.ViewModels
 
             _simConnectService.FlightDataReceived += (s, e) => 
             {
+                var now = DateTime.Now.ToString("HH:mm:ss");
+
                 // UI Update
                 _dispatcherQueue.TryEnqueue(async () => 
                 {
                     CurrentFlightData = e;
                     LastSimConnectUpdateSuccessful = true;
                     SimConnectErrorMessage = null;
+                    LastSimConnectUpdateTime = now;
                     
-                    var logEntry = $"[{DateTime.Now:HH:mm:ss}] Lat: {e.Latitude:F4}, Lon: {e.Longitude:F4}, Alt: {e.Altitude:F0}ft, Spd: {e.GroundVelocity:F1}kt";
+                    var logEntry = $"[{now}] Lat: {e.Latitude:F4}, Lon: {e.Longitude:F4}, Alt: {e.Altitude:F0}ft, Spd: {e.GroundVelocity:F1}kt";
                     FlightLogs.Insert(0, logEntry);
                     if (FlightLogs.Count > 10)
                     {
@@ -168,7 +164,11 @@ namespace msfsclient.ViewModels
                             LastTraccarUpdateSuccessful = result.Success;
                             TraccarErrorMessage = result.Success ? null : result.Message;
                             
-                            if (!result.Success)
+                            if (result.Success)
+                            {
+                                LastTraccarUpdateTime = now;
+                            }
+                            else
                             {
                                 var logEntryErr = $"[{DateTime.Now:HH:mm:ss}] Traccar Error: {result.Message}";
                                 FlightLogs.Insert(0, logEntryErr);
@@ -239,6 +239,7 @@ namespace msfsclient.ViewModels
 
         public async Task InitializeAsync(IntPtr windowHandle)
         {
+            _windowHandle = windowHandle;
             try
             {
                 System.Diagnostics.Debug.WriteLine("MainViewModel.InitializeAsync started");
@@ -251,7 +252,7 @@ namespace msfsclient.ViewModels
                 {
                     try
                     {
-                        _simConnectService.Connect(windowHandle);
+                        _simConnectService.Connect(_windowHandle);
                     }
                     catch (Exception ex)
                     {
@@ -265,6 +266,26 @@ namespace msfsclient.ViewModels
                 _dispatcherQueue.TryEnqueue(() => 
                 {
                     FlightLogs.Insert(0, $"[{DateTime.Now:HH:mm:ss}] Error during initialization: {ex.Message}");
+                });
+            }
+        }
+
+        private void WatchdogTimer_Tick(object? sender, object e)
+        {
+            // If tracking is enabled but SimConnect is NOT connected, try to reconnect
+            if (IsTracking && !IsSimConnected)
+            {
+                System.Diagnostics.Debug.WriteLine("Watchdog: Reconnection attempt...");
+                _ = Task.Run(() => 
+                {
+                    try 
+                    { 
+                        _simConnectService.Connect(_windowHandle); 
+                    } 
+                    catch (Exception ex) 
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Watchdog reconnect failed: {ex.Message}");
+                    }
                 });
             }
         }
@@ -377,6 +398,7 @@ namespace msfsclient.ViewModels
         [RelayCommand]
         private void Logout()
         {
+            _watchdogTimer.Stop();
             _authService.Logout();
             LogoutRequested?.Invoke(this, EventArgs.Empty);
         }

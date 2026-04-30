@@ -14,10 +14,10 @@ namespace msfsclient.Services
         private readonly IAuthService _authService;
         private const string BaseUrl = "https://airsports.no/api/v1/userprofile/";
 
-        public ProfileService(IAuthService authService)
+        public ProfileService(IAuthService authService, HttpClient httpClient)
         {
             _authService = authService;
-            _httpClient = new HttpClient();
+            _httpClient = httpClient;
         }
 
         private void SetAuthorizationHeader()

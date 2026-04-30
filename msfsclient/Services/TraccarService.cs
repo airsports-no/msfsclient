@@ -12,9 +12,9 @@ namespace msfsclient.Services
         private readonly HttpClient _httpClient;
         private const string BaseUrl = "https://traccar.airsports.no/";
 
-        public TraccarService()
+        public TraccarService(HttpClient httpClient)
         {
-            _httpClient = new HttpClient();
+            _httpClient = httpClient;
         }
 
         public async Task<(bool Success, string Message)> SendDataAsync(string trackingId, FlightDataStruct data)
