@@ -82,7 +82,7 @@ namespace msfsclient.Services
             return null;
         }
 
-        public async Task<bool> UpdateProfileAsync(string firstName, string lastName, string? profilePictureUrl, string? biography, byte[]? profileImageData = null, string? imageFileName = null)
+        public async Task<bool> UpdateProfileAsync(string? firstName = null, string? lastName = null, string? profilePictureUrl = null, string? biography = null, byte[]? profileImageData = null, string? imageFileName = null)
         {
             try
             {
@@ -90,8 +90,11 @@ namespace msfsclient.Services
                 
                 using var content = new MultipartFormDataContent();
                 
-                content.Add(new StringContent(firstName), "first_name");
-                content.Add(new StringContent(lastName), "last_name");
+                if (firstName != null)
+                    content.Add(new StringContent(firstName), "first_name");
+                
+                if (lastName != null)
+                    content.Add(new StringContent(lastName), "last_name");
                 
                 if (biography != null)
                     content.Add(new StringContent(biography), "biography");
@@ -111,13 +114,9 @@ namespace msfsclient.Services
                     imageContent.Headers.ContentType = new MediaTypeHeaderValue(contentType);
                     content.Add(imageContent, "picture", imageFileName);
                 }
-                else if (!string.IsNullOrEmpty(profilePictureUrl))
-                {
-                    // If we only have a URL, we don't send it back as a file
-                    // Most DRF ImageFields will ignore a string URL during an update if it hasn't changed
-                }
 
-                var response = await _httpClient.PutAsync($"{BaseUrl}update_profile/", content);
+                // Use PATCH instead of PUT for partial updates
+                var response = await _httpClient.PatchAsync($"{BaseUrl}update_profile/", content);
                 
                 if (!response.IsSuccessStatusCode)
                 {

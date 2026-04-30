@@ -201,9 +201,18 @@ namespace msfsclient.Services
                 try
                 {
                     System.Diagnostics.Debug.WriteLine("AuthService: Reloading user state...");
-                    // This will refresh the token and user info (like IsEmailVerified)
-                    await _client.User.GetIdTokenAsync(true);
-                    System.Diagnostics.Debug.WriteLine($"AuthService: User state reloaded. Verified: {_client.User.Info.IsEmailVerified}");
+                    
+                    // Add a timeout to prevent infinite hang if network is problematic
+                    var reloadTask = _client.User.GetIdTokenAsync(true);
+                    if (await Task.WhenAny(reloadTask, Task.Delay(5000)) == reloadTask)
+                    {
+                        await reloadTask;
+                        System.Diagnostics.Debug.WriteLine($"AuthService: User state reloaded. Verified: {_client.User.Info.IsEmailVerified}");
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine("AuthService: Reload user state timed out after 5s.");
+                    }
                 }
                 catch (Exception ex)
                 {

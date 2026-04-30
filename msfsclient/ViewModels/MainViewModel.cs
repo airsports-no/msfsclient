@@ -46,7 +46,26 @@ namespace msfsclient.ViewModels
         public partial string? ProfileErrorMessage { get; set; }
 
         [ObservableProperty]
+        public partial string? ProfileStatusMessage { get; set; }
+
+        [ObservableProperty]
         public partial bool IsBusy { get; set; }
+
+        [ObservableProperty]
+        public partial bool ShowFlightLogs { get; set; }
+
+        partial void OnShowFlightLogsChanged(bool value)
+        {
+            try
+            {
+                var localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
+                localSettings.Values["ShowFlightLogs"] = value;
+            }
+            catch (Exception)
+            {
+                // Fallback or ignore for unpackaged mode
+            }
+        }
 
         [ObservableProperty]
         public partial bool IsSimConnected { get; set; }
@@ -84,6 +103,24 @@ namespace msfsclient.ViewModels
             _simConnectService = simConnectService;
             _traccarService = traccarService;
             _dispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
+
+            // Load settings safely
+            try
+            {
+                var localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
+                if (localSettings.Values.TryGetValue("ShowFlightLogs", out var showLogs))
+                {
+                    ShowFlightLogs = (bool)showLogs;
+                }
+                else
+                {
+                    ShowFlightLogs = false; // Hidden by default
+                }
+            }
+            catch (Exception)
+            {
+                ShowFlightLogs = false; // Default for unpackaged if settings fail
+            }
 
             _simConnectService.ConnectionStatusChanged += (s, e) => _dispatcherQueue.TryEnqueue(() => 
             {
@@ -173,8 +210,17 @@ namespace msfsclient.ViewModels
 
                     await LoadNavigationTaskAsync();
                     
+                    // If not connected to SimConnect, try to connect again in the background
+                    if (!IsSimConnected)
+                    {
+                        _ = Task.Run(() => 
+                        {
+                            try { _simConnectService.Connect(IntPtr.Zero); } catch { }
+                        });
+                    }
+
                     IsTracking = true;
-                    FlightLogs.Insert(0, $"[{DateTime.Now:HH:mm:ss}] Tracking Started (ID: {Profile.SimulatorTrackingId})");
+                    FlightLogs.Insert(0, $"[{DateTime.Now:HH:mm:ss}] Tracking Started");
                 }
                 else
                 {
@@ -193,10 +239,34 @@ namespace msfsclient.ViewModels
 
         public async Task InitializeAsync(IntPtr windowHandle)
         {
-            System.Diagnostics.Debug.WriteLine("MainViewModel.InitializeAsync started");
-            await Task.WhenAll(LoadProfileAsync(), LoadNavigationTaskAsync());
-            System.Diagnostics.Debug.WriteLine($"Profile loaded. ID: {Profile?.SimulatorTrackingId ?? "NULL"}");
-            _simConnectService.Connect(windowHandle);
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("MainViewModel.InitializeAsync started");
+                await Task.WhenAll(LoadProfileAsync(), LoadNavigationTaskAsync());
+                System.Diagnostics.Debug.WriteLine($"Profile loaded. ID: {Profile?.SimulatorTrackingId ?? "NULL"}");
+                
+                // Run SimConnect connection in a background thread to prevent UI hang on startup
+                // if the simulator is not running or slow to respond.
+                _ = Task.Run(() => 
+                {
+                    try
+                    {
+                        _simConnectService.Connect(windowHandle);
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Background SimConnect Connect failed: {ex.Message}");
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"InitializeAsync Exception: {ex.Message}");
+                _dispatcherQueue.TryEnqueue(() => 
+                {
+                    FlightLogs.Insert(0, $"[{DateTime.Now:HH:mm:ss}] Error during initialization: {ex.Message}");
+                });
+            }
         }
 
         [RelayCommand]
@@ -228,6 +298,7 @@ namespace msfsclient.ViewModels
             EditProfilePictureUrl = Profile.ProfilePictureUrl;
             EditBiography = Profile.Biography;
             ProfileErrorMessage = null;
+            ProfileStatusMessage = null;
             IsEditingProfile = true;
         }
 
@@ -236,6 +307,7 @@ namespace msfsclient.ViewModels
         {
             IsEditingProfile = false;
             ProfileErrorMessage = null;
+            ProfileStatusMessage = null;
         }
 
         [RelayCommand]
@@ -249,6 +321,15 @@ namespace msfsclient.ViewModels
 
             IsBusy = true;
             ProfileErrorMessage = null;
+            
+            if (PendingProfileImageData != null)
+            {
+                ProfileStatusMessage = "Uploading image and updating profile...";
+            }
+            else
+            {
+                ProfileStatusMessage = "Updating profile details...";
+            }
 
             var success = await _profileService.UpdateProfileAsync(
                 EditFirstName, 
@@ -260,14 +341,20 @@ namespace msfsclient.ViewModels
 
             if (success)
             {
+                ProfileStatusMessage = "Profile updated successfully!";
                 PendingProfileImageData = null;
                 PendingProfileImageFileName = null;
                 await LoadProfileAsync();
+                
+                // Keep the success message visible for a moment
+                await Task.Delay(1500);
+                ProfileStatusMessage = null;
                 IsEditingProfile = false;
             }
             else
             {
                 ProfileErrorMessage = "Failed to update profile. Please try again.";
+                ProfileStatusMessage = null;
             }
 
             IsBusy = false;

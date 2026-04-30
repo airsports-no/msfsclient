@@ -1,3 +1,4 @@
+using System.Threading.Tasks;
 using Microsoft.UI.Xaml.Controls;
 using msfsclient.ViewModels;
 
@@ -24,7 +25,7 @@ namespace msfsclient.Views
             if (authService.CurrentUser != null)
             {
                 ViewModel.IsBusy = true;
-                await authService.ReloadUserAsync();
+                await Task.Run(async () => await authService.ReloadUserAsync());
                 ViewModel.IsBusy = false;
             }
 

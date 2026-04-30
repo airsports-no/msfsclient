@@ -1,23 +1,40 @@
 using System;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
+using msfsclient.Contracts.Services;
 using msfsclient.ViewModels;
 
 namespace msfsclient.Views
 {
     public sealed partial class MainPage : Page
     {
+        private readonly DispatcherTimer _simConnectTimer;
+        private readonly ISimConnectService _simConnectService;
         public MainViewModel ViewModel { get; }
 
         public MainPage()
         {
             ViewModel = App.GetService<MainViewModel>();
+            _simConnectService = App.GetService<ISimConnectService>();
+            
             ViewModel.LogoutRequested += ViewModel_LogoutRequested;
             this.InitializeComponent();
+
+            // SimConnect Polling Timer (100ms)
+            _simConnectTimer = new DispatcherTimer();
+            _simConnectTimer.Interval = TimeSpan.FromMilliseconds(100);
+            _simConnectTimer.Tick += SimConnectTimer_Tick;
+        }
+
+        private void SimConnectTimer_Tick(object? sender, object e)
+        {
+            _simConnectService.ReceiveMessage();
         }
 
         private void ViewModel_LogoutRequested(object? sender, System.EventArgs e)
         {
+            _simConnectTimer.Stop();
             Frame.Navigate(typeof(LoginPage));
         }
 
@@ -35,11 +52,19 @@ namespace msfsclient.Views
 
             await ViewModel.InitializeAsync(handle);
             
+            _simConnectTimer.Start();
+
             if (ViewModel.Profile != null)
             {
                 System.Diagnostics.Debug.WriteLine($"Profile Loaded: {ViewModel.Profile.FullName}");
                 System.Diagnostics.Debug.WriteLine($"Picture URL: {ViewModel.Profile.ProfilePictureUrl ?? "NULL"}");
             }
+        }
+
+        protected override void OnNavigatedFrom(NavigationEventArgs e)
+        {
+            base.OnNavigatedFrom(e);
+            _simConnectTimer.Stop();
         }
 
         private async void SelectProfileImage_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
@@ -69,6 +94,9 @@ namespace msfsclient.Views
 
                 ViewModel.PendingProfileImageData = pixels;
                 ViewModel.PendingProfileImageFileName = file.Name;
+                
+                // Re-open the flyout so the user can see they need to press "Save"
+                ProfileButton.Flyout?.ShowAt(ProfileButton);
             }
         }
     }

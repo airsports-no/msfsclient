@@ -13,9 +13,11 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <Button HorizontalAlignment="Right" Background="Transparent" BorderThickness="0" Padding="0">
+        <Grid Grid.Row="0">
+            <Button x:Name="ProfileButton" HorizontalAlignment="Right" Background="Transparent" BorderThickness="0" Padding="0">
             <StackPanel Orientation="Horizontal" Spacing="20">
                 <StackPanel VerticalAlignment="Center" HorizontalAlignment="Right">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="5">
@@ -69,6 +71,12 @@
                                     Command="{x:Bind ViewModel.LogoutCommand}" 
                                     HorizontalAlignment="Stretch"
                                     Style="{StaticResource AccentButtonStyle}"/>
+
+                            <MenuFlyoutSeparator/>
+                            
+                            <ToggleSwitch Header="Debug: Show Flight Logs" 
+                                          IsOn="{x:Bind ViewModel.ShowFlightLogs, Mode=TwoWay}"
+                                          FontSize="12"/>
                         </StackPanel>
 
                         <!-- Edit Mode -->
@@ -95,6 +103,11 @@
                                        Style="{StaticResource CaptionTextBlockStyle}"
                                        Visibility="{x:Bind ViewModel.ProfileErrorMessage, Mode=OneWay, Converter={StaticResource StringVisibilityConverter}}"/>
 
+                            <TextBlock Text="{x:Bind ViewModel.ProfileStatusMessage, Mode=OneWay}" 
+                                       Foreground="{ThemeResource SystemFillColorSuccessBrush}"
+                                       Style="{StaticResource CaptionTextBlockStyle}"
+                                       Visibility="{x:Bind ViewModel.ProfileStatusMessage, Mode=OneWay, Converter={StaticResource StringVisibilityConverter}}"/>
+
                             <Grid ColumnSpacing="10">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
@@ -113,6 +126,7 @@
                 </Flyout>
             </Button.Flyout>
         </Button>
+    </Grid>
 
         <Grid Grid.Row="1" Margin="0,20,0,0">
             <Grid.RowDefinitions>
@@ -189,10 +203,7 @@
                                Visibility="{x:Bind ViewModel.TraccarErrorMessage, Mode=OneWay, Converter={StaticResource StringVisibilityConverter}}"/>
                 </StackPanel>
 
-                <TextBlock Text="{x:Bind ViewModel.Profile.SimulatorTrackingId, Mode=OneWay, Converter={StaticResource StringFormatConverter}, ConverterParameter='Tracking ID: {0}'}" 
-                           Style="{StaticResource CaptionTextBlockStyle}" 
-                           Visibility="{x:Bind ViewModel.Profile.SimulatorTrackingId, Mode=OneWay, Converter={StaticResource StringVisibilityConverter}}"/>
-                
+
                 <!-- Navigation Task Section -->
                 <Border Background="{ThemeResource SystemControlBackgroundChromeMediumLowBrush}" 
                         CornerRadius="4" Padding="12" Margin="0,5,0,0">
@@ -210,25 +221,27 @@
                                        Visibility="{x:Bind ViewModel.CurrentNavigationTask, Mode=OneWay, Converter={StaticResource NullToVisibilityConverter}}"/>
                         </StackPanel>
                         
-                        <Grid Visibility="{x:Bind ViewModel.CurrentNavigationTask, Mode=OneWay, Converter={StaticResource NotNullToVisibilityConverter}}">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0">
-                                <TextBlock Text="Start" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.5"/>
-                                <TextBlock Text="{x:Bind ViewModel.CurrentNavigationTask.StartTime, Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}"/>
-                            </StackPanel>
-                            <StackPanel Grid.Column="1">
-                                <TextBlock Text="Finish" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.5"/>
-                                <TextBlock Text="{x:Bind ViewModel.CurrentNavigationTask.FinishTime, Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}"/>
-                            </StackPanel>
-                        </Grid>
+                        <StackPanel Visibility="{x:Bind ViewModel.CurrentNavigationTask, Mode=OneWay, Converter={StaticResource NotNullToVisibilityConverter}}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Start" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.5"/>
+                                    <TextBlock Text="{x:Bind ViewModel.CurrentNavigationTask.StartTime, Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Text="Finish" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.5"/>
+                                    <TextBlock Text="{x:Bind ViewModel.CurrentNavigationTask.FinishTime, Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}"/>
+                                </StackPanel>
+                            </Grid>
 
-                        <HyperlinkButton Content="View Tracking Link" 
-                                         Command="{x:Bind ViewModel.OpenTrackingLinkCommand}"
-                                         Padding="0" Margin="0,5,0,0"
-                                         Visibility="{x:Bind ViewModel.CurrentNavigationTask.TrackingLink, Mode=OneWay, Converter={StaticResource StringVisibilityConverter}}"/>
+                            <HyperlinkButton Content="View Tracking Link" 
+                                             Command="{x:Bind ViewModel.OpenTrackingLinkCommand}"
+                                             Padding="0" Margin="0,5,0,0"
+                                             Visibility="{x:Bind ViewModel.CurrentNavigationTask.TrackingLink, Mode=OneWay, Converter={StaticResource StringVisibilityConverter}}"/>
+                        </StackPanel>
                     </StackPanel>
                 </Border>
             </StackPanel>
@@ -272,7 +285,7 @@
             </Grid>
 
             <!-- Logs -->
-            <Grid Grid.Row="2">
+            <Grid Grid.Row="2" Visibility="{x:Bind ViewModel.ShowFlightLogs, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
@@ -289,5 +302,7 @@
             
             <ProgressRing IsActive="{x:Bind ViewModel.IsBusy, Mode=OneWay}" VerticalAlignment="Center" HorizontalAlignment="Center"/>
         </Grid>
+
+        <Image Grid.Row="2" Source="/Assets/airsports.png" HorizontalAlignment="Center" Height="40" Margin="0,10,0,0" Stretch="Uniform"/>
     </Grid>
 </Page>

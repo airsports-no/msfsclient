@@ -10,6 +10,7 @@ namespace msfsclient.Services
     {
         private SimConnect? _simConnect;
         private const int WM_USER_SIMCONNECT = 0x0402;
+        private IntPtr _lastWindowHandle;
 
         public bool IsConnected { get; private set; }
         public event EventHandler<FlightDataStruct>? FlightDataReceived;
@@ -19,10 +20,12 @@ namespace msfsclient.Services
         public void Connect(IntPtr windowHandle)
         {
             if (IsConnected) return;
+            if (windowHandle != IntPtr.Zero) _lastWindowHandle = windowHandle;
+            if (_lastWindowHandle == IntPtr.Zero) return;
 
             try
             {
-                _simConnect = new SimConnect("Air Sports Client", windowHandle, WM_USER_SIMCONNECT, null, 0);
+                _simConnect = new SimConnect("Air Sports Client", _lastWindowHandle, WM_USER_SIMCONNECT, null, 0);
 
                 _simConnect.OnRecvOpen += (SimConnect sender, SIMCONNECT_RECV_OPEN data) =>
                 {
@@ -63,7 +66,7 @@ namespace msfsclient.Services
                 // We'll need to handle the message loop or use a timer to poll ReceiveMessage if needed.
                 // However, the managed wrapper usually handles the callback if the window handle is valid.
             }
-            catch (COMException ex)
+            catch (Exception ex)
             {
                 var errorMsg = $"SimConnect Connection Error: {ex.Message}";
                 System.Diagnostics.Debug.WriteLine(errorMsg);
@@ -96,26 +99,41 @@ namespace msfsclient.Services
 
         public void Disconnect()
         {
-            if (!IsConnected) return;
+            if (_simConnect == null) return;
 
-            _simConnect?.Dispose();
-            _simConnect = null;
-            IsConnected = false;
-            ConnectionStatusChanged?.Invoke(this, false);
+            try
+            {
+                var sim = _simConnect;
+                _simConnect = null;
+                sim?.Dispose();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error during Disconnect: {ex.Message}");
+            }
+            finally
+            {
+                IsConnected = false;
+                ConnectionStatusChanged?.Invoke(this, false);
+            }
         }
 
         // This method needs to be called by the UI thread periodically or via a hook
         public void ReceiveMessage()
         {
+            var sim = _simConnect;
+            if (sim == null) return;
+
             try
             {
-                _simConnect?.ReceiveMessage();
+                sim.ReceiveMessage();
             }
             catch (Exception ex)
             {
                 var errorMsg = $"SimConnect Receive Error: {ex.Message}";
                 System.Diagnostics.Debug.WriteLine(errorMsg);
-                ErrorOccurred?.Invoke(this, errorMsg);
+                // Don't invoke error event here to avoid spamming the UI on every poll
+                // but do disconnect if the connection is dead
                 Disconnect();
             }
         }
