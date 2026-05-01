@@ -116,5 +116,23 @@ namespace msfsclient.Views
                 ProfileButton.Flyout?.ShowAt(ProfileButton);
             }
         }
+
+        private async void Logo_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+        {
+            try
+            {
+                await Windows.System.Launcher.LaunchUriAsync(new Uri("https://airsports.no"));
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to open Airsports website: {ex.Message}");
+            }
+        }
+
+        private void About_Click(object sender, RoutedEventArgs e)
+        {
+            var aboutWindow = new AboutWindow();
+            aboutWindow.Activate();
+        }
     }
 }

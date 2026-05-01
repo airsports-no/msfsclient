@@ -345,6 +345,19 @@
             <ProgressRing IsActive="{x:Bind ViewModel.IsBusy, Mode=OneWay}" VerticalAlignment="Center" HorizontalAlignment="Center"/>
         </Grid>
 
-        <Image Grid.Row="2" Source="/Assets/airsports.png" HorizontalAlignment="Center" Height="40" Margin="0,10,0,0" Stretch="Uniform"/>
+        <Grid Grid.Row="2" Margin="0,10,0,0">
+            <HyperlinkButton HorizontalAlignment="Center" Padding="0" Click="Logo_Click">
+                <Image Source="/Assets/airsports.png" Height="40" Stretch="Uniform"/>
+            </HyperlinkButton>
+
+            <Button HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                    Background="Transparent" BorderThickness="0" Padding="8"
+                    Click="About_Click">
+                <FontIcon Glyph="&#xE946;" FontSize="20" Opacity="0.6"/>
+                <ToolTipService.ToolTip>
+                    <ToolTip Content="About AirSports"/>
+                </ToolTipService.ToolTip>
+            </Button>
+        </Grid>
     </Grid>
 </Page>
