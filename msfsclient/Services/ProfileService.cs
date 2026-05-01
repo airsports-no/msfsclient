@@ -30,6 +30,12 @@ namespace msfsclient.Services
                 // The API specifically requires the 'JWT' scheme
                 request.Headers.Authorization = new AuthenticationHeaderValue("JWT", token);
             }
+
+            // Add User-Agent for version tracking and forced upgrades
+            // Format: AirSportsMSFSClient/1.0.0 (Windows; WinUI3)
+            request.Headers.UserAgent.ParseAdd("AirSportsMSFSClient/1.0.0");
+            request.Headers.Add("X-Client-Platform", "Windows");
+            request.Headers.Add("X-Client-Type", "WinUI3");
         }
 
         public async Task<UserProfile?> GetProfileAsync()

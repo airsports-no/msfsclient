@@ -11,6 +11,7 @@
 
     <Grid VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="400" Width="400">
         <StackPanel Spacing="20" Margin="20">
+            <Image Source="/Assets/airsports_live_tracking_white.png" Height="60" Stretch="Uniform" Margin="0,0,0,10"/>
             <TextBlock Text="Sign Up" Style="{StaticResource TitleTextBlockStyle}" HorizontalAlignment="Center"/>
 
             <TextBox Header="Display Name" 

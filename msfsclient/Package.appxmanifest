@@ -9,15 +9,15 @@
   IgnorableNamespaces="uap rescap systemai">
 
   <Identity
-    Name="331669cf-f681-4434-92cc-cec4aae1ccce"
-    Publisher="CN=frank"
-    Version="1.0.0.0" />
+    Name="AirSportsLiveTracking.AirsportsLiveTrackingMSFSCli"
+    Publisher="CN=2C36C1B2-9F94-49C3-BB66-8E8A33F6C2BA"
+    Version="1.0.10.0" />
 
   <mp:PhoneIdentity PhoneProductId="331669cf-f681-4434-92cc-cec4aae1ccce" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
   <Properties>
-    <DisplayName>msfsclient</DisplayName>
-    <PublisherDisplayName>frank</PublisherDisplayName>
+    <DisplayName>Airsports Live Tracking MSFS Client</DisplayName>
+    <PublisherDisplayName>Air Sports Live Tracking</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
 
@@ -35,13 +35,17 @@
       Executable="$targetnametoken$.exe"
       EntryPoint="$targetentrypoint$">
       <uap:VisualElements
-        DisplayName="msfsclient"
-        Description="msfsclient"
+        DisplayName="Airsports Live Tracking"
+        Description="Air Sports Live Tracking"
         BackgroundColor="transparent"
         Square150x150Logo="Assets\Square150x150Logo.png"
         Square44x44Logo="Assets\Square44x44Logo.png">
-        <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" />
+        <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png"  Square71x71Logo="Assets\SmallTile.png" Square310x310Logo="Assets\LargeTile.png"/>
         <uap:SplashScreen Image="Assets\SplashScreen.png" />
+        <uap:LockScreen BadgeLogo="Assets\BadgeLogo.png" Notification="badge"/>
+        <uap:InitialRotationPreference>
+          <uap:Rotation Preference="landscape"/>
+          <uap:Rotation Preference="portrait"/></uap:InitialRotationPreference>
       </uap:VisualElements>
     </Application>
   </Applications>

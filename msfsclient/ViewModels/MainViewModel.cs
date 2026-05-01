@@ -138,7 +138,9 @@ namespace msfsclient.ViewModels
 
             _simConnectService.ErrorOccurred += (s, e) => _dispatcherQueue.TryEnqueue(() => 
             {
-                SimConnectErrorMessage = e;
+                var now = DateTime.Now.ToString("HH:mm:ss");
+                FlightLogs.Insert(0, $"[{now}] [SimConnect Error] {e}");
+                if (FlightLogs.Count > 10) FlightLogs.RemoveAt(10);
                 LastSimConnectUpdateSuccessful = false;
             });
 
