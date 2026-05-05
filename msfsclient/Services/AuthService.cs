@@ -228,6 +228,10 @@ namespace msfsclient.Services
                 catch (Exception ex)
                 {
                     System.Diagnostics.Debug.WriteLine($"AuthService: Failed to reload user state: {ex.Message}");
+                    
+                    // If refreshing the token fails, the session is likely expired or invalid.
+                    // We should logout to ensure IsAuthenticated returns false and the UI redirects.
+                    Logout();
                 }
             }
         }

@@ -22,14 +22,14 @@
             <StackPanel Orientation="Horizontal" Spacing="20">
                 <StackPanel VerticalAlignment="Center" HorizontalAlignment="Right">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="5">
-                        <Image Source="{x:Bind ViewModel.Profile.CountryFlagUrl, Mode=OneWay, Converter={StaticResource UrlToImageSourceConverter}}" 
+                        <Image Source="{x:Bind ViewModel.Profile.CountryFlagUrl, Mode=OneWay, Converter={StaticResource UrlToImageSourceConverter}, FallbackValue={x:Null}}" 
                                Width="16" Height="12" VerticalAlignment="Center" Stretch="UniformToFill"/>
-                        <TextBlock Text="{x:Bind ViewModel.Profile.FullName, Mode=OneWay}" Style="{StaticResource BodyStrongTextBlockStyle}"/>
+                        <TextBlock Text="{x:Bind ViewModel.Profile.FullName, Mode=OneWay, FallbackValue='User'}" Style="{StaticResource BodyStrongTextBlockStyle}"/>
                     </StackPanel>
-                    <TextBlock Text="{x:Bind ViewModel.Profile.Email, Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}"/>
+                    <TextBlock Text="{x:Bind ViewModel.Profile.Email, Mode=OneWay, FallbackValue=''}" Style="{StaticResource CaptionTextBlockStyle}"/>
                 </StackPanel>
-                <PersonPicture ProfilePicture="{x:Bind ViewModel.Profile.ProfilePictureUrl, Mode=OneWay, Converter={StaticResource UrlToImageSourceConverter}}" 
-                               DisplayName="{x:Bind ViewModel.Profile.FullName, Mode=OneWay}"
+                <PersonPicture ProfilePicture="{x:Bind ViewModel.Profile.ProfilePictureUrl, Mode=OneWay, Converter={StaticResource UrlToImageSourceConverter}, FallbackValue={x:Null}}" 
+                               DisplayName="{x:Bind ViewModel.Profile.FullName, Mode=OneWay, FallbackValue='User'}"
                                Height="40" Width="40"/>
             </StackPanel>
             
@@ -39,28 +39,28 @@
                         <!-- View Mode -->
                         <StackPanel Spacing="15" HorizontalAlignment="Center" 
                                     Visibility="{x:Bind ViewModel.IsEditingProfile, Mode=OneWay, Converter={StaticResource NegatedBoolToVisibilityConverter}}">
-                            <PersonPicture ProfilePicture="{x:Bind ViewModel.Profile.ProfilePictureUrl, Mode=OneWay, Converter={StaticResource UrlToImageSourceConverter}}" 
-                                           DisplayName="{x:Bind ViewModel.Profile.FullName, Mode=OneWay}"
+                            <PersonPicture ProfilePicture="{x:Bind ViewModel.Profile.ProfilePictureUrl, Mode=OneWay, Converter={StaticResource UrlToImageSourceConverter}, FallbackValue={x:Null}}" 
+                                           DisplayName="{x:Bind ViewModel.Profile.FullName, Mode=OneWay, FallbackValue='User'}"
                                            Height="100" Width="100"/>
                             <StackPanel Spacing="2">
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="5">
-                                    <Image Source="{x:Bind ViewModel.Profile.CountryFlagUrl, Mode=OneWay, Converter={StaticResource UrlToImageSourceConverter}}" 
+                                    <Image Source="{x:Bind ViewModel.Profile.CountryFlagUrl, Mode=OneWay, Converter={StaticResource UrlToImageSourceConverter}, FallbackValue={x:Null}}" 
                                            Width="20" Height="15" VerticalAlignment="Center" Stretch="UniformToFill"/>
-                                    <TextBlock Text="{x:Bind ViewModel.Profile.FullName, Mode=OneWay}" 
+                                    <TextBlock Text="{x:Bind ViewModel.Profile.FullName, Mode=OneWay, FallbackValue='User'}" 
                                                Style="{StaticResource SubtitleTextBlockStyle}" 
                                                HorizontalAlignment="Center"/>
                                 </StackPanel>
-                                <TextBlock Text="{x:Bind ViewModel.Profile.Email, Mode=OneWay}" 
+                                <TextBlock Text="{x:Bind ViewModel.Profile.Email, Mode=OneWay, FallbackValue=''}" 
                                            Style="{StaticResource CaptionTextBlockStyle}" 
                                            HorizontalAlignment="Center" 
                                            Opacity="0.7"/>
                             </StackPanel>
 
-                            <TextBlock Text="{x:Bind ViewModel.Profile.Biography, Mode=OneWay}" 
+                            <TextBlock Text="{x:Bind ViewModel.Profile.Biography, Mode=OneWay, FallbackValue=''}" 
                                        Style="{StaticResource BodyTextBlockStyle}" 
                                        TextWrapping="Wrap" 
                                        HorizontalAlignment="Center"
-                                       Visibility="{x:Bind ViewModel.Profile.Biography, Mode=OneWay, Converter={StaticResource StringVisibilityConverter}}"/>
+                                       Visibility="{x:Bind ViewModel.Profile.Biography, Mode=OneWay, Converter={StaticResource StringVisibilityConverter}, FallbackValue=Collapsed}"/>
                             
                             <MenuFlyoutSeparator/>
                             

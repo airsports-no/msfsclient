@@ -10,8 +10,8 @@
 
   <Identity
     Name="AirSportsLiveTracking.AirsportsLiveTrackingMSFSCli"
-    Publisher="CN=2C36C1B2-9F94-49C3-BB66-8E8A33F6C2BA"
-    Version="1.0.11.0" />
+    Publisher="CN=frank"
+    Version="1.0.12.0" />
 
   <mp:PhoneIdentity PhoneProductId="331669cf-f681-4434-92cc-cec4aae1ccce" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 

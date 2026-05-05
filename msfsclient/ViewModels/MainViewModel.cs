@@ -263,10 +263,29 @@ namespace msfsclient.ViewModels
                 
                 // Ensure token is fresh before making API calls
                 await _authService.ReloadUserAsync();
+
+                // If reload failed and we are no longer authenticated, force logout
+                if (!_authService.IsAuthenticated)
+                {
+                    System.Diagnostics.Debug.WriteLine("MainViewModel: User not authenticated after reload, forcing logout.");
+                    _dispatcherQueue.TryEnqueue(() => Logout());
+                    return;
+                }
                 
                 // Await both profile and navigation tasks loading
                 await Task.WhenAll(LoadProfileAsync(), LoadNavigationTaskAsync());
                 
+                if (Profile == null)
+                {
+                    System.Diagnostics.Debug.WriteLine("MainViewModel: Profile failed to load after successful auth reload.");
+                    // Check if we lost auth during profile load
+                    if (!_authService.IsAuthenticated)
+                    {
+                        _dispatcherQueue.TryEnqueue(() => Logout());
+                        return;
+                    }
+                }
+
                 System.Diagnostics.Debug.WriteLine($"Profile loaded. ID: {Profile?.SimulatorTrackingId ?? "NULL"}");
                 
                 // Start periodic task refresh
@@ -523,6 +542,17 @@ namespace msfsclient.ViewModels
             {
                 var profile = await _profileService.GetProfileAsync();
                 
+                if (profile == null)
+                {
+                    System.Diagnostics.Debug.WriteLine("MainViewModel: Profile is null, checking auth status.");
+                    if (!_authService.IsAuthenticated)
+                    {
+                        System.Diagnostics.Debug.WriteLine("MainViewModel: Session expired during profile load.");
+                        _dispatcherQueue.TryEnqueue(() => Logout());
+                        return;
+                    }
+                }
+
                 var tcs = new TaskCompletionSource<bool>();
                 _dispatcherQueue.TryEnqueue(() =>
                 {
