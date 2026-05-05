@@ -11,7 +11,7 @@ namespace msfsclient.Contracts.Services
         string? LastErrorMessage { get; }
 
         Task<bool> LoginAsync(string email, string password);
-        Task<bool> RegisterAsync(string email, string password, string displayName);
+        Task<bool> RegisterAsync(string email, string password, string firstName, string lastName);
         Task SendEmailVerificationAsync();
         Task ResetPasswordAsync(string email);
         Task ReloadUserAsync();

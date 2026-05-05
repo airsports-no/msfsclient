@@ -92,8 +92,16 @@ namespace msfsclient.Services
             }
             catch (FirebaseAuthHttpException ex)
             {
-                LastErrorMessage = $"HTTP Error: {ex.Reason} - {ex.Message}";
-                System.Diagnostics.Debug.WriteLine($"AuthService: Login failed: {LastErrorMessage}");
+                LastErrorMessage = ex.Reason switch
+                {
+                    AuthErrorReason.WrongPassword => "The password you entered is incorrect.",
+                    AuthErrorReason.UserNotFound => "No account found with this email address.",
+                    AuthErrorReason.UserDisabled => "This account has been disabled.",
+                    AuthErrorReason.TooManyAttemptsTryLater => "Too many failed login attempts. Please try again later.",
+                    AuthErrorReason.InvalidEmailAddress => "The email address is poorly formatted.",
+                    _ => $"Login failed: {ex.Reason}"
+                };
+                System.Diagnostics.Debug.WriteLine($"AuthService: Login failed: {ex.Reason} - {ex.Message}");
                 return false;
             }
             catch (FirebaseAuthException ex)
@@ -110,11 +118,12 @@ namespace msfsclient.Services
             }
         }
 
-        public async Task<bool> RegisterAsync(string email, string password, string displayName)
+        public async Task<bool> RegisterAsync(string email, string password, string firstName, string lastName)
         {
             try
             {
                 LastErrorMessage = null;
+                var displayName = $"{firstName} {lastName}".Trim();
                 var credential = await _client.CreateUserWithEmailAndPasswordAsync(email, password, displayName);
                 _userCredential = credential;
                 System.Diagnostics.Debug.WriteLine($"AuthService: Registration successful for {email}");

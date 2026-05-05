@@ -10,13 +10,20 @@ namespace msfsclient.ViewModels
         private readonly IAuthService _authService;
 
         [ObservableProperty]
+        [NotifyCanExecuteChangedFor(nameof(RegisterCommand))]
         public partial string Email { get; set; } = string.Empty;
 
         [ObservableProperty]
+        [NotifyCanExecuteChangedFor(nameof(RegisterCommand))]
         public partial string Password { get; set; } = string.Empty;
 
         [ObservableProperty]
-        public partial string DisplayName { get; set; } = string.Empty;
+        [NotifyCanExecuteChangedFor(nameof(RegisterCommand))]
+        public partial string FirstName { get; set; } = string.Empty;
+
+        [ObservableProperty]
+        [NotifyCanExecuteChangedFor(nameof(RegisterCommand))]
+        public partial string LastName { get; set; } = string.Empty;
 
         [ObservableProperty]
         public partial string ErrorMessage { get; set; } = string.Empty;
@@ -25,6 +32,7 @@ namespace msfsclient.ViewModels
         public partial string SuccessMessage { get; set; } = string.Empty;
 
         [ObservableProperty]
+        [NotifyCanExecuteChangedFor(nameof(RegisterCommand))]
         public partial bool IsBusy { get; set; }
 
         public RegistrationViewModel(IAuthService authService)
@@ -32,20 +40,28 @@ namespace msfsclient.ViewModels
             _authService = authService;
         }
 
-        [RelayCommand]
+        public event System.EventHandler? RegistrationSuccessful;
+
+        private bool CanRegister()
+        {
+            return !IsBusy &&
+                   !string.IsNullOrWhiteSpace(Email) &&
+                   !string.IsNullOrWhiteSpace(Password) &&
+                   !string.IsNullOrWhiteSpace(FirstName) &&
+                   !string.IsNullOrWhiteSpace(LastName) &&
+                   Email.Contains("@") && 
+                   Email.Contains(".");
+        }
+
+        [RelayCommand(CanExecute = nameof(CanRegister))]
         private async Task RegisterAsync()
         {
-            if (string.IsNullOrWhiteSpace(Email) || string.IsNullOrWhiteSpace(Password) || string.IsNullOrWhiteSpace(DisplayName))
-            {
-                ErrorMessage = "Please fill in all fields.";
-                return;
-            }
-
             IsBusy = true;
             ErrorMessage = string.Empty;
             SuccessMessage = string.Empty;
 
-            var success = await _authService.RegisterAsync(Email, Password, DisplayName);
+            var success = await _authService.RegisterAsync(Email, Password, FirstName, LastName);
+            // ... rest of method unchanged
 
             if (success)
             {
@@ -58,6 +74,8 @@ namespace msfsclient.ViewModels
                 {
                     SuccessMessage = "Registration successful, but failed to send verification email. You can still log in.";
                 }
+
+                RegistrationSuccessful?.Invoke(this, System.EventArgs.Empty);
             }
             else
             {

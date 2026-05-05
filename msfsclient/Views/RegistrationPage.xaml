@@ -14,9 +14,18 @@
             <Image Source="/Assets/airsports_live_tracking_white.png" Height="60" Stretch="Uniform" Margin="0,0,0,10"/>
             <TextBlock Text="Sign Up" Style="{StaticResource TitleTextBlockStyle}" HorizontalAlignment="Center"/>
 
-            <TextBox Header="Display Name" 
-                     Text="{x:Bind ViewModel.DisplayName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
-                     PlaceholderText="Enter your name"/>
+            <Grid ColumnSpacing="10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <TextBox Grid.Column="0" Header="First Name" 
+                         Text="{x:Bind ViewModel.FirstName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                         PlaceholderText="First Name"/>
+                <TextBox Grid.Column="1" Header="Last Name" 
+                         Text="{x:Bind ViewModel.LastName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                         PlaceholderText="Last Name"/>
+            </Grid>
             
             <TextBox Header="Email" 
                      Text="{x:Bind ViewModel.Email, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
@@ -41,8 +50,7 @@
             <Button Content="Register" 
                     Command="{x:Bind ViewModel.RegisterCommand}" 
                     HorizontalAlignment="Stretch" 
-                    Style="{StaticResource AccentButtonStyle}"
-                    IsEnabled="{x:Bind ViewModel.IsBusy, Converter={StaticResource InverseBoolConverter}, Mode=OneWay}"/>
+                    Style="{StaticResource AccentButtonStyle}"/>
             
             <HyperlinkButton Content="Back to Login" 
                              Click="BackToLogin_Click" 

@@ -62,19 +62,31 @@ namespace msfsclient.Views
 
         protected override async void OnNavigatedTo(NavigationEventArgs e)
         {
-            base.OnNavigatedTo(e);
-
-            var window = (App.Current as App)?.Window;
-            var handle = window != null ? WinRT.Interop.WindowNative.GetWindowHandle(window) : IntPtr.Zero;
-
-            await ViewModel.InitializeAsync(handle);
-            
-            _simConnectTimer.Start();
-
-            if (ViewModel.Profile != null)
+            try
             {
-                System.Diagnostics.Debug.WriteLine($"Profile Loaded: {ViewModel.Profile.FullName}");
-                System.Diagnostics.Debug.WriteLine($"Picture URL: {ViewModel.Profile.ProfilePictureUrl ?? "NULL"}");
+                base.OnNavigatedTo(e);
+
+                var window = (App.Current as App)?.Window;
+                var handle = window != null ? WinRT.Interop.WindowNative.GetWindowHandle(window) : IntPtr.Zero;
+
+                if (handle == IntPtr.Zero)
+                {
+                    System.Diagnostics.Debug.WriteLine("MainPage: Warning - Window handle is Zero during OnNavigatedTo");
+                }
+
+                await ViewModel.InitializeAsync(handle);
+                
+                _simConnectTimer.Start();
+
+                if (ViewModel.Profile != null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Profile Loaded: {ViewModel.Profile.FullName}");
+                    System.Diagnostics.Debug.WriteLine($"Picture URL: {ViewModel.Profile.ProfilePictureUrl ?? "NULL"}");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"MainPage.OnNavigatedTo Exception: {ex.Message}");
             }
         }
 

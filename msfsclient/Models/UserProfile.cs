@@ -17,7 +17,18 @@ namespace msfsclient.Models
         public string LastName { get; set; } = string.Empty;
 
         [JsonPropertyName("full_name")]
-        public string FullName => $"{FirstName} {LastName}".Trim();
+        public string FullName
+        {
+            get
+            {
+                var name = $"{FirstName} {LastName}".Trim();
+                if (string.IsNullOrEmpty(name))
+                {
+                    return !string.IsNullOrEmpty(Email) ? Email : "User";
+                }
+                return name;
+            }
+        }
 
         [JsonPropertyName("picture")]
         public string? ProfilePictureUrl { get; set; }

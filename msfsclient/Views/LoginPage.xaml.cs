@@ -18,6 +18,11 @@ namespace msfsclient.Views
         {
             base.OnNavigatedTo(e);
 
+            if (e.Parameter is string email)
+            {
+                ViewModel.Email = email;
+            }
+
             var authService = App.GetService<msfsclient.Contracts.Services.IAuthService>();
             
             // If we have a restored user but they aren't marked as authenticated (e.g. verification pending or expired)

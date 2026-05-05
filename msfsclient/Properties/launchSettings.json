@@ -1,8 +1,7 @@
 {
   "profiles": {
     "msfsclient (Package)": {
-      "commandName": "MsixPackage",
-      "commandLineArgs": "--base-url http://localhost:8002"
+      "commandName": "MsixPackage"
     },
     "msfsclient (Unpackaged)": {
       "commandName": "Project"

@@ -264,11 +264,16 @@ namespace msfsclient.ViewModels
                 // Ensure token is fresh before making API calls
                 await _authService.ReloadUserAsync();
                 
+                // Await both profile and navigation tasks loading
                 await Task.WhenAll(LoadProfileAsync(), LoadNavigationTaskAsync());
+                
                 System.Diagnostics.Debug.WriteLine($"Profile loaded. ID: {Profile?.SimulatorTrackingId ?? "NULL"}");
                 
                 // Start periodic task refresh
-                _taskRefreshTimer.Start();
+                if (!_taskRefreshTimer.IsEnabled)
+                {
+                    _taskRefreshTimer.Start();
+                }
 
                 // Run SimConnect connection in a background thread to prevent UI hang on startup
                 // if the simulator is not running or slow to respond.
@@ -276,7 +281,10 @@ namespace msfsclient.ViewModels
                 {
                     try
                     {
-                        _simConnectService.Connect(_windowHandle);
+                        if (_windowHandle != IntPtr.Zero)
+                        {
+                            _simConnectService.Connect(_windowHandle);
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -296,43 +304,79 @@ namespace msfsclient.ViewModels
 
         private async void TaskRefreshTimer_Tick(object? sender, object e)
         {
-            System.Diagnostics.Debug.WriteLine("Periodic Task Refresh: Reloading navigation task...");
-            await LoadNavigationTaskAsync();
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("Periodic Task Refresh: Reloading navigation task...");
+                await LoadNavigationTaskAsync();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"TaskRefreshTimer_Tick Exception: {ex.Message}");
+            }
         }
 
         private void WatchdogTimer_Tick(object? sender, object e)
         {
-            // If tracking is enabled but SimConnect is NOT connected, try to reconnect
-            if (IsTracking && !IsSimConnected)
+            try
             {
-                System.Diagnostics.Debug.WriteLine("Watchdog: Reconnection attempt...");
-                _ = Task.Run(() => 
+                // If tracking is enabled but SimConnect is NOT connected, try to reconnect
+                if (IsTracking && !IsSimConnected && _windowHandle != IntPtr.Zero)
                 {
-                    try 
-                    { 
-                        _simConnectService.Connect(_windowHandle); 
-                    } 
-                    catch (Exception ex) 
+                    System.Diagnostics.Debug.WriteLine("Watchdog: Reconnection attempt...");
+                    _ = Task.Run(() => 
                     {
-                        System.Diagnostics.Debug.WriteLine($"Watchdog reconnect failed: {ex.Message}");
-                    }
-                });
+                        try 
+                        { 
+                            _simConnectService.Connect(_windowHandle); 
+                        } 
+                        catch (Exception ex) 
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Watchdog reconnect failed: {ex.Message}");
+                        }
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"WatchdogTimer_Tick Exception: {ex.Message}");
             }
         }
 
         [RelayCommand]
         private async Task LoadNavigationTaskAsync()
         {
-            var tasks = await _profileService.GetCurrentNavigationTasksAsync();
-            _dispatcherQueue.TryEnqueue(() =>
+            try
             {
-                NavigationTasks.Clear();
-                foreach (var task in tasks)
+                var tasks = await _profileService.GetCurrentNavigationTasksAsync();
+                
+                var tcs = new TaskCompletionSource<bool>();
+                _dispatcherQueue.TryEnqueue(() =>
                 {
-                    NavigationTasks.Add(task);
-                }
-                IsNavigationTasksEmpty = NavigationTasks.Count == 0;
-            });
+                    try
+                    {
+                        NavigationTasks.Clear();
+                        if (tasks != null)
+                        {
+                            foreach (var task in tasks)
+                            {
+                                if (task != null) NavigationTasks.Add(task);
+                            }
+                        }
+                        IsNavigationTasksEmpty = NavigationTasks.Count == 0;
+                        tcs.SetResult(true);
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Error updating NavigationTasks on UI thread: {ex.Message}");
+                        tcs.SetResult(false);
+                    }
+                });
+                await tcs.Task;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"LoadNavigationTaskAsync Exception: {ex.Message}");
+            }
         }
 
         [RelayCommand]
@@ -475,14 +519,33 @@ namespace msfsclient.ViewModels
         private async Task LoadProfileAsync()
         {
             IsBusy = true;
-            var profile = await _profileService.GetProfileAsync();
-            
-            // Ensure the update happens on the UI thread to avoid WinRT ArgumentException
-            _dispatcherQueue.TryEnqueue(() =>
+            try
             {
-                Profile = profile;
+                var profile = await _profileService.GetProfileAsync();
+                
+                var tcs = new TaskCompletionSource<bool>();
+                _dispatcherQueue.TryEnqueue(() =>
+                {
+                    try
+                    {
+                        Profile = profile;
+                        IsBusy = false;
+                        tcs.SetResult(true);
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Error updating Profile on UI thread: {ex.Message}");
+                        IsBusy = false;
+                        tcs.SetResult(false);
+                    }
+                });
+                await tcs.Task;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"LoadProfileAsync Exception: {ex.Message}");
                 IsBusy = false;
-            });
+            }
         }
 
         [RelayCommand]
