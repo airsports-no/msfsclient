@@ -5,6 +5,7 @@ namespace msfsclient.Contracts.Services
         string ApiBaseUrl { get; }
         string WebBaseUrl { get; }
         string TraccarBaseUrl { get; }
+        string AppVersion { get; }
         bool IsTestMode { get; }
     }
 }
