@@ -11,7 +11,7 @@
 	<Identity
 	  Name="AirSportsLiveTracking.AirsportsLiveTrackingMSFSCli"
 	  Publisher="CN=2C36C1B2-9F94-49C3-BB66-8E8A33F6C2BA"
-	  Version="1.0.27.0" />
+	  Version="1.0.28.0" />
 
 	<mp:PhoneIdentity PhoneProductId="331669cf-f681-4434-92cc-cec4aae1ccce" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
@@ -19,6 +19,7 @@
 		<DisplayName>Airsports Live Tracking MSFS Client</DisplayName>
 		<PublisherDisplayName>Air Sports Live Tracking</PublisherDisplayName>
 		<Logo>Assets\StoreLogo.png</Logo>
+		<Description>This application requires the .NET Desktop Runtime to function. Air Sports Live Tracking MSFS Client connects Microsoft Flight Simulator to the Airsports Live Tracking platform.</Description>
 	</Properties>
 
 	<Dependencies>
