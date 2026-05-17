@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Web;
@@ -25,11 +26,14 @@ namespace msfsclient.Services
                 var query = HttpUtility.ParseQueryString(string.Empty);
                 query["id"] = trackingId;
                 query["timestamp"] = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
-                query["lat"] = data.Latitude.ToString("F6");
-                query["lon"] = data.Longitude.ToString("F6");
-                query["speed"] = data.GroundVelocity.ToString("F2");
-                query["altitude"] = data.Altitude.ToString("F0");
-                query["heading"] = data.HeadingDegrees.ToString("F2");
+                
+                // Use InvariantCulture to ensure decimal separator is always a dot (.) 
+                // regardless of the user's regional settings (e.g., Norwegian/German use ,)
+                query["lat"] = data.Latitude.ToString("F6", CultureInfo.InvariantCulture);
+                query["lon"] = data.Longitude.ToString("F6", CultureInfo.InvariantCulture);
+                query["speed"] = data.GroundVelocity.ToString("F2", CultureInfo.InvariantCulture);
+                query["altitude"] = data.Altitude.ToString("F0", CultureInfo.InvariantCulture);
+                query["heading"] = data.HeadingDegrees.ToString("F2", CultureInfo.InvariantCulture);
 
                 var url = $"{_appConfig.TraccarBaseUrl}?{query}";
                 

@@ -61,16 +61,23 @@ namespace msfsclient.Services
                         FlightDataReceived?.Invoke(this, flightData);
                     }
                 };
-
-                // In WinUI 3, we don't have a standard WndProc. 
-                // We'll need to handle the message loop or use a timer to poll ReceiveMessage if needed.
-                // However, the managed wrapper usually handles the callback if the window handle is valid.
+            }
+            catch (COMException ex) when (ex.HResult == unchecked((int)0x80004005))
+            {
+                // E_FAIL usually means SimConnect is not available or MSFS is not running
+                System.Diagnostics.Debug.WriteLine("SimConnect: Simulator not found or connection failed (E_FAIL).");
+                // Don't fire ErrorOccurred for this specific case to avoid noisy logs in the UI
+                // unless it's a persistent issue after many retries.
+                IsConnected = false;
+                ConnectionStatusChanged?.Invoke(this, false);
             }
             catch (Exception ex)
             {
                 var errorMsg = $"SimConnect Connection Error: {ex.Message}";
                 System.Diagnostics.Debug.WriteLine(errorMsg);
                 ErrorOccurred?.Invoke(this, errorMsg);
+                IsConnected = false;
+                ConnectionStatusChanged?.Invoke(this, false);
             }
         }
 
@@ -128,12 +135,16 @@ namespace msfsclient.Services
             {
                 sim.ReceiveMessage();
             }
+            catch (COMException ex) when (ex.HResult == unchecked((int)0x80004005))
+            {
+                // E_FAIL in ReceiveMessage usually means the connection was lost (MSFS closed)
+                System.Diagnostics.Debug.WriteLine("SimConnect: Connection lost (E_FAIL).");
+                Disconnect();
+            }
             catch (Exception ex)
             {
                 var errorMsg = $"SimConnect Receive Error: {ex.Message}";
                 System.Diagnostics.Debug.WriteLine(errorMsg);
-                // Don't invoke error event here to avoid spamming the UI on every poll
-                // but do disconnect if the connection is dead
                 Disconnect();
             }
         }

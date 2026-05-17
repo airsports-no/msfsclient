@@ -338,10 +338,10 @@ namespace msfsclient.ViewModels
         {
             try
             {
-                // If tracking is enabled but SimConnect is NOT connected, try to reconnect
-                if (IsTracking && !IsSimConnected && _windowHandle != IntPtr.Zero)
+                // If SimConnect is NOT connected and we have a window handle, try to reconnect
+                if (!IsSimConnected && _windowHandle != IntPtr.Zero)
                 {
-                    System.Diagnostics.Debug.WriteLine("Watchdog: Reconnection attempt...");
+                    System.Diagnostics.Debug.WriteLine("Watchdog: SimConnect connection attempt...");
                     _ = Task.Run(() => 
                     {
                         try 
