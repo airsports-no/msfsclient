@@ -119,6 +119,10 @@ namespace msfsclient.Services
 
             public void Disconnect() => IsConnected = false;
 
+            /// <summary>No simulator to print on: kept for the debug view.</summary>
+            public void ShowText(string text, msfsclient.Core.Hud.SimMessageKind kind, float seconds) =>
+                System.Diagnostics.Debug.WriteLine($"Simulator text ({kind}, {seconds} s): {text}");
+
             public void ReceiveMessage()
             {
                 var now = Environment.TickCount64;

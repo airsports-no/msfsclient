@@ -8,6 +8,7 @@ using msfsclient.Core.App;
 using msfsclient.Core.Auth;
 using msfsclient.Core.Data;
 using msfsclient.Core.History;
+using msfsclient.Core.Hud;
 using msfsclient.Core.Observations;
 using msfsclient.Core.Tracking;
 using msfsclient.Services;
@@ -80,6 +81,13 @@ namespace msfsclient
             var notifications = new NotificationService();
             if (preview == null) notifications.Register();
             Shell = new ShellViewModel(controller, simConnect, sim, queue, uploader, trackLog, platform, config, notifications);
+            Shell.Settings = settings;
+
+            // The local server for the in-sim display and a second screen (loopback only).
+            var hudHost = new HudHost(controller, Shell.FreshStatus, Shell.StartTracking, Shell.StopTracking);
+            var hud = new HudServer(new ShellViewModel.UiThreadHudHost(Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread(), hudHost), config.HudPort);
+            Shell.AttachHud(hud);
+            hud.Start();
 
             window = new MainWindow();
             Window = window;

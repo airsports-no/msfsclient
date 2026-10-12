@@ -41,6 +41,8 @@ namespace msfsclient.Views
                 new("Upload", t.LastError ?? "ok"),
                 new("PC clock vs network time", Vm.State.NetworkClockOffsetMillis is { } o
                     ? string.Create(CultureInfo.InvariantCulture, $"{o / 1000.0:0.000} s (±{Vm.State.NetworkClockUncertaintyMillis / 1000.0:0.000} s)") : "unknown"),
+                new("Flight display", Vm.Hud is { Running: true } hud ? $"{Vm.HudUrl} ({hud.ClientCount} connected)" : Vm.Hud?.Error ?? "not running"),
+                new("Last simulator message", Vm.LastSimMessage ?? (Vm.SimMessagesEnabled ? "none yet" : "switched off")),
                 new("Simulator tracking id", Vm.State.Person?.SimulatorTrackingId ?? "-"),
                 new("App version", Vm.Controller.AppVersionLabel),
             ];

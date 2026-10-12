@@ -42,6 +42,27 @@
                 </Grid>
             </Button>
             <Border Height="1" Background="{ThemeResource OutlineBrush}" Margin="0,8" />
+            <TextBlock Text="In the simulator" Style="{StaticResource CondensedTitle}" AutomationProperties.HeadingLevel="Level2" />
+            <Grid ColumnSpacing="8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel>
+                    <TextBlock Text="Messages in the simulator" Style="{StaticResource StrongText}" />
+                    <TextBlock Text="Tracking started and stopped, reception, gate results in training mode, the start minute and new announcements, printed at the top of the MSFS screen."
+                               Style="{StaticResource MutedText}" />
+                </StackPanel>
+                <ToggleSwitch x:Name="SimMessages" Grid.Column="1" OnContent="" OffContent="" MinWidth="0" Toggled="SimMessages_Toggled"
+                              AutomationProperties.Name="Messages in the simulator" />
+            </Grid>
+            <StackPanel Spacing="2">
+                <TextBlock Text="Flight display" Style="{StaticResource StrongText}" />
+                <TextBlock Text="{x:Bind HudText, Mode=OneWay}" Style="{StaticResource MutedText}" IsTextSelectionEnabled="True" />
+                <HyperlinkButton Content="Open in the browser" Style="{StaticResource TextButton}" Padding="0,6" Click="Hud_Click"
+                                 Visibility="{x:Bind helpers:Ui.ShowText(Vm.HudUrl), Mode=OneWay}" />
+            </StackPanel>
+            <Border Height="1" Background="{ThemeResource OutlineBrush}" Margin="0,8" />
             <Button Content="Sign out" Style="{StaticResource OutlinedButton}" HorizontalAlignment="Stretch" Click="SignOut_Click" />
             <HyperlinkButton Content="Delete account" Style="{StaticResource DangerTextButton}" HorizontalAlignment="Center" Click="Delete_Click" />
             <local:VersionText HorizontalAlignment="Center" />

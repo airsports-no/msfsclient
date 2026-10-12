@@ -43,6 +43,15 @@ public sealed class AppSettings(AirsportsDatabase db)
         set => Put(Dismissed, string.Join(",", value.TakeLast(200).Select(i => i.ToString(CultureInfo.InvariantCulture))));
     }
 
+    /// <summary>Print tracking events, gate results and announcements on the simulator's screen. On unless the pilot turns it off.</summary>
+    public bool SimMessages
+    {
+        get => Get(SimMessagesKey) != "0";
+        set => Put(SimMessagesKey, value ? "1" : "0");
+    }
+
+    private const string SimMessagesKey = "sim_messages";
+
     private string? Get(string key) => db.Scalar("SELECT value FROM Setting WHERE key = $k", ("$k", key)) as string;
 
     private void Put(string key, string value) => db.Execute("INSERT OR REPLACE INTO Setting(key, value) VALUES ($k, $v)", ("$k", key), ("$v", value));

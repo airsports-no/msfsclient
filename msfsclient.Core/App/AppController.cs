@@ -538,6 +538,18 @@ public sealed class AppController
 
     public void CloseObservations() => Update(s => s with { Screen = Screen.Home });
 
+    /// <summary>
+    /// Loads the photos of the current flight without opening the Photos page, for the in-sim display (it lists and marks
+    /// them while the client shows something else). Does nothing when they are loaded for this flight already.
+    /// </summary>
+    public Task EnsureObservationsAsync()
+    {
+        var contestant = ObservationContestant(State.Tasks);
+        if (contestant == null || State.Observations.ContestantId == contestant.Id) return Task.CompletedTask;
+        Update(s => s with { Observations = new ObservationsUi { ContestantId = contestant.Id, Loading = true, Thumbnails = s.Observations.Thumbnails } });
+        return LoadObservationsAsync();
+    }
+
     public void ShowObservationThumbnails(bool thumbnails) => Update(s => s with { Observations = s.Observations with { Thumbnails = thumbnails } });
 
     public async Task LoadObservationsAsync()

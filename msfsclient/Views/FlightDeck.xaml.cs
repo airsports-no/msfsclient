@@ -6,7 +6,7 @@ using Microsoft.UI.Xaml.Media;
 using msfsclient.Core.App;
 using msfsclient.Core.Training;
 using msfsclient.Helpers;
-using msfsclient.ViewModels;
+using msfsclient.Core.Hud;
 
 namespace msfsclient.Views
 {

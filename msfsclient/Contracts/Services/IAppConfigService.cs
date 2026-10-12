@@ -15,5 +15,8 @@ namespace msfsclient.Contracts.Services
         string LocalFolder { get; }
         /// <summary>Crash reporting address (Sentry DSN) for release builds; null switches crash reporting off.</summary>
         string? CrashReportingDsn { get; }
+
+        /// <summary>Port of the local server for in-sim displays (<c>--hud-port</c>; 47911 by default).</summary>
+        int HudPort { get; }
     }
 }

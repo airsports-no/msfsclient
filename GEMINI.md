@@ -47,6 +47,23 @@ has the same features and look as the Air Sports mobile app (airsports-mobile, K
   timestamp in seconds, speed in knots, altitude in metres) with backoff 5 s doubling to 5 min. Traccar gets its own
   `HttpClient`: the Firebase token never goes there.
 
+## In the simulator
+- **Simulator messages:** `SimMessageTracker` (Core) turns the flight status into one-off lines (tracking on/off, server
+  reception lost and regained, scoring, window closed, 4 h, training gate results, one minute to and the start minute, new
+  announcements); `SimConnectService.ShowText` prints them with SimConnect text. Switched off in the profile.
+  Whether MSFS 2020 and 2024 show SimConnect text has to be checked in the simulator.
+- **Flight display server:** `HudServer` (Core) on `http://localhost:47911/` (`--hud-port` to change), loopback only (IPv4 and
+  IPv6). Refuses requests whose Origin is a website or whose Host is not a loopback name, so web pages cannot read or command
+  it; MSFS panels (`coui://`) and the client's own page are allowed.
+  - `GET /` the display page (`Hud/hud.html`, embedded; also the starting point for the MSFS toolbar panel), `GET /fonts/*.ttf`.
+  - `GET /state` the `HudSnapshot` as JSON (camelCase).
+  - `WS /ws` pushes `{"type":"state","state":{...}}` on every change and takes commands, answering `{"type":"result","ok":..,"message":..}`.
+  - `POST /command` the same commands over HTTP.
+  - Commands (`HudHost`, same rules as the client's buttons): `startTracking`, `stopTracking` (needs `"confirm":true`),
+    `startTimer`, `resetTimer` (needs `"confirm":true`), `mark` (`"photoId"`; needs tracking and a position under 10 s old),
+    `setTraining` (`"on"`; only where the server offers training), `dismissAnnouncement` (`"id"`).
+  - The snapshot holds only what the client already shows: no route, no gates beyond the server's own training feedback.
+
 ## Build and release
 - `.github/workflows/ci.yml`: Core tests on Linux; on Windows the Store package (unsigned) and the portable release.
 - `.github/workflows/store.yml` (run by hand): tests, sets the package version to `1.0.<build>.0`, builds the Store

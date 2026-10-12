@@ -14,6 +14,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The in-sim display page, served by HudServer at /. -->
+    <EmbeddedResource Include="Hud\hud.html" LogicalName="hud.html" />
+    <EmbeddedResource Include="Hud\fonts\*.ttf" LogicalName="fonts/%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="msfsclient.Core.Tests" />
   </ItemGroup>
 </Project>

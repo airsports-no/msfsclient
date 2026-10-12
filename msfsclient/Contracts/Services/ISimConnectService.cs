@@ -13,5 +13,8 @@ namespace msfsclient.Contracts.Services
         void Connect(IntPtr windowHandle);
         void Disconnect();
         void ReceiveMessage();
+
+        /// <summary>Prints a line of text on the simulator's screen (SimConnect text); does nothing while not connected.</summary>
+        void ShowText(string text, msfsclient.Core.Hud.SimMessageKind kind, float seconds);
     }
 }

@@ -8,7 +8,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:msfsclient.Views"
-    xmlns:vm="using:msfsclient.ViewModels"
+    xmlns:vm="using:msfsclient.Core.Hud"
     xmlns:helpers="using:msfsclient.Helpers"
     RequestedTheme="Dark">
 

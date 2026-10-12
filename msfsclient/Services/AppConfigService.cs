@@ -15,6 +15,7 @@ namespace msfsclient.Services
         public bool IsTestMode { get; private set; }
         public string LocalFolder { get; }
         public string? CrashReportingDsn { get; }
+        public int HudPort { get; private set; } = msfsclient.Core.Hud.HudServer.DefaultPort;
 
         public AppConfigService()
         {
@@ -39,6 +40,14 @@ namespace msfsclient.Services
                     IsTestMode = true;
 
                     System.Diagnostics.Debug.WriteLine($"AppConfigService: Local Test Mode Active. Base URL: {overrideUrl}");
+                }
+            }
+
+            for (int i = 0; i + 1 < args.Length; i++)
+            {
+                if (args[i].Equals("--hud-port", StringComparison.OrdinalIgnoreCase) && int.TryParse(args[i + 1], out var port) && port is > 0 and < 65536)
+                {
+                    HudPort = port;
                 }
             }
 

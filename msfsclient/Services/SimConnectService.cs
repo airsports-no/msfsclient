@@ -125,6 +125,31 @@ namespace msfsclient.Services
             }
         }
 
+        /// <summary>
+        /// Prints a line at the top of the simulator's screen (green good news, yellow warnings, red alerts). Whether MSFS shows
+        /// SimConnect text depends on the simulator version; failures are logged, never thrown.
+        /// </summary>
+        public void ShowText(string text, msfsclient.Core.Hud.SimMessageKind kind, float seconds)
+        {
+            var sim = _simConnect;
+            if (sim == null || !IsConnected) return;
+            var type = kind switch
+            {
+                msfsclient.Core.Hud.SimMessageKind.Good => SIMCONNECT_TEXT_TYPE.PRINT_GREEN,
+                msfsclient.Core.Hud.SimMessageKind.Warning => SIMCONNECT_TEXT_TYPE.PRINT_YELLOW,
+                msfsclient.Core.Hud.SimMessageKind.Alert => SIMCONNECT_TEXT_TYPE.PRINT_RED,
+                _ => SIMCONNECT_TEXT_TYPE.PRINT_WHITE,
+            };
+            try
+            {
+                sim.Text(type, seconds, SimConnectEvents.Text, text);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"SimConnect text failed: {ex.Message}");
+            }
+        }
+
         // This method needs to be called by the UI thread periodically or via a hook
         public void ReceiveMessage()
         {

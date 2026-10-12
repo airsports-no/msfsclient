@@ -9,6 +9,7 @@ using msfsclient.Contracts.Services;
 using msfsclient.Core.Api;
 using msfsclient.Core.App;
 using msfsclient.Core.History;
+using msfsclient.Core.Hud;
 using msfsclient.Core.Observations;
 using msfsclient.Core.Preflight;
 using msfsclient.Core.Tracking;
@@ -43,6 +44,8 @@ namespace msfsclient.ViewModels
         private long _lastConnectAttemptMillis;
         private long _lastAnnouncementCheckMillis = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         private readonly NotificationService _notifications;
+        private readonly SimMessageTracker _simMessages = new();
+        private HudServer? _hud;
         private bool _autoStopHandled;
         private IntPtr _windowHandle;
 
@@ -91,6 +94,56 @@ namespace msfsclient.ViewModels
         /// <summary>Raised for a stop that the pilot did not ask for (the 12 hour limit).</summary>
         public event Action? AutoStopped;
 
+        // ---- In-sim display and simulator messages --------------------------------------------------------------------
+
+        /// <summary>Settings kept on this PC (set by the app; null in tests).</summary>
+        public AppSettings? Settings { get; set; }
+
+        public bool SimMessagesEnabled
+        {
+            get => Settings?.SimMessages ?? true;
+            set
+            {
+                if (Settings != null) Settings.SimMessages = value;
+                Changed();
+            }
+        }
+
+        /// <summary>The last line printed on the simulator's screen (debug view).</summary>
+        public string? LastSimMessage { get; private set; }
+
+        /// <summary>The local server for in-sim displays and a second screen; started by the app.</summary>
+        public HudServer? Hud => _hud;
+
+        public string HudUrl => _hud is { Running: true } hud ? $"http://localhost:{hud.Port}/" : "";
+
+        public void AttachHud(HudServer hud) => _hud = hud;
+
+        /// <summary>
+        /// The flight status as of now, built fresh (no shared cache), so the display server can call it from its own threads;
+        /// the state records it reads are immutable.
+        /// </summary>
+        public FlightStatus FreshStatus() =>
+            new(_state, _tracking, _simConnect.IsConnected, _sim.Last?.TimestampMillis, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+
+        /// <summary>Runs display commands on the UI thread, where tracking and SimConnect live.</summary>
+        public sealed class UiThreadHudHost(DispatcherQueue dispatcher, IHudHost inner) : IHudHost
+        {
+            public HudSnapshot Snapshot() => inner.Snapshot();
+
+            public Task<HudResult> ExecuteAsync(HudCommand command)
+            {
+                var done = new TaskCompletionSource<HudResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+                var queued = dispatcher.TryEnqueue(async () =>
+                {
+                    try { done.SetResult(await inner.ExecuteAsync(command)); }
+                    catch (Exception e) { done.SetResult(new HudResult(false, e.Message)); }
+                });
+                if (!queued) done.SetResult(new HudResult(false, "The client is closing."));
+                return done.Task;
+            }
+        }
+
         /// <summary>The pilot clicked a notification: the window should come to the front.</summary>
         public event Action? BringToFront;
 
@@ -110,6 +163,7 @@ namespace msfsclient.ViewModels
 
         public void Stop()
         {
+            _hud?.Dispose();
             _notifications.Unregister();
             _session?.Stop();
             _pump.Stop();
@@ -122,6 +176,7 @@ namespace msfsclient.ViewModels
         private void Changed()
         {
             OnPropertyChanged(string.Empty);
+            _hud?.Publish();
             if (_state.Screen != _lastScreen)
             {
                 _lastScreen = _state.Screen;
@@ -158,6 +213,18 @@ namespace msfsclient.ViewModels
             _nowMillis = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             // Reconnect to the simulator every 10 s while it is not running (it may be started after the client).
             if (!_simConnect.IsConnected && _nowMillis - _lastConnectAttemptMillis >= 10_000) ConnectSimulator();
+            // The in-sim display lists the photos while the client shows something else.
+            if (_hud is { ClientCount: > 0 }) _ = _controller.EnsureObservationsAsync();
+            // Lines on the simulator's screen for what just happened (tracking on/off, reception, gates, the start minute).
+            var messages = _simMessages.Next(Status);
+            if (SimMessagesEnabled && _simConnect.IsConnected)
+            {
+                foreach (var m in messages)
+                {
+                    _simConnect.ShowText(m.Text, m.Kind, m.Seconds);
+                    LastSimMessage = m.Text;
+                }
+            }
             // No push on the desktop: look for new announcements every 5 minutes while signed in.
             if (!_state.IsOutside && _nowMillis - _lastAnnouncementCheckMillis >= 5 * 60_000)
             {
@@ -184,7 +251,7 @@ namespace msfsclient.ViewModels
 
         // ---- Tracking ----------------------------------------------------------------------------------------------
 
-        public bool CanStartTracking => !string.IsNullOrWhiteSpace(_state.Person?.SimulatorTrackingId);
+        public bool CanStartTracking => Status.CanStartTracking;
 
         public void StartTracking()
         {
@@ -218,18 +285,7 @@ namespace msfsclient.ViewModels
         }
 
         /// <summary>The flight named in the stop confirmation ("Contest - Task").</summary>
-        public string? FlightLabel
-        {
-            get
-            {
-                var task = _state.Tasks.FirstOrDefault();
-                if (task == null) return null;
-                var c = task.ActiveContestants.FirstOrDefault();
-                var contest = (c?.ContestId is { } id ? _state.Contests.GetValueOrDefault(id)?.Name : null) ?? c?.ContestName;
-                var label = string.Join(" - ", new[] { contest, task.NavigationTask.Name }.Where(s => !string.IsNullOrWhiteSpace(s)));
-                return label.Length == 0 ? null : label;
-            }
-        }
+        public string? FlightLabel => Status.FlightLabel;
 
         public string? TrackedFor => _tracking.StartedAtMillis is { } started ? TimeFormat.TrackedFor(_nowMillis - started) : null;
 
@@ -240,7 +296,7 @@ namespace msfsclient.ViewModels
             ? ClockCheck.Status(offset, ClockReference.Network, _state.NetworkClockUncertaintyMillis)
             : new ClockStatus.Unknown();
 
-        public SimStatus SimStatus => Core.Tracking.SimStatus.Of(_simConnect.IsConnected, _sim.Last?.TimestampMillis, _nowMillis);
+        public SimStatus SimStatus => Status.Sim;
 
         // ---- Top bar ---------------------------------------------------------------------------------------------------
 
@@ -294,91 +350,33 @@ namespace msfsclient.ViewModels
 
         public string PhotosTabLabel => _state.Observations.Counter is { } counter ? $"Photos  {counter}" : "Photos";
 
-        public bool TrainingOn => _state.TrainingMode && GateFeedback.TrainingAvailable(_state.Tasks);
+        /// <summary>The flight in progress as the dock, the HUD and the simulator messages see it; worked out once per change.</summary>
+        public FlightStatus Status
+        {
+            get
+            {
+                if (_status == null || !ReferenceEquals(_statusState, _state) || !ReferenceEquals(_statusTracking, _tracking) || _statusNow != _nowMillis)
+                {
+                    _status = new FlightStatus(_state, _tracking, _simConnect.IsConnected, _sim.Last?.TimestampMillis, _nowMillis);
+                    (_statusState, _statusTracking, _statusNow) = (_state, _tracking, _nowMillis);
+                }
+                return _status;
+            }
+        }
+
+        private FlightStatus? _status;
+        private UiState? _statusState;
+        private TrackingState? _statusTracking;
+        private long _statusNow;
+
+        public bool TrainingOn => Status.TrainingOn;
 
         public bool ShowGateBanner => TrainingOn && _tracking.Running;
 
-        public GateFeedback? Gate => GateFeedback.Latest(_state.ActiveContestants);
-
-        public ReceivingStatus Receiving
-        {
-            get
-            {
-                var active = _state.ActiveContestants;
-                var scoring = ServerStatus.Scoring(active);
-                return ReceivingStatus.Of(_state.Tasks.Count > 0, ServerStatus.LastHeardIso(active), _nowMillis,
-                    scoring is ScoringStatus.Running or ScoringStatus.Finished, ServerStatus.MapDelayMinutes(active));
-            }
-        }
-
-        public ScoringStatus Scoring => ServerStatus.Scoring(_state.ActiveContestants);
-
-        public long? WindowClosedMinutes => WindowClosed.MinutesAgo(
-            _tracking.Running,
-            _state.ActiveContestants.Select(c => IsoTime.EpochMillisOrNull(c.FinishedByTime)).Where(e => e != null).Select(e => e!.Value).ToList(),
-            _state.LastWindowEndMillis,
-            _state.Upcoming.Select(f => IsoTime.EpochMillisOrNull(f.Flight?.TrackerStartTime)).Where(e => e != null).Select(e => e!.Value).ToList(),
-            _nowMillis);
+        public GateFeedback? Gate => Status.Gate;
 
         /// <summary>The status lines under the play/stop button, in order, with how each is shown.</summary>
-        public IReadOnlyList<StatusLine> DockLines
-        {
-            get
-            {
-                var lines = new List<StatusLine>();
-                if (!_tracking.Running)
-                {
-                    lines.Add(new StatusLine("Tracking is off", StatusTone.Title));
-                    lines.Add(new StatusLine(CanStartTracking ? "Press play to share your position." : "Your profile has no simulator tracking id yet. Open the profile on the website.", StatusTone.Muted));
-                    var sim = SimStatus;
-                    if (sim.IsProblem) lines.Add(new StatusLine(sim.Text, StatusTone.Warning));
-                    return lines;
-                }
-                lines.Add(new StatusLine("Tracking is on", StatusTone.Live));
-                var status = SimStatus;
-                if (_tracking.LastFixMillis == null && status is SimStatus.Receiving) lines.Add(new StatusLine("Waiting for the first position…", StatusTone.Muted));
-                else lines.Add(new StatusLine(status.Text, status.IsProblem ? StatusTone.Error : StatusTone.Muted));
-                if (WindowClosedMinutes is { } closed)
-                    lines.Add(new StatusLine($"The tracking window closed {closed} min ago and tracking is still on. Stop tracking if you have landed.", StatusTone.Warning));
-                if (_tracking.StartedAtMillis is { } started && _nowMillis - started >= TrackingSession.WarnAfterMillis)
-                {
-                    var minutes = (_nowMillis - started) / 60_000;
-                    lines.Add(new StatusLine($"Tracking has been on for {minutes / 60} h {minutes % 60} min. It stops by itself after {TrackingSession.MaxMillis / 3_600_000} h.", StatusTone.Warning));
-                }
-                // On the Timer and Photos pages only trouble is shown, so a pilot there still sees that positions are not getting through.
-                if (_tracking.LastError is { } error) lines.Add(new StatusLine($"Upload problem: {error} (retrying)", StatusTone.Error));
-                var receiving = Receiving;
-                if (DockCompact)
-                {
-                    if (receiving is ReceivingStatus.WaitingForFirstPosition) lines.Add(new StatusLine("Server has not received a position yet", StatusTone.Error));
-                    else if (receiving is ReceivingStatus.Stale stale) lines.Add(new StatusLine($"No position received for {stale.SecondsAgo} s", StatusTone.Error));
-                    return lines;
-                }
-                switch (receiving)
-                {
-                    case ReceivingStatus.WaitingForFirstPosition:
-                        lines.Add(new StatusLine("Server has not received a position yet", StatusTone.Error));
-                        break;
-                    case ReceivingStatus.Receiving r:
-                        lines.Add(new StatusLine($"Server receiving: last position {r.SecondsAgo} s ago", StatusTone.Muted));
-                        if (r.MapDelayMinutes > 0) lines.Add(new StatusLine($"The live map is delayed by {r.MapDelayMinutes} min in this task.", StatusTone.Small));
-                        break;
-                    case ReceivingStatus.ReceivingTimeNotYetKnown:
-                        lines.Add(new StatusLine("Server receiving positions", StatusTone.Muted));
-                        break;
-                    case ReceivingStatus.Stale s:
-                        lines.Add(new StatusLine($"No position received for {s.SecondsAgo} s", StatusTone.Error));
-                        break;
-                }
-                var scoring = Scoring;
-                if (scoring == ScoringStatus.Running) lines.Add(new StatusLine("Scoring is running", StatusTone.Live));
-                else if (scoring == ScoringStatus.Finished) lines.Add(new StatusLine("Scoring has finished", StatusTone.Muted));
-                // Only worth mentioning once positions arrive: the first one starts the calculator.
-                else if (scoring == ScoringStatus.NotStarted && receiving is ReceivingStatus.Receiving) lines.Add(new StatusLine("Scoring is starting…", StatusTone.Muted));
-                lines.Add(new StatusLine($"Queued positions: {_tracking.Backlog}", StatusTone.Small));
-                return lines;
-            }
-        }
+        public IReadOnlyList<StatusLine> DockLines => Status.Lines(DockCompact);
 
         // ---- Home ------------------------------------------------------------------------------------------------------
 
@@ -460,8 +458,4 @@ namespace msfsclient.ViewModels
             if (FreshFix is { } fix) _ = _controller.MarkObservationAsync(photo, fix);
         }
     }
-
-    public enum StatusTone { Title, Live, Muted, Small, Warning, Error }
-
-    public sealed record StatusLine(string Text, StatusTone Tone);
 }

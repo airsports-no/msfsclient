@@ -20,8 +20,27 @@ namespace msfsclient.Views
 
         public string TrackingId => Vm.State.Person?.SimulatorTrackingId is { Length: > 0 } id ? $"Simulator tracking id {id}" : "";
 
+        /// <summary>Where the flight display is, or why it is not running.</summary>
+        public string HudText => Vm.Hud switch
+        {
+            { Running: true } => $"The tracking state, start timer, training feedback and photos at {Vm.HudUrl}: open it on a second screen, or in the MSFS toolbar panel.",
+            { Error: { } error } => $"Not available: {error} Start the client with --hud-port <number> to use another port.",
+            _ => "Not running.",
+        };
+
+        private void SimMessages_Toggled(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+        {
+            if (SimMessages.IsOn != Vm.SimMessagesEnabled) Vm.SimMessagesEnabled = SimMessages.IsOn;
+        }
+
+        private void Hud_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+        {
+            if (Vm.HudUrl.Length > 0) Vm.Platform.OpenUri(Vm.HudUrl);
+        }
+
         protected override void Refresh()
         {
+            if (SimMessages.IsOn != Vm.SimMessagesEnabled) SimMessages.IsOn = Vm.SimMessagesEnabled;
             var saving = Vm.State.ProfileSaving;
             Save.Content = saving ? "Saving…" : "Save";
             Save.IsEnabled = !saving && !string.IsNullOrWhiteSpace(First.Text) && !string.IsNullOrWhiteSpace(Last.Text);
