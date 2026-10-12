@@ -53,6 +53,8 @@ namespace msfsclient
         protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
         {
             var config = new AppConfigService();
+            // Pages, flight orders and shared links on the same server as the API (a local one with --base-url).
+            Urls.SiteBase = config.WebBaseUrl;
             var preview = PreviewMode.Requested();
             if (preview == null) StartCrashReporting(config);
 

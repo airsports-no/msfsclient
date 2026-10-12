@@ -69,7 +69,7 @@ namespace msfsclient.Views
             }
             if (!Uri.TryCreate(uri, UriKind.Absolute, out var parsed)) return;
             var host = parsed.Host.ToLowerInvariant();
-            if (host == Urls.AppHost || host == "airsports.no" || host.EndsWith(".airsports.no", StringComparison.Ordinal) || parsed.Scheme == "about") return;
+            if (host == Urls.AppHost || host == new Uri(Urls.SiteBase).Host || host == "airsports.no" || host.EndsWith(".airsports.no", StringComparison.Ordinal) || parsed.Scheme == "about") return;
             // Anywhere else leaves the app, in the browser.
             args.Cancel = true;
             Vm.Platform.OpenUri(uri);

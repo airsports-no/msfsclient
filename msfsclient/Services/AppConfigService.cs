@@ -45,6 +45,12 @@ namespace msfsclient.Services
 
             for (int i = 0; i + 1 < args.Length; i++)
             {
+                // Positions to a local Traccar (its OsmAnd port, e.g. http://localhost:5055/) when testing against a local server.
+                if (args[i].Equals("--traccar-url", StringComparison.OrdinalIgnoreCase))
+                {
+                    TraccarBaseUrl = args[i + 1].TrimEnd('/') + "/";
+                    IsTestMode = true;
+                }
                 if (args[i].Equals("--hud-port", StringComparison.OrdinalIgnoreCase) && int.TryParse(args[i + 1], out var port) && port is > 0 and < 65536)
                 {
                     HudPort = port;

@@ -56,7 +56,10 @@ public static partial class Urls
     }
 
     /// <summary>A path on the site made into a full address (links that leave the app: share, browser).</summary>
-    public static string SiteUrl(string pathOrUrl) => pathOrUrl.StartsWith("http", StringComparison.Ordinal) ? pathOrUrl : "https://app.airsports.no" + pathOrUrl;
+    public static string SiteUrl(string pathOrUrl) => pathOrUrl.StartsWith("http", StringComparison.Ordinal) ? pathOrUrl : SiteBase + pathOrUrl;
+
+    /// <summary>The website the app's pages and links are on; a local server for testing (<c>--base-url</c>).</summary>
+    public static string SiteBase { get; set; } = "https://" + AppHost;
 
     /// <summary>Percent-encodes everything except RFC 3986 unreserved characters, so a path like <c>/?tab=upcoming</c> survives as one query value.</summary>
     public static string EncodeQueryComponent(string value)
@@ -83,7 +86,7 @@ public static partial class Urls
     }
 
     /// <summary>The address that signs the web view in (token in the Authorization header, never in the URL) and then opens <paramref name="path"/>.</summary>
-    public static string FirebaseLoginUrl(string path) => $"https://{AppHost}/firebase_login/?next={EncodeQueryComponent(WithEmbedFlag(path))}";
+    public static string FirebaseLoginUrl(string path) => $"{SiteBase}/firebase_login/?next={EncodeQueryComponent(WithEmbedFlag(path))}";
 
     /// <summary>Google Maps directions to the venue (same link the website's registration page uses).</summary>
     public static string DirectionsUrl(double latitude, double longitude) =>

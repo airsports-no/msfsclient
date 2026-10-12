@@ -39,8 +39,13 @@ if ($Sdk) {
     $tool = Get-ChildItem $sdkRoot -Recurse -Filter fspackagetool.exe | Select-Object -First 1
     if (-not $tool) { throw "fspackagetool.exe not found under $sdkRoot" }
     Write-Host "Building with $($tool.FullName) (this starts the simulator in the background)..."
-    & $tool.FullName (Join-Path $here "$name.xml") -nopause -outputtoseparateconsole
-    if ($LASTEXITCODE -ne 0) { throw "fspackagetool failed ($LASTEXITCODE)" }
+    # The tool reports progress on stderr ("Attached to EXE - waiting for completion."); with "Stop", Windows PowerShell
+    # would turn that into a terminating error when the output is redirected. Its exit code says whether it worked.
+    $ErrorActionPreference = "Continue"
+    & $tool.FullName (Join-Path $here "$name.xml") -nopause -outputtoseparateconsole 2>&1 | ForEach-Object { "$_" }
+    $exit = $LASTEXITCODE
+    $ErrorActionPreference = "Stop"
+    if ($exit -ne 0) { throw "fspackagetool failed ($exit)" }
     $built = Join-Path $here "Packages\$name\InGamePanels\InGamePanel_Airsports.spb"
     if (-not (Test-Path $built)) { throw "The SDK build did not produce $built" }
     New-Item -ItemType Directory -Force (Split-Path $spb) | Out-Null
