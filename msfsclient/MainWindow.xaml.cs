@@ -41,9 +41,15 @@ namespace msfsclient
             Activated += (_, e) =>
             {
                 // Announcements are fetched again whenever the window comes to the front.
+                Vm.WindowActive = e.WindowActivationState != WindowActivationState.Deactivated;
                 if (e.WindowActivationState != WindowActivationState.Deactivated && !Vm.State.IsOutside) _ = Vm.Controller.RefreshAnnouncementsAsync();
             };
             Vm.ScreenChanged += ShowScreen;
+            Vm.BringToFront += () =>
+            {
+                if (AppWindow.Presenter is Microsoft.UI.Windowing.OverlappedPresenter { State: Microsoft.UI.Windowing.OverlappedPresenterState.Minimized } p) p.Restore();
+                Activate();
+            };
             Vm.PropertyChanged += (_, _) => OfferFinishedFlight();
             ShowScreen(Vm.State.Screen);
         }

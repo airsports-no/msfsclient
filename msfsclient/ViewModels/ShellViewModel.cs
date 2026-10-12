@@ -41,13 +41,16 @@ namespace msfsclient.ViewModels
         private long _nowMillis = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         private long _lastPollMillis;
         private long _lastConnectAttemptMillis;
+        private long _lastAnnouncementCheckMillis = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        private readonly NotificationService _notifications;
         private bool _autoStopHandled;
         private IntPtr _windowHandle;
 
         public ShellViewModel(
             AppController controller, ISimConnectService simConnect, SimPositionSource sim, PositionQueue queue, TraccarUploader uploader,
-            TrackLog trackLog, PlatformServices platform, IAppConfigService config)
+            TrackLog trackLog, PlatformServices platform, IAppConfigService config, NotificationService notifications)
         {
+            _notifications = notifications;
             _controller = controller;
             _simConnect = simConnect;
             _sim = sim;
@@ -62,6 +65,9 @@ namespace msfsclient.ViewModels
 
             controller.StateChanged += s => _dispatcher.TryEnqueue(() => { _state = s; EnsureSession(); Changed(); });
             simConnect.ConnectionStatusChanged += (_, _) => _dispatcher.TryEnqueue(Changed);
+            // An announcement that arrives while the pilot is in another window (MSFS) gets a Windows notification; in front, Home shows it.
+            controller.NewAnnouncement += a => _dispatcher.TryEnqueue(() => { if (!WindowActive) _notifications.ShowAnnouncement(a); });
+            notifications.Activated += () => _dispatcher.TryEnqueue(() => BringToFront?.Invoke());
 
             // SimConnect delivers its messages through a pump on the UI thread (see GEMINI.md).
             _pump = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) };
@@ -85,6 +91,12 @@ namespace msfsclient.ViewModels
         /// <summary>Raised for a stop that the pilot did not ask for (the 12 hour limit).</summary>
         public event Action? AutoStopped;
 
+        /// <summary>The pilot clicked a notification: the window should come to the front.</summary>
+        public event Action? BringToFront;
+
+        /// <summary>The window is in front (set by the window); notifications are only for when it is not.</summary>
+        public bool WindowActive { get; set; } = true;
+
         public void Start(IntPtr windowHandle)
         {
             _windowHandle = windowHandle;
@@ -98,6 +110,7 @@ namespace msfsclient.ViewModels
 
         public void Stop()
         {
+            _notifications.Unregister();
             _session?.Stop();
             _pump.Stop();
             _tick.Stop();
@@ -145,6 +158,12 @@ namespace msfsclient.ViewModels
             _nowMillis = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             // Reconnect to the simulator every 10 s while it is not running (it may be started after the client).
             if (!_simConnect.IsConnected && _nowMillis - _lastConnectAttemptMillis >= 10_000) ConnectSimulator();
+            // No push on the desktop: look for new announcements every 5 minutes while signed in.
+            if (!_state.IsOutside && _nowMillis - _lastAnnouncementCheckMillis >= 5 * 60_000)
+            {
+                _lastAnnouncementCheckMillis = _nowMillis;
+                _ = _controller.RefreshAnnouncementsAsync();
+            }
             // While tracking, poll the server so the pilot sees whether positions arrive: every 10 s, 5 s in training mode.
             var interval = _state.TrainingMode ? 5_000 : 10_000;
             if (_tracking.Running && _state.Screen is Screen.Home or Screen.Timer or Screen.Observations && _nowMillis - _lastPollMillis >= interval)

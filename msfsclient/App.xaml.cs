@@ -77,7 +77,9 @@ namespace msfsclient
 
             MainWindow? window = null;
             var platform = new PlatformServices(() => window?.Handle ?? IntPtr.Zero);
-            Shell = new ShellViewModel(controller, simConnect, sim, queue, uploader, trackLog, platform, config);
+            var notifications = new NotificationService();
+            if (preview == null) notifications.Register();
+            Shell = new ShellViewModel(controller, simConnect, sim, queue, uploader, trackLog, platform, config, notifications);
 
             window = new MainWindow();
             Window = window;

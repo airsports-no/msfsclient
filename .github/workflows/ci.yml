@@ -1,9 +1,14 @@
-name: CI
+name: Build and test
 
 on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   # The logic (API client, tracking, queues, rules) builds and tests anywhere: run it on Linux, where it is cheap.
@@ -14,9 +19,15 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
-      - run: dotnet test msfsclient.Core.Tests/msfsclient.Core.Tests.csproj --configuration Release
+      - run: dotnet test msfsclient.Core.Tests/msfsclient.Core.Tests.csproj --configuration Release --logger "trx;LogFileName=results.trx"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: msfsclient.Core.Tests/TestResults/
 
-  # The WinUI app needs Windows.
+  # The WinUI app needs Windows. The Store package is built here too (unsigned, not uploaded), so a packaging problem
+  # shows up on the pull request instead of on release day.
   windows-build:
     runs-on: windows-latest
     needs: core-tests
@@ -25,10 +36,24 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
-      - run: dotnet build msfsclient/msfsclient.csproj --configuration Release -p:Platform=x64
+      - uses: microsoft/setup-msbuild@v2
+
+      - name: Store package (msixupload)
+        run: >
+          msbuild msfsclient/msfsclient.csproj -restore -nologo -v:minimal
+          -p:Configuration=Release -p:Platform=x64 -p:RuntimeIdentifier=win-x64
+          -p:GenerateAppxPackageOnBuild=true -p:UapAppxPackageBuildMode=StoreUpload -p:AppxBundle=Never
+          -p:AppxPackageSigningEnabled=false -p:AppxAutoIncrementPackageRevision=false
+          -p:AppxPackageDir=${{ github.workspace }}\packages\
+
       - name: Portable release (publish_portable.ps1)
         shell: pwsh
         run: ./publish_portable.ps1
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: msfsclient-store-package
+          path: packages/*.msixupload
       - uses: actions/upload-artifact@v4
         with:
           name: msfsclient-portable-win-x64

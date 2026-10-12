@@ -30,6 +30,8 @@ has the same features and look as the Air Sports mobile app (airsports-mobile, K
     credential store (`VaultUserRepository`), not in a file.
   - `AppConfigService`: base URLs (`--base-url`, `--test-mode`), version and build number, local folder.
   - `PlatformServices`: browser links, share dialog, GPX save dialog, photo picker, connection state.
+  - `NotificationService`: Windows notifications for announcements that arrive while the client runs and its window is
+    not in front (announcements are checked every 5 minutes; the desktop has no push).
   - `PreviewMode`: `--preview [home|timer|photos|flights|preflight|history|profile|debug|training|tour]` runs on sample data
     with a simulated aircraft, for screenshots and checking screens without an account or MSFS.
 - **Local data:** `airsports.db` (SQLite) in the app's local folder: position queue, track log, photo observation queue,
@@ -44,6 +46,13 @@ has the same features and look as the Air Sports mobile app (airsports-mobile, K
 - **Upload:** every position is stored first, then sent in time order to `https://traccar.airsports.no/` (OsmAnd protocol:
   timestamp in seconds, speed in knots, altitude in metres) with backoff 5 s doubling to 5 min. Traccar gets its own
   `HttpClient`: the Firebase token never goes there.
+
+## Build and release
+- `.github/workflows/ci.yml`: Core tests on Linux; on Windows the Store package (unsigned) and the portable release.
+- `.github/workflows/store.yml` (run by hand): tests, sets the package version to `1.0.<build>.0`, builds the Store
+  package and creates a submission for Store ID 9N4MZBKPDS5X with the Microsoft Store CLI (a draft unless "submit" is ticked).
+  Secrets in the `store` environment: `AZURE_AD_TENANT_ID`, `AZURE_AD_CLIENT_ID`, `AZURE_AD_CLIENT_SECRET`, `SELLER_ID`.
+- Store packages need Visual Studio's MSBuild (`msbuild`); `dotnet build` cannot make the .msixupload.
 
 ## Backend
 - API `https://airsports.no/api/v1/`, `Authorization: JWT <Firebase ID token>`, one refresh and retry on 401/403.

@@ -147,7 +147,44 @@ public sealed class AppController
         IReadOnlyList<Announcement> list;
         try { list = await _api.AnnouncementsAsync(); }
         catch (Exception) { return; }
-        Update(s => s with { Announcements = Undismissed(list) });
+        var shown = Undismissed(list);
+        Update(s => s with { Announcements = shown });
+        NotifyNew(shown);
+    }
+
+    /// <summary>Announcements already seen in this run (shown at start or notified), so each one is notified at most once.</summary>
+    private readonly HashSet<int> _knownAnnouncements = [];
+    private bool _announcementsLoaded;
+
+    /// <summary>
+    /// Raised (on any thread) for announcements that arrived while the app runs; the desktop has no push, so the app shows a
+    /// Windows notification instead. The ones there at start are on Home already and never raised.
+    /// </summary>
+    public event Action<Announcement>? NewAnnouncement;
+
+    /// <summary>The next pilot to sign in is not told about what was already there.</summary>
+    private void ForgetAnnouncements()
+    {
+        lock (_knownAnnouncements)
+        {
+            _knownAnnouncements.Clear();
+            _announcementsLoaded = false;
+        }
+    }
+
+    private void NotifyNew(IEnumerable<Announcement> shown)
+    {
+        List<Announcement> fresh;
+        lock (_knownAnnouncements)
+        {
+            fresh = shown.Where(a => _knownAnnouncements.Add(a.Id)).ToList();
+            if (!_announcementsLoaded)
+            {
+                _announcementsLoaded = true;
+                return;
+            }
+        }
+        foreach (var a in fresh) NewAnnouncement?.Invoke(a);
     }
 
     /// <summary>Hides an announcement for good on this PC.</summary>
@@ -232,6 +269,7 @@ public sealed class AppController
             LastWindowEndMillis = MaxOfNotNull(s.LastWindowEndMillis, WindowClosed.LatestWindowEnd(account.Tasks)),
             Announcements = Undismissed(account.Announcements),
         });
+        NotifyNew(Undismissed(account.Announcements));
         var link = _pendingLink;
         if (link != null)
         {
@@ -660,6 +698,7 @@ public sealed class AppController
             await _api.DeleteAccountAsync(email);
             if (_settings != null) _settings.CachedProfileJson = null;
             _auth.SignOut();
+            ForgetAnnouncements();
             Update(_ => new UiState { Screen = Screen.Login, Notice = "Your account has been deleted." });
         }
         catch (ApiException e)
@@ -778,6 +817,7 @@ public sealed class AppController
     {
         if (_settings != null) _settings.CachedProfileJson = null;
         _auth.SignOut();
+        ForgetAnnouncements();
         Update(_ => new UiState { Screen = Screen.Login });
     }
 

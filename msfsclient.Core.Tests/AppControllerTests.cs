@@ -609,6 +609,56 @@ public class CachedStartTest
     }
 }
 
+/// <summary>The desktop has no push: announcements that arrive while the client runs are raised for a Windows notification.</summary>
+public class AnnouncementNotificationTest
+{
+    private string _announcements = """[{"id":1,"contest_name":"Cup","message":"Briefing 08:30"}]""";
+
+    private AirsportsApi Server() => With(new MockHandler(r =>
+        r.Path.Contains("announcements") ? Json(_announcements)
+        : r.Path.Contains("retrieve_profile") ? Json("""{"validated":true,"simulator_tracking_id":"sim1"}""")
+        : r.Path.EndsWith("/contests/") ? Json("""{"results":[],"next":null}""")
+        : r.Path.Contains("my_future_flights") ? Json("[]")
+        : Status(HttpStatusCode.NotFound)));
+
+    [Fact]
+    public async Task OnlyAnnouncementsArrivingAfterStartAreRaisedEachOnce()
+    {
+        var c = new AppController(Server(), new FakeAuth(), new DeviceInfo("msfs", 30));
+        var raised = new List<string>();
+        c.NewAnnouncement += a => raised.Add(a.Message);
+        await c.Start();
+        Assert.Empty(raised); // what is there at start is on Home already
+
+        _announcements = """[{"id":2,"contest_name":"Cup","message":"Start delayed 30 min"},{"id":1,"contest_name":"Cup","message":"Briefing 08:30"}]""";
+        await c.RefreshAnnouncementsAsync();
+        await c.RefreshAnnouncementsAsync();
+        Assert.Equal(["Start delayed 30 min"], raised);
+        Assert.Equal(2, c.State.Announcements.Count);
+    }
+
+    [Fact]
+    public async Task DismissedAnnouncementsAreNotRaisedAndANewPilotIsNotToldAboutOldOnes()
+    {
+        var settings = new AppSettings(AirsportsDatabase.InMemory()) { TourSeen = true };
+        settings.DismissedAnnouncementIds = new HashSet<int> { 3 };
+        var auth = new FakeAuth();
+        var c = new AppController(Server(), auth, new DeviceInfo("msfs", 30), settings: settings);
+        var raised = new List<int>();
+        c.NewAnnouncement += a => raised.Add(a.Id);
+        await c.Start();
+
+        _announcements = """[{"id":3,"message":"Dismissed before"},{"id":1,"message":"Briefing 08:30"}]""";
+        await c.RefreshAnnouncementsAsync();
+        Assert.Empty(raised);
+
+        c.SignOut();
+        _announcements = """[{"id":4,"message":"Old news for the next pilot"}]""";
+        await c.SignInWithPasswordAsync("other@example.com", "secret1");
+        Assert.Empty(raised);
+    }
+}
+
 /// <summary>Port of ObservationControllerTest.</summary>
 public class ObservationControllerTest
 {
