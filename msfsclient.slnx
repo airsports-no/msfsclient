@@ -4,6 +4,12 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
+  <Project Path="msfsclient.Core/msfsclient.Core.csproj">
+    <Platform Project="Any CPU" />
+  </Project>
+  <Project Path="msfsclient.Core.Tests/msfsclient.Core.Tests.csproj">
+    <Platform Project="Any CPU" />
+  </Project>
   <Project Path="msfsclient/msfsclient.csproj">
     <Platform Solution="*|ARM64" Project="ARM64" />
     <Platform Solution="*|x64" Project="x64" />

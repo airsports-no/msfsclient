@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  # The logic (API client, tracking, queues, rules) builds and tests anywhere: run it on Linux, where it is cheap.
+  core-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - run: dotnet test msfsclient.Core.Tests/msfsclient.Core.Tests.csproj --configuration Release
+
+  # The WinUI app needs Windows.
+  windows-build:
+    runs-on: windows-latest
+    needs: core-tests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - run: dotnet build msfsclient/msfsclient.csproj --configuration Release -p:Platform=x64
+      - name: Portable release (publish_portable.ps1)
+        shell: pwsh
+        run: ./publish_portable.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: msfsclient-portable-win-x64
+          path: msfsclient/bin/Release/net8.0-windows10.0.19041.0/win-x64/publish/
