@@ -83,16 +83,41 @@
                                 <TextBlock Text="{x:Bind QuickstartStart, Mode=OneWay}" Style="{StaticResource CondensedValue}" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
                             </StackPanel>
                         </Border>
-                        <TextBlock Text="{x:Bind QuickstartInstructions, Mode=OneWay}" Style="{StaticResource MutedText}"
-                                   Visibility="{x:Bind helpers:Ui.ShowText(QuickstartInstructions), Mode=OneWay}" />
+                        <!-- What happens, step by step: before "Go flying" what it will do, afterwards what to do next. -->
+                        <TextBlock Text="{x:Bind QuickstartStepsHeading, Mode=OneWay}" Style="{StaticResource LabelText}" />
+                        <ItemsControl ItemsSource="{x:Bind QuickstartSteps, Mode=OneWay}" IsTabStop="False">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="local:QuickstartStep">
+                                    <Grid ColumnSpacing="8" Margin="0,0,0,6">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="22" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Border Width="22" Height="22" CornerRadius="11" BorderBrush="{x:Bind Accent}" BorderThickness="2" VerticalAlignment="Top">
+                                            <TextBlock Text="{x:Bind Marker}" FontFamily="{StaticResource BarlowSemiBold}" FontSize="12" Foreground="{x:Bind Accent}"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center" AutomationProperties.AccessibilityView="Raw" />
+                                        </Border>
+                                        <TextBlock Grid.Column="1" Text="{x:Bind Text}" Style="{StaticResource BodyText}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Text="{x:Bind QuickstartError, Mode=OneWay}" Style="{StaticResource ErrorText}"
+                                   Visibility="{x:Bind helpers:Ui.ShowText(QuickstartError), Mode=OneWay}" AutomationProperties.LiveSetting="Assertive" />
                         <TextBlock x:Name="QuickstartResult" Style="{StaticResource NoticeText}" Visibility="Collapsed" AutomationProperties.LiveSetting="Polite" />
                         <helpers:WrapPanel Spacing="4">
-                            <Button Content="Register for it" Style="{StaticResource PrimaryButton}" Click="QuickstartRegister_Click"
+                            <Button Content="{x:Bind GoFlyingLabel, Mode=OneWay}" Style="{StaticResource PrimaryButton}" Click="QuickstartGoFlying_Click"
+                                    IsEnabled="{x:Bind helpers:Ui.Not(Vm.State.QuickstartRegistering), Mode=OneWay}"
                                     Visibility="{x:Bind helpers:Ui.Hide(QuickstartRegistered), Mode=OneWay}" />
+                            <Button Content="Flight order" Style="{StaticResource PrimaryButton}" Click="QuickstartFlightOrder_Click"
+                                    Visibility="{x:Bind QuickstartCanOpenOrder, Mode=OneWay}" />
                             <Button Content="Move my aircraft to the runway" Style="{StaticResource OutlinedButton}" Click="QuickstartGround_Click"
                                     Visibility="{x:Bind QuickstartCanGround, Mode=OneWay}" />
                             <Button Content="Start in the air" Style="{StaticResource OutlinedButton}" Click="QuickstartAir_Click"
                                     Visibility="{x:Bind QuickstartCanAir, Mode=OneWay}" />
+                            <HyperlinkButton Content="Choose speed and aircraft" Style="{StaticResource TextButton}" Click="QuickstartRegister_Click"
+                                    Visibility="{x:Bind helpers:Ui.Hide(QuickstartRegistered), Mode=OneWay}"
+                                    ToolTipService.ToolTip="Register on the website instead, with your own speed, aircraft, club, wind and start time" />
                             <HyperlinkButton Content="Not now" Style="{StaticResource TextButton}" Click="QuickstartDismiss_Click" />
                         </helpers:WrapPanel>
                     </StackPanel>

@@ -70,9 +70,14 @@ has the same features and look as the Air Sports mobile app (airsports-mobile, K
   the profile into each Community folder it finds (`CommunityFolders`, `PanelInstaller` in Core).
 
 - **Practice flight (MSFS quickstart):** `GET userprofile/msfs_quickstart/` (backend `SimulatorQuickstart`, admin-edited). Home
-  offers it to pilots without a flight (`UiState.QuickstartOffer`), opens its registration page, and once registered can move
-  the aircraft to the runway or into the air before the starting point (`ISimConnectService.MoveAircraft`, SimConnect initial
-  position; refused while tracking). `--preview quickstart` / `quickstart-registered` show it with sample data.
+  offers it to pilots without a flight (`UiState.QuickstartOffer`) and lists, step by step, what happens. "Go flying"
+  (`AppController.RegisterQuickstartAsync`, `POST userprofile/msfs_quickstart_register/`) registers in one press with the
+  server's defaults (70 kt, aircraft "MSFS", club "MSFS pilots", no wind, adaptive start open now) and turns training mode on;
+  an older server (404/405) gets the registration page instead ("Choose speed and aircraft" opens it too). The client then
+  polls every 5 s (`PollFlightOrderAsync`, up to 10 minutes) until `registered_flight.flight_order_path` appears and opens it
+  once in the browser (`FlightOrderReady`). Once registered it can move the aircraft to the runway or into the air before the
+  starting point (`ISimConnectService.MoveAircraft`, SimConnect initial position; refused while tracking).
+  `--preview quickstart` / `quickstart-registered` show it with sample data (the preview flight order "appears" 8 s after Go flying).
 
 ## Build and release
 - `.github/workflows/ci.yml`: Core tests on Linux; on Windows the Store package (unsigned) and the portable release.

@@ -51,6 +51,8 @@ namespace msfsclient.Services
 
         public sealed class Server : HttpMessageHandler
         {
+            private DateTimeOffset? _registeredAt;
+
             protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             {
                 var now = DateTimeOffset.UtcNow;
@@ -67,13 +69,21 @@ namespace msfsclient.Services
                     json = """{"email":"pilot@example.com","validated":true,"first_name":"Pia","last_name":"Pilot","biography":"Flying since 2009.","simulator_tracking_id":"preview"}""";
                 else if (path.Contains("msfs_quickstart"))
                 {
-                    var registered = Requested() == "quickstart-registered" ? $$"""{"id":7,"takeoff_time":"{{later}}","tracker_start_time":"{{started}}","finished_by_time":"{{laterEnd}}"}""" : "null";
+                    // "Go flying" registers at once; the flight order is "made" 8 s later.
+                    if (path.Contains("msfs_quickstart_register")) { _registeredAt ??= now; status = HttpStatusCode.Created; }
+                    var order = _registeredAt is { } at && now - at > TimeSpan.FromSeconds(8) ? "\"/display/maplink/preview/\"" : "null";
+                    var registered = Requested() == "quickstart-registered"
+                        ? $$"""{"id":7,"takeoff_time":"{{later}}","tracker_start_time":"{{started}}","finished_by_time":"{{laterEnd}}","adaptive_start":true,"air_speed":70.0,"flight_order_path":"/display/maplink/preview/"}"""
+                        : _registeredAt != null
+                            ? $$"""{"id":8,"takeoff_time":"{{Iso(now)}}","tracker_start_time":"{{Iso(now)}}","finished_by_time":"{{Iso(now.AddHours(2))}}","adaptive_start":true,"air_speed":70.0,"flight_order_path":{{order}}}"""
+                            : "null";
                     json = $$"""
                         {"id":1,"title":"Practice around Kjeller","description":"A short practice route near Oslo to learn how tracking, the start and the gates work. Fly it whenever you like.",
                          "contest_id":20,"contest_name":"MSFS practice","navigation_task_id":200,"navigation_task_name":"Practice","start_location":"Kjeller (ENKJ), runway 30",
                          "start_instructions":"Take off, climb to 1500 ft and fly to the starting point east of the field.",
                          "ground_start":{"latitude":59.9693,"longitude":11.0361,"heading":300.0},"air_start":{"latitude":59.97,"longitude":11.13,"altitude_ft":2500,"heading":90.0},
-                         "registration_path":"/schedule-flight?contestId=20&navigationTaskId=200","registered_flight":{{registered}}}
+                         "registration_path":"/schedule-flight?contestId=20&navigationTaskId=200","air_speed":70.0,"aircraft_registration":"MSFS","club_name":"MSFS pilots",
+                         "registered_flight":{{registered}}}
                         """;
                 }
                 else if (NoFlights && (path.Contains("get_current_sim_navigation_task") || path.Contains("my_future_flights")))

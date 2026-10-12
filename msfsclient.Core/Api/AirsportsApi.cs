@@ -92,6 +92,18 @@ public sealed class AirsportsApi(HttpClient client, IAuthTokenProvider tokens, s
         return await BodyAsync<Quickstart>(await CheckedAsync(response));
     }
 
+    /// <summary>
+    /// One-press registration for the practice flight with the server's defaults; answers the quickstart with the flight. Null
+    /// when the server has no such registration (404/405: an older server); <see cref="ApiException"/> with its reason when it refuses.
+    /// </summary>
+    public async Task<Quickstart?> RegisterQuickstartAsync()
+    {
+        var response = await AuthorizedRawAsync(() => new HttpRequestMessage(HttpMethod.Post, _baseUrl + "userprofile/msfs_quickstart_register/") { Content = Json(new { }) });
+        if (response.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.MethodNotAllowed) return null;
+        await ExplainedAsync(response);
+        return await BodyAsync<Quickstart>(response);
+    }
+
     /// <summary>The organizers' announcements that concern this pilot and are still showing (newest first).</summary>
     public async Task<IReadOnlyList<Announcement>> AnnouncementsAsync() =>
         await BodyAsync<List<Announcement>>(await AuthorizedAsync(() => new HttpRequestMessage(HttpMethod.Get, _baseUrl + "userprofile/announcements/")));

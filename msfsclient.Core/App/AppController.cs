@@ -58,6 +58,16 @@ public sealed record UiState
     public Quickstart? Quickstart { get; init; }
     /// <summary>Practice flights the pilot said "Not now" to.</summary>
     public IReadOnlySet<int> DismissedQuickstarts { get; init; } = new HashSet<int>();
+    /// <summary>"Go flying" was pressed and the registration is on its way.</summary>
+    public bool QuickstartRegistering { get; init; }
+    /// <summary>Why the one-press registration failed (the server's reason), shown on the practice flight card.</summary>
+    public string? QuickstartError { get; init; }
+    /// <summary>The flight (id) whose flight order the app opens as soon as the server has made it; null when not waiting.</summary>
+    public int? AwaitingFlightOrderFor { get; init; }
+    /// <summary>When the wait began (epoch millis), to give up after <see cref="AppController.FlightOrderWaitMillis"/>.</summary>
+    public long? AwaitingFlightOrderSinceMillis { get; init; }
+    /// <summary>The flight order took too long to appear; the app stopped waiting (it is e-mailed too).</summary>
+    public bool FlightOrderSlow { get; init; }
     /// <summary>Where Close on the Map screen returns to.</summary>
     public Screen MapReturn { get; init; } = Screen.Home;
     /// <summary>Path (on app.airsports.no) that the Map screen opens.</summary>
@@ -220,6 +230,85 @@ public sealed class AppController
     public void OpenQuickstartRegistration()
     {
         if (State.Quickstart is { RegistrationPath.Length: > 0 } q) OpenPath(q.RegistrationPath);
+    }
+
+    /// <summary>How long the app waits for a new flight order before it gives up opening it by itself.</summary>
+    public const long FlightOrderWaitMillis = 10 * 60_000;
+
+    /// <summary>
+    /// Raised (on any thread) once with the full URL of the flight order of a flight just registered for, as soon as the server
+    /// has made it; the app opens it in the browser.
+    /// </summary>
+    public event Action<string>? FlightOrderReady;
+
+    /// <summary>
+    /// "Go flying": registers the pilot for the practice flight in one go with the server's defaults (speed, aircraft and club,
+    /// no wind, an adaptive start open now), turns training mode on and waits for the flight order to open it. A server
+    /// without one-press registration gets the registration page instead.
+    /// </summary>
+    public async Task RegisterQuickstartAsync()
+    {
+        if (State.Quickstart == null || State.QuickstartRegistering) return;
+        Update(s => s with { QuickstartRegistering = true, QuickstartError = null });
+        Quickstart? registered;
+        try
+        {
+            registered = await _api.RegisterQuickstartAsync();
+        }
+        catch (Exception e)
+        {
+            Update(s => s with { QuickstartRegistering = false, QuickstartError = $"Could not register: {ErrorText(e)}" });
+            return;
+        }
+        if (registered?.RegisteredFlight == null)
+        {
+            Update(s => s with { QuickstartRegistering = false });
+            OpenQuickstartRegistration();
+            return;
+        }
+        Update(s => s with { Quickstart = registered, QuickstartRegistering = false, TrainingMode = true, HomeNotice = null });
+        AwaitFlightOrder(registered.RegisteredFlight);
+        // The flight is open now (adaptive start): show it on the flight strip straight away.
+        await RefreshTasksAsync();
+        await LoadHomeExtrasAsync(State.Tasks);
+    }
+
+    private void AwaitFlightOrder(QuickstartFlight flight)
+    {
+        Update(s => s with { AwaitingFlightOrderFor = flight.Id, AwaitingFlightOrderSinceMillis = _now(), FlightOrderSlow = false });
+        FlightOrderFound(flight);
+    }
+
+    /// <summary>Called every few seconds while <see cref="UiState.AwaitingFlightOrderFor"/> is set: looks for the flight order.</summary>
+    public async Task PollFlightOrderAsync()
+    {
+        var s0 = State;
+        if (s0.AwaitingFlightOrderFor == null) return;
+        if (_now() - (s0.AwaitingFlightOrderSinceMillis ?? _now()) > FlightOrderWaitMillis)
+        {
+            Update(s => s with { AwaitingFlightOrderFor = null, FlightOrderSlow = true });
+            return;
+        }
+        Quickstart? q;
+        try { q = await _api.QuickstartAsync(); }
+        catch (Exception) { return; }
+        if (q == null) return;
+        Update(s => s with { Quickstart = q });
+        if (q.RegisteredFlight is { } flight) FlightOrderFound(flight);
+    }
+
+    /// <summary>Opens the flight order once, when it is there for the flight being waited for.</summary>
+    private void FlightOrderFound(QuickstartFlight flight)
+    {
+        if (string.IsNullOrEmpty(flight.FlightOrderPath)) return;
+        var open = false;
+        Update(s =>
+        {
+            if (s.AwaitingFlightOrderFor != flight.Id) return s;
+            open = true;
+            return s with { AwaitingFlightOrderFor = null };
+        });
+        if (open) FlightOrderReady?.Invoke(Urls.SiteUrl(flight.FlightOrderPath));
     }
 
     private static long? MaxOfNotNull(long? a, long? b) => a == null ? b : b == null ? a : Math.Max(a.Value, b.Value);
@@ -396,6 +485,9 @@ public sealed class AppController
         Update(s => s.Screen == Screen.Home && !IsShownOnHome(s, registered.NavigationTaskId)
             ? s with { HomeNotice = "Flight registered. It is listed under your next flights." }
             : s);
+        // Registered for the practice flight on its page: open its flight order once it is made, as "Go flying" does.
+        if (State.Quickstart is { RegisteredFlight: { } flight } q && registered.NavigationTaskId == q.NavigationTaskId)
+            AwaitFlightOrder(flight);
     }
 
     /// <summary>Home's flight strip shows the flights open now, or else the soonest upcoming one. Unknown task: not known to be shown.</summary>

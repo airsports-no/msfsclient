@@ -99,4 +99,120 @@ public class QuickstartTest
         _quickstart = Offered.Replace("\"id\":3", "\"id\":4");
         Assert.NotNull((await Started(settings)).State.QuickstartOffer);
     }
+
+    // ---- One-press registration ("Go flying") and the flight order --------------------------------------------------
+
+    private const string RegisteredJson = "\"registered_flight\":{\"id\":55,\"takeoff_time\":\"2099-01-01T10:00:00Z\",\"adaptive_start\":true,\"air_speed\":70.0,\"flight_order_path\":ORDER}";
+
+    private static string Registered(string? orderPath) =>
+        Offered.Replace("\"registered_flight\":null", RegisteredJson.Replace("ORDER", orderPath == null ? "null" : $"\"{orderPath}\""));
+
+    private int _registerCalls;
+    private HttpStatusCode _registerStatus = HttpStatusCode.Created;
+    private string _registerBody = "";
+    private long _now = Ms("2026-10-12T12:00:00Z");
+
+    private AirsportsApi ServerWithRegistration() => With(new MockHandler(r =>
+    {
+        if (r.Url.AbsolutePath.EndsWith("msfs_quickstart_register/"))
+        {
+            _registerCalls++;
+            if (_registerStatus != HttpStatusCode.Created) return Json(_registerBody, _registerStatus);
+            _quickstart = Registered(null);
+            return Json(_quickstart, HttpStatusCode.Created);
+        }
+        return r.Url.AbsolutePath.Contains("msfs_quickstart") ? (_quickstart == null ? Status(HttpStatusCode.NotFound) : Json(_quickstart))
+            : r.Url.AbsolutePath.Contains("retrieve_profile") ? Json("""{"validated":true,"simulator_tracking_id":"sim1"}""")
+            : r.Url.AbsolutePath.Contains("get_current_sim_navigation_task") ? Status(HttpStatusCode.NotFound)
+            : r.Url.AbsolutePath.Contains("my_future_flights") ? Json(_future)
+            : r.Url.AbsolutePath.EndsWith("/contests/") ? Json("""{"results":[],"next":null}""")
+            : Json("[]");
+    }));
+
+    private async Task<(AppController, List<string>)> StartedWithRegistration()
+    {
+        var c = new AppController(ServerWithRegistration(), new FakeAuth(), new DeviceInfo("msfs", 30),
+            settings: new AppSettings(AirsportsDatabase.InMemory()) { TourSeen = true }, now: () => _now);
+        var opened = new List<string>();
+        c.FlightOrderReady += opened.Add;
+        await c.Start();
+        return (c, opened);
+    }
+
+    [Fact]
+    public async Task GoFlyingRegistersInOnePressAndTurnsTrainingOn()
+    {
+        var (c, opened) = await StartedWithRegistration();
+        await c.RegisterQuickstartAsync();
+        Assert.Equal(1, _registerCalls);
+        Assert.Equal(55, c.State.Quickstart?.RegisteredFlight?.Id);
+        Assert.Equal(55, c.State.QuickstartOffer?.RegisteredFlight?.Id);
+        Assert.True(c.State.TrainingMode);
+        Assert.False(c.State.QuickstartRegistering);
+        Assert.Equal(Screen.Home, c.State.Screen);
+        Assert.Equal(55, c.State.AwaitingFlightOrderFor);
+        Assert.Empty(opened); // the flight order is still being made
+    }
+
+    [Fact]
+    public async Task TheFlightOrderOpensOnceWhenItIsReady()
+    {
+        var (c, opened) = await StartedWithRegistration();
+        await c.RegisterQuickstartAsync();
+        await c.PollFlightOrderAsync();
+        Assert.Empty(opened);
+
+        _quickstart = Registered("/display/maplink/abc/");
+        await c.PollFlightOrderAsync();
+        Assert.Equal(["https://app.airsports.no/display/maplink/abc/"], opened);
+        Assert.Null(c.State.AwaitingFlightOrderFor);
+        await c.PollFlightOrderAsync();
+        Assert.Single(opened);
+    }
+
+    [Fact]
+    public async Task AFlightOrderThatTakesTooLongIsNotWaitedForForever()
+    {
+        var (c, opened) = await StartedWithRegistration();
+        await c.RegisterQuickstartAsync();
+        _now += AppController.FlightOrderWaitMillis + 1;
+        await c.PollFlightOrderAsync();
+        Assert.Null(c.State.AwaitingFlightOrderFor);
+        Assert.True(c.State.FlightOrderSlow);
+        _quickstart = Registered("/display/maplink/abc/");
+        await c.PollFlightOrderAsync();
+        Assert.Empty(opened);
+    }
+
+    [Fact]
+    public async Task TheServersReasonIsShownWhenItRefuses()
+    {
+        _registerStatus = HttpStatusCode.BadRequest;
+        _registerBody = """["No practice flight is offered right now"]""";
+        var (c, _) = await StartedWithRegistration();
+        await c.RegisterQuickstartAsync();
+        Assert.Equal("Could not register: No practice flight is offered right now", c.State.QuickstartError);
+        Assert.False(c.State.QuickstartRegistering);
+        Assert.Null(c.State.AwaitingFlightOrderFor);
+        Assert.False(c.State.TrainingMode);
+    }
+
+    [Fact]
+    public async Task AnOlderServerGetsTheRegistrationPageInstead()
+    {
+        _registerStatus = HttpStatusCode.NotFound;
+        var (c, _) = await StartedWithRegistration();
+        await c.RegisterQuickstartAsync();
+        Assert.Equal(Screen.Map, c.State.Screen);
+        Assert.Equal("/schedule-flight?contestId=10&navigationTaskId=100", c.State.MapPath);
+    }
+
+    [Fact]
+    public async Task RegisteringOnThePageAlsoOpensTheFlightOrder()
+    {
+        var (c, opened) = await StartedWithRegistration();
+        _quickstart = Registered("/display/maplink/xyz/");
+        await c.OnAppEventAsync(new AppEvent.FlightRegistered(10, 100));
+        Assert.Equal(["https://app.airsports.no/display/maplink/xyz/"], opened);
+    }
 }

@@ -308,6 +308,10 @@ public sealed record Quickstart
     public QuickstartPosition? AirStart { get; init; }
     /// <summary>The website's registration page for the task (it reports the registration back to the client).</summary>
     public string RegistrationPath { get; init; } = "";
+    /// <summary>What the one-press registration signs the pilot up with (null from a server without it).</summary>
+    public double? AirSpeed { get; init; }
+    public string? AircraftRegistration { get; init; }
+    public string? ClubName { get; init; }
     public QuickstartFlight? RegisteredFlight { get; init; }
 }
 
@@ -327,4 +331,8 @@ public sealed record QuickstartFlight
     public string? TakeoffTime { get; init; }
     public string? TrackerStartTime { get; init; }
     public string? FinishedByTime { get; init; }
+    public bool? AdaptiveStart { get; init; }
+    public double? AirSpeed { get; init; }
+    /// <summary>The flight order's download page, null until the server has made it (in the background, after registering).</summary>
+    public string? FlightOrderPath { get; init; }
 }

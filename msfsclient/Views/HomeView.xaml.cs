@@ -47,6 +47,7 @@ namespace msfsclient.Views
                 Announcements = state.Announcements.Select(AnnouncementItem.From).ToList();
             }
             if (TrainingSwitch.IsOn != state.TrainingMode) TrainingSwitch.IsOn = state.TrainingMode;
+            RefreshQuickstartSteps();
         }
 
         // ---- Practice flight (quickstart) ---------------------------------------------------------------------------
@@ -57,9 +58,7 @@ namespace msfsclient.Views
 
         public bool QuickstartRegistered => Offer?.RegisteredFlight != null;
 
-        public string QuickstartHeading => QuickstartRegistered
-            ? $"Your practice flight{(Offer?.RegisteredFlight?.TakeoffTime is { } t ? $", take-off {Core.Ui.TimeFormat.FormatLocal(t)}" : "")}"
-            : "New here? Try a practice flight";
+        public string QuickstartHeading => QuickstartRegistered ? "You are registered for your practice flight" : "New here? Try a practice flight";
 
         public string QuickstartTitle => Offer?.Title ?? "";
 
@@ -67,28 +66,97 @@ namespace msfsclient.Views
 
         public string QuickstartStart => Offer?.StartLocation ?? "";
 
-        /// <summary>The organizer's instructions, and once registered how to get there.</summary>
-        public string QuickstartInstructions
+        public string QuickstartStepsHeading => QuickstartRegistered ? "What happens now" : "When you press Go flying";
+
+        public string GoFlyingLabel => Vm.State.QuickstartRegistering ? "Registering…" : "Go flying";
+
+        public string? QuickstartError => Vm.State.QuickstartError;
+
+        private string? FlightOrderPath => Offer?.RegisteredFlight?.FlightOrderPath;
+
+        public bool QuickstartCanOpenOrder => !string.IsNullOrEmpty(FlightOrderPath);
+
+        private string _stepsKey = "";
+
+        /// <summary>The steps, rebuilt only when their text changed (Refresh runs every second).</summary>
+        public IReadOnlyList<QuickstartStep> QuickstartSteps { get; private set; } = [];
+
+        private void RefreshQuickstartSteps()
         {
-            get
+            var steps = Offer is { } q ? BuildSteps(q) : [];
+            var key = string.Join("\n", steps.Select(s => s.Marker + s.Text));
+            if (key == _stepsKey) return;
+            _stepsKey = key;
+            QuickstartSteps = steps;
+        }
+
+        /// <summary>
+        /// Tells the pilot what happens: before registering, what "Go flying" does for them (the defaults, the flight order
+        /// opening by itself, where to start, the adaptive start, training mode); afterwards where they are and what is next.
+        /// </summary>
+        private List<QuickstartStep> BuildSteps(Quickstart q)
+        {
+            var next = Ui.Brush("IndigoBrush");
+            var done = Ui.Brush("LiveGreenBrush");
+            var muted = Ui.Brush("MutedTextBrush");
+            var where = string.IsNullOrWhiteSpace(q.StartLocation) ? "the start" : q.StartLocation;
+            var organizer = string.IsNullOrWhiteSpace(q.StartInstructions) ? "" : " " + q.StartInstructions.Trim();
+            var steps = new List<QuickstartStep>();
+            if (q.RegisteredFlight is not { } flight)
             {
-                if (Offer is not { } q) return "";
-                var parts = new List<string>();
-                if (!string.IsNullOrWhiteSpace(q.StartInstructions)) parts.Add(q.StartInstructions);
-                if (q.RegisteredFlight == null)
-                    parts.Add("Register, then start MSFS at this place: pick it in the world map, or let the client move your aircraft there.");
-                else if (!Vm.SimConnected)
-                    parts.Add("Start MSFS and load a flight at this place, or load any flight and let the client move your aircraft there.");
-                else
-                    parts.Add("Pick the start below, then press play when your tracking window opens.");
-                return string.Join("\n", parts);
+                var speed = q.AirSpeed is { } kt ? $"{kt:0} knots" : "a typical cruise speed";
+                var team = q.AircraftRegistration is { Length: > 0 } reg && q.ClubName is { Length: > 0 } club
+                    ? $", as aircraft {reg} of the club {club}"
+                    : "";
+                steps.Add(new("1", $"The client registers you for this flight at {speed} with no wind{team}. Nothing to fill in; " +
+                    "\"Choose speed and aircraft\" lets you set your own instead.", next));
+                steps.Add(new("2", "Your flight order, with the map and the time to be at each gate, opens in your browser by itself " +
+                    "after a minute or so. It is e-mailed to you as well. Keep it at hand while you fly.", next));
+                steps.Add(new("3", $"In MSFS, start a flight at {where}, or load any flight and let the client move your aircraft there.{organizer}", next));
+                steps.Add(new("4", "Press play at the bottom to start tracking, then take off and fly the route. The start is adaptive: " +
+                    "your time starts when you cross the starting line, whenever that is in the next two hours.", next));
+                steps.Add(new("5", "Training mode is switched on: after each gate the bar at the bottom tells you how many seconds early " +
+                    "or late you were, so you can correct as you fly.", next));
+                return steps;
             }
+            var how = flight.AdaptiveStart == true ? " with an adaptive start" : "";
+            var at = flight.AirSpeed is { } s ? $" at {s:0} knots" : "";
+            steps.Add(new("✓", $"You are registered{at}{how}.", done));
+            if (QuickstartCanOpenOrder)
+                steps.Add(new("✓", "Your flight order is ready and was opened in your browser. \"Flight order\" opens it again; it is in your e-mail too.", done));
+            else if (Vm.State.AwaitingFlightOrderFor == flight.Id)
+                steps.Add(new("…", "Your flight order is being made. It opens in your browser by itself as soon as it is ready, usually within a minute.", next));
+            else if (Vm.State.FlightOrderSlow)
+                steps.Add(new("!", "The flight order is taking longer than usual. It is e-mailed to you when it is ready, and a Flight order button appears here.", muted));
+            else
+                steps.Add(new("2", "Your flight order is e-mailed to you when it is ready, and a Flight order button appears here.", next));
+            var tracking = Vm.Tracking.Running;
+            if (!tracking)
+            {
+                steps.Add(Vm.SimConnected
+                    ? new("3", $"Load a flight at {where}, or use the buttons below to put your aircraft on the runway or in the air before the starting point.{organizer}", next)
+                    : new("3", $"Start MSFS and load a flight at {where}, or load any flight and let the client move your aircraft there.{organizer}", next));
+            }
+            steps.Add(tracking
+                ? new("✓", "Tracking is on. Fly the route: your time starts when you cross the starting line.", done)
+                : new("4", "Press play at the bottom to start tracking before you take off. Your time starts when you cross the starting line.", next));
+            if (Vm.State.TrainingMode)
+                steps.Add(new("5", "Training mode is on: after each gate the bar at the bottom shows how many seconds early or late you were.", next));
+            return steps;
         }
 
         /// <summary>Moving the aircraft is offered once registered and while the simulator is connected (and not while tracking).</summary>
         public bool QuickstartCanGround => QuickstartRegistered && Vm.SimConnected && !Vm.Tracking.Running && Offer?.GroundStart != null;
 
         public bool QuickstartCanAir => QuickstartRegistered && Vm.SimConnected && !Vm.Tracking.Running && Offer?.AirStart != null;
+
+        private void QuickstartGoFlying_Click(object sender, RoutedEventArgs e) => _ = Vm.Controller.RegisterQuickstartAsync();
+
+        /// <summary>Flight orders are a PDF download: the browser handles that better than the embedded page.</summary>
+        private void QuickstartFlightOrder_Click(object sender, RoutedEventArgs e)
+        {
+            if (FlightOrderPath is { } path) Vm.Platform.OpenUri(Urls.SiteUrl(path));
+        }
 
         private void QuickstartRegister_Click(object sender, RoutedEventArgs e) => Vm.Controller.OpenQuickstartRegistration();
 
@@ -103,7 +171,7 @@ namespace msfsclient.Views
             {
                 return;
             }
-            ShowQuickstartResult(Vm.MoveToQuickstart(inTheAir: false) ?? "Your aircraft is on the runway. Press play before your tracking window opens.");
+            ShowQuickstartResult(Vm.MoveToQuickstart(inTheAir: false) ?? "Your aircraft is on the runway. Press play to start tracking, then take off.");
         }
 
         private async void QuickstartAir_Click(object sender, RoutedEventArgs e)

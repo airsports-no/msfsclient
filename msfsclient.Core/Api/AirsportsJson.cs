@@ -26,9 +26,11 @@ public static class AirsportsJson
         try
         {
             using var doc = JsonDocument.Parse(body);
-            return doc.RootElement.ValueKind == JsonValueKind.Object && doc.RootElement.TryGetProperty("detail", out var d) && d.ValueKind == JsonValueKind.String
-                ? d.GetString()
-                : null;
+            var root = doc.RootElement;
+            if (root.ValueKind == JsonValueKind.Object && root.TryGetProperty("detail", out var d) && d.ValueKind == JsonValueKind.String) return d.GetString();
+            // A DRF ValidationError("...") answers ["..."].
+            if (root.ValueKind == JsonValueKind.Array && root.GetArrayLength() > 0 && root[0].ValueKind == JsonValueKind.String) return root[0].GetString();
+            return null;
         }
         catch (JsonException)
         {

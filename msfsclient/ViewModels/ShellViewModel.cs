@@ -41,6 +41,7 @@ namespace msfsclient.ViewModels
         private TrackingState _tracking = new();
         private long _nowMillis = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         private long _lastPollMillis;
+        private long _lastFlightOrderPollMillis;
         private long _lastConnectAttemptMillis;
         private long _lastAnnouncementCheckMillis = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         private readonly NotificationService _notifications;
@@ -71,6 +72,13 @@ namespace msfsclient.ViewModels
             // An announcement that arrives while the pilot is in another window (MSFS) gets a Windows notification; in front, Home shows it.
             controller.NewAnnouncement += a => _dispatcher.TryEnqueue(() => { if (!WindowActive) _notifications.ShowAnnouncement(a); });
             notifications.Activated += () => _dispatcher.TryEnqueue(() => BringToFront?.Invoke());
+            // The practice flight's flight order opens in the browser (a PDF download) as soon as the server has made it.
+            controller.FlightOrderReady += url => _dispatcher.TryEnqueue(() =>
+            {
+                Platform.OpenUri(url);
+                if (SimMessagesEnabled && _simConnect.IsConnected)
+                    _simConnect.ShowText("Air Sports: your flight order is open in your browser", Core.Hud.SimMessageKind.Info, 10);
+            });
 
             // SimConnect delivers its messages through a pump on the UI thread (see GEMINI.md).
             _pump = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) };
@@ -256,6 +264,12 @@ namespace msfsclient.ViewModels
             {
                 _lastPollMillis = _nowMillis;
                 _ = _controller.RefreshTasksAsync();
+            }
+            // Just registered for the practice flight: look for its flight order every 5 s until it is made.
+            if (_state.AwaitingFlightOrderFor != null && _nowMillis - _lastFlightOrderPollMillis >= 5_000)
+            {
+                _lastFlightOrderPollMillis = _nowMillis;
+                _ = _controller.PollFlightOrderAsync();
             }
             Changed();
         }

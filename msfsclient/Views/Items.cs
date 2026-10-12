@@ -22,6 +22,9 @@ namespace msfsclient.Views
         }
     }
 
+    /// <summary>One step of the practice flight: a number (or a tick when done, dots while it is under way) and what happens.</summary>
+    public sealed record QuickstartStep(string Marker, string Text, Microsoft.UI.Xaml.Media.Brush Accent);
+
     /// <summary>
     /// An air-traffic-control style flight progress strip: a colour tab at the left (green while the window is open), the
     /// contest and task in condensed type, the facts in boxed cells, then the links.
