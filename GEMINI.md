@@ -74,6 +74,11 @@ has the same features and look as the Air Sports mobile app (airsports-mobile, K
 - `.github/workflows/store.yml` (run by hand): tests, sets the package version to `1.0.<build>.0`, builds the Store
   package and creates a submission for Store ID 9N4MZBKPDS5X with the Microsoft Store CLI (a draft unless "submit" is ticked).
   Secrets in the `store` environment: `AZURE_AD_TENANT_ID`, `AZURE_AD_CLIENT_ID`, `AZURE_AD_CLIENT_SECRET`, `SELLER_ID`.
+- `.github/workflows/flightsim.yml` (run by hand): the flightsim.to zip (`release/make-flightsim-zip.ps1`: portable client with
+  the panel bundled, the panel for the Community folder, README.txt), optionally signed with Azure Trusted Signing. The
+  listing text is in `release/flightsim-listing.md`.
+- `publish_portable.ps1` copies `msfsclient.pri` and `*.xbf` into the publish folder: an unpackaged publish leaves them out
+  and the window then fails to load.
 - Store packages need Visual Studio's MSBuild (`msbuild`); `dotnet build` cannot make the .msixupload.
 
 ## Backend
