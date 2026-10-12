@@ -32,8 +32,9 @@ namespace msfsclient.Services
         {
             var s = Read() ?? throw new InvalidOperationException("No stored user");
             var info = new UserInfo { Uid = s.Uid, Email = s.Email, IsEmailVerified = s.Verified, DisplayName = s.DisplayName };
-            // An empty, expired ID token makes the client fetch a fresh one with the refresh token on first use.
-            var credential = new FirebaseCredential { IdToken = "", RefreshToken = s.RefreshToken, Created = DateTime.MinValue, ExpiresIn = 0, ProviderType = s.Provider };
+            // An empty, expired ID token makes the client fetch a fresh one with the refresh token on first use. "Expired" must be
+            // computable: Firebase checks Created.AddSeconds(ExpiresIn - 5), which throws for DateTime.MinValue.
+            var credential = new FirebaseCredential { IdToken = "", RefreshToken = s.RefreshToken, Created = DateTime.Now.AddDays(-1), ExpiresIn = 3600, ProviderType = s.Provider };
             return (info, credential);
         }
 
