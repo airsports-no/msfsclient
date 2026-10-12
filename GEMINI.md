@@ -69,6 +69,11 @@ has the same features and look as the Air Sports mobile app (airsports-mobile, K
   MSFS SDK, whose package tool starts the simulator). The client bundles the package when it exists and installs it from
   the profile into each Community folder it finds (`CommunityFolders`, `PanelInstaller` in Core).
 
+- **Practice flight (MSFS quickstart):** `GET userprofile/msfs_quickstart/` (backend `SimulatorQuickstart`, admin-edited). Home
+  offers it to pilots without a flight (`UiState.QuickstartOffer`), opens its registration page, and once registered can move
+  the aircraft to the runway or into the air before the starting point (`ISimConnectService.MoveAircraft`, SimConnect initial
+  position; refused while tracking). `--preview quickstart` / `quickstart-registered` show it with sample data.
+
 ## Build and release
 - `.github/workflows/ci.yml`: Core tests on Linux; on Windows the Store package (unsigned) and the portable release.
 - `.github/workflows/store.yml` (run by hand): tests, sets the package version to `1.0.<build>.0`, builds the Store

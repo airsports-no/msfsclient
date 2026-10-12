@@ -95,6 +95,10 @@ namespace msfsclient.Services
 
                 _simConnect.RegisterDataDefineStruct<FlightDataStruct>(SimConnectDefinitions.FlightData);
 
+                // Moving the aircraft to a start (the practice flight): one "initial position" structure.
+                _simConnect.AddToDataDefinition(SimConnectDefinitions.InitPosition, "Initial Position", null, SIMCONNECT_DATATYPE.INITPOSITION, 0.0f, SimConnect.SIMCONNECT_UNUSED);
+                _simConnect.RegisterDataDefineStruct<SIMCONNECT_DATA_INITPOSITION>(SimConnectDefinitions.InitPosition);
+
                 // Request data every second (1000ms)
                 _simConnect.RequestDataOnSimObject(SimConnectRequests.FlightData, SimConnectDefinitions.FlightData, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.SECOND, SIMCONNECT_DATA_REQUEST_FLAG.DEFAULT, 0, 0, 0);
             }
@@ -147,6 +151,33 @@ namespace msfsclient.Services
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"SimConnect text failed: {ex.Message}");
+            }
+        }
+
+        public bool MoveAircraft(double latitude, double longitude, double altitudeFt, double headingDegrees, bool onGround, uint airspeedKnots)
+        {
+            var sim = _simConnect;
+            if (sim == null || !IsConnected) return false;
+            try
+            {
+                sim.SetDataOnSimObject(SimConnectDefinitions.InitPosition, SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_DATA_SET_FLAG.DEFAULT,
+                    new SIMCONNECT_DATA_INITPOSITION
+                    {
+                        Latitude = latitude,
+                        Longitude = longitude,
+                        Altitude = altitudeFt,
+                        Pitch = 0,
+                        Bank = 0,
+                        Heading = headingDegrees,
+                        OnGround = onGround ? 1u : 0u,
+                        Airspeed = airspeedKnots,
+                    });
+                return true;
+            }
+            catch (Exception ex)
+            {
+                ErrorOccurred?.Invoke(this, $"Could not move the aircraft: {ex.Message}");
+                return false;
             }
         }
 

@@ -46,6 +46,9 @@ namespace msfsclient.Services
         }
 
         /// <summary>Answers like the server, with times around now.</summary>
+        /// <summary>"--preview quickstart": a pilot without flights (the practice flight is offered); "quickstart-registered": registered for it.</summary>
+        public static bool NoFlights => Requested() is "quickstart" or "quickstart-registered";
+
         public sealed class Server : HttpMessageHandler
         {
             protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -62,6 +65,21 @@ namespace msfsclient.Services
                 var status = HttpStatusCode.OK;
                 if (path.Contains("retrieve_profile") || path.Contains("partial_update_profile"))
                     json = """{"email":"pilot@example.com","validated":true,"first_name":"Pia","last_name":"Pilot","biography":"Flying since 2009.","simulator_tracking_id":"preview"}""";
+                else if (path.Contains("msfs_quickstart"))
+                {
+                    var registered = Requested() == "quickstart-registered" ? $$"""{"id":7,"takeoff_time":"{{later}}","tracker_start_time":"{{started}}","finished_by_time":"{{laterEnd}}"}""" : "null";
+                    json = $$"""
+                        {"id":1,"title":"Practice around Kjeller","description":"A short practice route near Oslo to learn how tracking, the start and the gates work. Fly it whenever you like.",
+                         "contest_id":20,"contest_name":"MSFS practice","navigation_task_id":200,"navigation_task_name":"Practice","start_location":"Kjeller (ENKJ), runway 30",
+                         "start_instructions":"Take off, climb to 1500 ft and fly to the starting point east of the field.",
+                         "ground_start":{"latitude":59.9693,"longitude":11.0361,"heading":300.0},"air_start":{"latitude":59.97,"longitude":11.13,"altitude_ft":2500,"heading":90.0},
+                         "registration_path":"/schedule-flight?contestId=20&navigationTaskId=200","registered_flight":{{registered}}}
+                        """;
+                }
+                else if (NoFlights && (path.Contains("get_current_sim_navigation_task") || path.Contains("my_future_flights")))
+                {
+                    if (path.Contains("my_future_flights")) json = "[]"; else status = HttpStatusCode.NotFound;
+                }
                 else if (path.Contains("get_current_sim_navigation_task"))
                     json = $$"""
                         [{"navigation_task":{"pk":100,"name":"Day 1 - Precision","tracking_link":"https://app.airsports.no/competition-map/10/100"},
@@ -118,6 +136,12 @@ namespace msfsclient.Services
             }
 
             public void Disconnect() => IsConnected = false;
+
+            public bool MoveAircraft(double latitude, double longitude, double altitudeFt, double headingDegrees, bool onGround, uint airspeedKnots)
+            {
+                System.Diagnostics.Debug.WriteLine($"Preview: aircraft moved to {latitude}, {longitude} ({(onGround ? "ground" : $"{altitudeFt} ft")}, heading {headingDegrees})");
+                return IsConnected;
+            }
 
             /// <summary>No simulator to print on: kept for the debug view.</summary>
             public void ShowText(string text, msfsclient.Core.Hud.SimMessageKind kind, float seconds) =>

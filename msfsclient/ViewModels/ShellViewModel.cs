@@ -144,6 +144,25 @@ namespace msfsclient.ViewModels
             }
         }
 
+        // ---- Practice flight (quickstart) -----------------------------------------------------------------------------
+
+        public bool SimConnected => _simConnect.IsConnected;
+
+        /// <summary>
+        /// Puts the aircraft at the practice flight's start: on the runway, or in the air before the starting point. Returns why
+        /// it did not, or null when it did. Not while tracking: the jump would end up in the recorded and scored flight.
+        /// </summary>
+        public string? MoveToQuickstart(bool inTheAir)
+        {
+            var start = inTheAir ? _state.Quickstart?.AirStart : _state.Quickstart?.GroundStart;
+            if (start == null) return "This practice flight has no such start.";
+            if (_tracking.Running) return "Stop tracking before moving the aircraft: the jump would end up in your recorded flight.";
+            if (!_simConnect.IsConnected) return "Start MSFS and load a flight first; then the client can move your aircraft.";
+            var moved = _simConnect.MoveAircraft(start.Latitude, start.Longitude, start.AltitudeFt ?? 0, start.Heading ?? 0,
+                onGround: !inTheAir, airspeedKnots: inTheAir ? 100u : 0u);
+            return moved ? null : "The simulator did not move the aircraft. Choose the start in the world map instead.";
+        }
+
         /// <summary>The pilot clicked a notification: the window should come to the front.</summary>
         public event Action? BringToFront;
 

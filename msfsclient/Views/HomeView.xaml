@@ -62,6 +62,43 @@
 
             <TextBlock Text="{x:Bind Vm.Greeting, Mode=OneWay}" Style="{StaticResource Greeting}" AutomationProperties.HeadingLevel="Level1" />
 
+            <!-- The practice flight for new simulator pilots (MSFS quickstart): register, then get to the start. -->
+            <Border Background="{ThemeResource CardBrush}" BorderBrush="{ThemeResource StrongOutlineBrush}" BorderThickness="1" CornerRadius="2"
+                    Visibility="{x:Bind QuickstartVisible, Mode=OneWay}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="10" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Border Background="{ThemeResource IndigoBrush}" />
+                    <StackPanel Grid.Column="1" Padding="12,12,12,8" Spacing="8">
+                        <TextBlock Text="{x:Bind QuickstartHeading, Mode=OneWay}" Style="{StaticResource MutedText}" FontFamily="{StaticResource BarlowSemiBold}" />
+                        <TextBlock Text="{x:Bind QuickstartTitle, Mode=OneWay}" Style="{StaticResource BodyText}" FontFamily="{StaticResource CondensedBold}" FontSize="28"
+                                   LineHeight="30" AutomationProperties.HeadingLevel="Level2" />
+                        <TextBlock Text="{x:Bind QuickstartDescription, Mode=OneWay}" Style="{StaticResource BodyText}"
+                                   Visibility="{x:Bind helpers:Ui.ShowText(QuickstartDescription), Mode=OneWay}" />
+                        <Border BorderBrush="{ThemeResource OutlineBrush}" BorderThickness="1" CornerRadius="2" Padding="8,5" HorizontalAlignment="Left">
+                            <StackPanel>
+                                <TextBlock Text="Start at" Style="{StaticResource LabelText}" />
+                                <TextBlock Text="{x:Bind QuickstartStart, Mode=OneWay}" Style="{StaticResource CondensedValue}" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
+                            </StackPanel>
+                        </Border>
+                        <TextBlock Text="{x:Bind QuickstartInstructions, Mode=OneWay}" Style="{StaticResource MutedText}"
+                                   Visibility="{x:Bind helpers:Ui.ShowText(QuickstartInstructions), Mode=OneWay}" />
+                        <TextBlock x:Name="QuickstartResult" Style="{StaticResource NoticeText}" Visibility="Collapsed" AutomationProperties.LiveSetting="Polite" />
+                        <helpers:WrapPanel Spacing="4">
+                            <Button Content="Register for it" Style="{StaticResource PrimaryButton}" Click="QuickstartRegister_Click"
+                                    Visibility="{x:Bind helpers:Ui.Hide(QuickstartRegistered), Mode=OneWay}" />
+                            <Button Content="Move my aircraft to the runway" Style="{StaticResource OutlinedButton}" Click="QuickstartGround_Click"
+                                    Visibility="{x:Bind QuickstartCanGround, Mode=OneWay}" />
+                            <Button Content="Start in the air" Style="{StaticResource OutlinedButton}" Click="QuickstartAir_Click"
+                                    Visibility="{x:Bind QuickstartCanAir, Mode=OneWay}" />
+                            <HyperlinkButton Content="Not now" Style="{StaticResource TextButton}" Click="QuickstartDismiss_Click" />
+                        </helpers:WrapPanel>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
             <!-- Which flight(s) the client is tracking for: the open windows now, or else the next scheduled flight. -->
             <StackPanel Spacing="10">
                 <Grid>

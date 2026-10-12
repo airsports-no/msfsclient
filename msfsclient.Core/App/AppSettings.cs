@@ -43,6 +43,17 @@ public sealed class AppSettings(AirsportsDatabase db)
         set => Put(Dismissed, string.Join(",", value.TakeLast(200).Select(i => i.ToString(CultureInfo.InvariantCulture))));
     }
 
+    /// <summary>Practice flights (quickstarts) the pilot said "Not now" to; they are not offered on Home again.</summary>
+    public IReadOnlySet<int> DismissedQuickstartIds
+    {
+        get => (Get(DismissedQuickstarts) ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries)
+            .Select(s => int.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out var id) ? (int?)id : null)
+            .Where(id => id != null).Select(id => id!.Value).ToHashSet();
+        set => Put(DismissedQuickstarts, string.Join(",", value.TakeLast(50).Select(i => i.ToString(CultureInfo.InvariantCulture))));
+    }
+
+    private const string DismissedQuickstarts = "dismissed_quickstarts";
+
     /// <summary>Print tracking events, gate results and announcements on the simulator's screen. On unless the pilot turns it off.</summary>
     public bool SimMessages
     {

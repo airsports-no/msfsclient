@@ -84,6 +84,14 @@ public sealed class AirsportsApi(HttpClient client, IAuthTokenProvider tokens, s
     public async Task<IReadOnlyList<Flight>> MyPreviousFlightsAsync() =>
         await BodyAsync<List<Flight>>(await AuthorizedAsync(() => new HttpRequestMessage(HttpMethod.Get, _baseUrl + "userprofile/my_previous_flights/")));
 
+    /// <summary>The practice flight offered to new simulator pilots, or null when none is offered (404).</summary>
+    public async Task<Quickstart?> QuickstartAsync()
+    {
+        var response = await AuthorizedRawAsync(() => new HttpRequestMessage(HttpMethod.Get, _baseUrl + "userprofile/msfs_quickstart/"));
+        if (response.StatusCode == HttpStatusCode.NotFound) return null;
+        return await BodyAsync<Quickstart>(await CheckedAsync(response));
+    }
+
     /// <summary>The organizers' announcements that concern this pilot and are still showing (newest first).</summary>
     public async Task<IReadOnlyList<Announcement>> AnnouncementsAsync() =>
         await BodyAsync<List<Announcement>>(await AuthorizedAsync(() => new HttpRequestMessage(HttpMethod.Get, _baseUrl + "userprofile/announcements/")));

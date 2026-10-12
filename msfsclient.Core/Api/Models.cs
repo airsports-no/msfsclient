@@ -285,3 +285,46 @@ public sealed record Announcement
     public string Message { get; init; } = "";
     public string? CreatedAt { get; init; }
 }
+
+/// <summary>
+/// The practice flight the server offers new simulator pilots (<c>userprofile/msfs_quickstart/</c>, 404 when none): the task,
+/// where to start in the simulator, how to register, and the pilot's own registration.
+/// </summary>
+public sealed record Quickstart
+{
+    public int Id { get; init; }
+    public string Title { get; init; } = "";
+    public string Description { get; init; } = "";
+    public int ContestId { get; init; }
+    public string ContestName { get; init; } = "";
+    public int NavigationTaskId { get; init; }
+    public string NavigationTaskName { get; init; } = "";
+    /// <summary>Where to start, as the pilot finds it in the MSFS world map, e.g. "Kjeller (ENKJ), runway 30".</summary>
+    public string StartLocation { get; init; } = "";
+    public string StartInstructions { get; init; } = "";
+    /// <summary>On the runway at the take-off gate, facing the take-off direction; null when the route has no take-off gate.</summary>
+    public QuickstartPosition? GroundStart { get; init; }
+    /// <summary>In the air before the starting point, on course; null when the route has no starting point.</summary>
+    public QuickstartPosition? AirStart { get; init; }
+    /// <summary>The website's registration page for the task (it reports the registration back to the client).</summary>
+    public string RegistrationPath { get; init; } = "";
+    public QuickstartFlight? RegisteredFlight { get; init; }
+}
+
+public sealed record QuickstartPosition
+{
+    public double Latitude { get; init; }
+    public double Longitude { get; init; }
+    /// <summary>Feet above sea level; null for a start on the ground.</summary>
+    public double? AltitudeFt { get; init; }
+    /// <summary>True heading in degrees; null when not known.</summary>
+    public double? Heading { get; init; }
+}
+
+public sealed record QuickstartFlight
+{
+    public int Id { get; init; }
+    public string? TakeoffTime { get; init; }
+    public string? TrackerStartTime { get; init; }
+    public string? FinishedByTime { get; init; }
+}

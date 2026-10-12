@@ -54,10 +54,23 @@ public sealed record UiState
     public IReadOnlyList<Announcement> Announcements { get; init; } = [];
     /// <summary>Set when tracking was stopped after a flight that was matched to a navigation task; shown once.</summary>
     public FinishedFlight? FinishedFlight { get; init; }
+    /// <summary>The practice flight offered to new simulator pilots (null: none, or not loaded yet).</summary>
+    public Quickstart? Quickstart { get; init; }
+    /// <summary>Practice flights the pilot said "Not now" to.</summary>
+    public IReadOnlySet<int> DismissedQuickstarts { get; init; } = new HashSet<int>();
     /// <summary>Where Close on the Map screen returns to.</summary>
     public Screen MapReturn { get; init; } = Screen.Home;
     /// <summary>Path (on app.airsports.no) that the Map screen opens.</summary>
     public string MapPath { get; init; } = "/";
+
+    /// <summary>
+    /// The practice flight Home offers: to a pilot without a flight (once the flights are known), or, once registered for it, to
+    /// help them get to the start. Not after the pilot said "Not now".
+    /// </summary>
+    public Quickstart? QuickstartOffer => Quickstart is { } q && !DismissedQuickstarts.Contains(q.Id)
+        && (q.RegisteredFlight != null || (HomeLoaded && Tasks.Count == 0 && Upcoming.Count == 0))
+        ? q
+        : null;
 
     /// <summary>Sign-in and set-up screens: the pilot is not "inside" the app yet.</summary>
     public bool IsOutside => Screen is Screen.Loading or Screen.UpdateRequired or Screen.Login or Screen.VerifyEmail or Screen.Onboarding;
@@ -113,7 +126,7 @@ public sealed class AppController
             {
                 try { cached = AirsportsJson.Deserialize<Person>(json); } catch (Exception) { }
             }
-            _state = _state with { TimerBufferMinutes = settings.TimerBufferMinutes, Person = cached, Screen = cached != null ? Screen.Home : _state.Screen };
+            _state = _state with { TimerBufferMinutes = settings.TimerBufferMinutes, DismissedQuickstarts = settings.DismissedQuickstartIds, Person = cached, Screen = cached != null ? Screen.Home : _state.Screen };
         }
     }
 
@@ -194,9 +207,24 @@ public sealed class AppController
         Update(s => s with { Announcements = s.Announcements.Where(a => a.Id != id).ToList() });
     }
 
+    /// <summary>"Not now": the practice flight is not offered on Home again (kept on this PC).</summary>
+    public void DismissQuickstart()
+    {
+        if (State.Quickstart is not { } q) return;
+        var dismissed = State.DismissedQuickstarts.Append(q.Id).ToHashSet();
+        if (_settings != null) _settings.DismissedQuickstartIds = dismissed;
+        Update(s => s with { DismissedQuickstarts = dismissed });
+    }
+
+    /// <summary>Opens the practice flight's registration page; registering there brings the pilot back to Home (AppEvent).</summary>
+    public void OpenQuickstartRegistration()
+    {
+        if (State.Quickstart is { RegistrationPath.Length: > 0 } q) OpenPath(q.RegistrationPath);
+    }
+
     private static long? MaxOfNotNull(long? a, long? b) => a == null ? b : b == null ? a : Math.Max(a.Value, b.Value);
 
-    private sealed record Account(Person Person, IReadOnlyList<CurrentTask> Tasks, IReadOnlyList<Flight> Flights, IReadOnlyList<Announcement> Announcements);
+    private sealed record Account(Person Person, IReadOnlyList<CurrentTask> Tasks, IReadOnlyList<Flight> Flights, IReadOnlyList<Announcement> Announcements, Quickstart? Quickstart);
 
     private static async Task<T> OrDefault<T>(Func<Task<T>> call, T fallback)
     {
@@ -214,8 +242,9 @@ public sealed class AppController
         var tasks = OrDefault(_api.CurrentTasksAsync, []);
         var flights = OrDefault(NextFlightsAsync, []);
         var announcements = OrDefault(_api.AnnouncementsAsync, []);
-        await Task.WhenAll(tasks, flights, announcements);
-        return new Account(await person, await tasks, await flights, await announcements);
+        var quickstart = OrDefault<Quickstart?>(_api.QuickstartAsync, null);
+        await Task.WhenAll(tasks, flights, announcements, quickstart);
+        return new Account(await person, await tasks, await flights, await announcements, await quickstart);
     }
 
     public async Task RefreshAsync()
@@ -268,6 +297,7 @@ public sealed class AppController
             Person = person, Tasks = account.Tasks, Error = null, HomeLoaded = true,
             LastWindowEndMillis = MaxOfNotNull(s.LastWindowEndMillis, WindowClosed.LatestWindowEnd(account.Tasks)),
             Announcements = Undismissed(account.Announcements),
+            Quickstart = account.Quickstart,
         });
         NotifyNew(Undismissed(account.Announcements));
         var link = _pendingLink;
