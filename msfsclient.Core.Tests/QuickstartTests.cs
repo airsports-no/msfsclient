@@ -140,14 +140,16 @@ public class QuickstartTest
     }
 
     [Fact]
-    public async Task GoFlyingRegistersInOnePressAndTurnsTrainingOn()
+    public async Task GoFlyingRegistersInOnePressAndStartsTrackingAtOnce()
     {
         var (c, opened) = await StartedWithRegistration();
+        var trackingRequests = 0;
+        c.StartTrackingRequested += () => trackingRequests++;
         await c.RegisterQuickstartAsync();
+        Assert.Equal(1, trackingRequests);
         Assert.Equal(1, _registerCalls);
         Assert.Equal(55, c.State.Quickstart?.RegisteredFlight?.Id);
         Assert.Equal(55, c.State.QuickstartOffer?.RegisteredFlight?.Id);
-        Assert.True(c.State.TrainingMode);
         Assert.False(c.State.QuickstartRegistering);
         Assert.Equal(Screen.Home, c.State.Screen);
         Assert.Equal(55, c.State.AwaitingFlightOrderFor);
@@ -190,11 +192,13 @@ public class QuickstartTest
         _registerStatus = HttpStatusCode.BadRequest;
         _registerBody = """["No practice flight is offered right now"]""";
         var (c, _) = await StartedWithRegistration();
+        var trackingRequests = 0;
+        c.StartTrackingRequested += () => trackingRequests++;
         await c.RegisterQuickstartAsync();
         Assert.Equal("Could not register: No practice flight is offered right now", c.State.QuickstartError);
         Assert.False(c.State.QuickstartRegistering);
         Assert.Null(c.State.AwaitingFlightOrderFor);
-        Assert.False(c.State.TrainingMode);
+        Assert.Equal(0, trackingRequests);
     }
 
     [Fact]

@@ -241,10 +241,13 @@ public sealed class AppController
     /// </summary>
     public event Action<string>? FlightOrderReady;
 
+    /// <summary>Raised (on any thread) when tracking should start without the pilot pressing play: after "Go flying".</summary>
+    public event Action? StartTrackingRequested;
+
     /// <summary>
     /// "Go flying": registers the pilot for the practice flight in one go with the server's defaults (speed, aircraft and club,
-    /// no wind, an adaptive start open now), turns training mode on and waits for the flight order to open it. A server
-    /// without one-press registration gets the registration page instead.
+    /// no wind, an adaptive start open now), asks for tracking to start at once and waits for the flight order to open it. A
+    /// server without one-press registration gets the registration page instead.
     /// </summary>
     public async Task RegisterQuickstartAsync()
     {
@@ -266,8 +269,10 @@ public sealed class AppController
             OpenQuickstartRegistration();
             return;
         }
-        Update(s => s with { Quickstart = registered, QuickstartRegistering = false, TrainingMode = true, HomeNotice = null });
+        Update(s => s with { Quickstart = registered, QuickstartRegistering = false, HomeNotice = null });
         AwaitFlightOrder(registered.RegisteredFlight);
+        // Immediate tracking: the window is open already, so nothing is left for the pilot to press.
+        StartTrackingRequested?.Invoke();
         // The flight is open now (adaptive start): show it on the flight strip straight away.
         await RefreshTasksAsync();
         await LoadHomeExtrasAsync(State.Tasks);

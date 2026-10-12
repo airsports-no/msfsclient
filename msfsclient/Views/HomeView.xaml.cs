@@ -113,10 +113,8 @@ namespace msfsclient.Views
                 steps.Add(new("2", "Your flight order, with the map and the time to be at each gate, opens in your browser by itself " +
                     "after a minute or so. It is e-mailed to you as well. Keep it at hand while you fly.", next));
                 steps.Add(new("3", $"In MSFS, start a flight at {where}, or load any flight and let the client move your aircraft there.{organizer}", next));
-                steps.Add(new("4", "Press play at the bottom to start tracking, then take off and fly the route. The start is adaptive: " +
+                steps.Add(new("4", "Tracking starts at once, so there is no button to remember. Take off and fly the route. The start is adaptive: " +
                     "your time starts when you cross the starting line, whenever that is in the next two hours.", next));
-                steps.Add(new("5", "Training mode is switched on: after each gate the bar at the bottom tells you how many seconds early " +
-                    "or late you were, so you can correct as you fly.", next));
                 return steps;
             }
             var how = flight.AdaptiveStart == true ? " with an adaptive start" : "";
@@ -131,24 +129,21 @@ namespace msfsclient.Views
             else
                 steps.Add(new("2", "Your flight order is e-mailed to you when it is ready, and a Flight order button appears here.", next));
             var tracking = Vm.Tracking.Running;
-            if (!tracking)
-            {
-                steps.Add(Vm.SimConnected
-                    ? new("3", $"Load a flight at {where}, or use the buttons below to put your aircraft on the runway or in the air before the starting point.{organizer}", next)
-                    : new("3", $"Start MSFS and load a flight at {where}, or load any flight and let the client move your aircraft there.{organizer}", next));
-            }
+            steps.Add(Vm.SimConnected
+                ? new("3", $"Load a flight at {where}, or use the buttons below to put your aircraft on the runway or in the air before the starting point.{organizer}", next)
+                : new("3", $"Start MSFS and load a flight at {where}, or load any flight and let the client move your aircraft there.{organizer}", next));
             steps.Add(tracking
-                ? new("✓", "Tracking is on. Fly the route: your time starts when you cross the starting line.", done)
-                : new("4", "Press play at the bottom to start tracking before you take off. Your time starts when you cross the starting line.", next));
+                ? new("✓", "Tracking is on. Take off and fly the route: your time starts when you cross the starting line.", done)
+                : new("4", "Tracking is off. Press play at the bottom to start it again before you take off.", next));
             if (Vm.State.TrainingMode)
                 steps.Add(new("5", "Training mode is on: after each gate the bar at the bottom shows how many seconds early or late you were.", next));
             return steps;
         }
 
-        /// <summary>Moving the aircraft is offered once registered and while the simulator is connected (and not while tracking).</summary>
-        public bool QuickstartCanGround => QuickstartRegistered && Vm.SimConnected && !Vm.Tracking.Running && Offer?.GroundStart != null;
+        /// <summary>Moving the aircraft is offered once registered and while the simulator is connected (while tracking too: the move pauses it).</summary>
+        public bool QuickstartCanGround => QuickstartRegistered && Vm.SimConnected && Offer?.GroundStart != null;
 
-        public bool QuickstartCanAir => QuickstartRegistered && Vm.SimConnected && !Vm.Tracking.Running && Offer?.AirStart != null;
+        public bool QuickstartCanAir => QuickstartRegistered && Vm.SimConnected && Offer?.AirStart != null;
 
         private void QuickstartGoFlying_Click(object sender, RoutedEventArgs e) => _ = Vm.Controller.RegisterQuickstartAsync();
 
@@ -167,11 +162,11 @@ namespace msfsclient.Views
             if (Offer?.GroundStart is not { } start) return;
             if (!await Dialogs.ConfirmAsync(XamlRoot, "Move your aircraft to the runway?",
                     $"Your aircraft is placed on the runway at {Offer.StartLocation}, ready for take-off{(start.Heading is { } h ? $" (heading {h:0}°)" : "")}. " +
-                    "Do this before you start tracking.", "Move", "Cancel"))
+                    "If tracking is on, it pauses for the move and starts again a few seconds later.", "Move", "Cancel"))
             {
                 return;
             }
-            ShowQuickstartResult(Vm.MoveToQuickstart(inTheAir: false) ?? "Your aircraft is on the runway. Press play to start tracking, then take off.");
+            ShowQuickstartResult(Vm.MoveToQuickstart(inTheAir: false) ?? "Your aircraft is on the runway. Take off when you are ready.");
         }
 
         private async void QuickstartAir_Click(object sender, RoutedEventArgs e)
@@ -179,12 +174,12 @@ namespace msfsclient.Views
             if (Offer?.AirStart is not { } start) return;
             if (!await Dialogs.ConfirmAsync(XamlRoot, "Start in the air?",
                     $"Your aircraft is placed 2 NM before the starting point at {start.AltitudeFt ?? 0:0} ft, flying towards it at 100 knots. " +
-                    "Take the controls straight away, then press play to start tracking.",
+                    "Take the controls straight away. If tracking is on, it pauses for the move and starts again a few seconds later.",
                     "Move", "Cancel"))
             {
                 return;
             }
-            ShowQuickstartResult(Vm.MoveToQuickstart(inTheAir: true) ?? "Your aircraft is in the air before the starting point. Press play to start tracking.");
+            ShowQuickstartResult(Vm.MoveToQuickstart(inTheAir: true) ?? "Your aircraft is in the air before the starting point. Fly on to the starting line.");
         }
 
         private void ShowQuickstartResult(string text)

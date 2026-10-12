@@ -72,6 +72,11 @@ namespace msfsclient.ViewModels
             // An announcement that arrives while the pilot is in another window (MSFS) gets a Windows notification; in front, Home shows it.
             controller.NewAnnouncement += a => _dispatcher.TryEnqueue(() => { if (!WindowActive) _notifications.ShowAnnouncement(a); });
             notifications.Activated += () => _dispatcher.TryEnqueue(() => BringToFront?.Invoke());
+            // "Go flying" starts tracking at once (immediate tracking): the pilot does not need to find the play button.
+            controller.StartTrackingRequested += () => _dispatcher.TryEnqueue(() =>
+            {
+                if (!_tracking.Running && CanStartTracking) StartTracking();
+            });
             // The practice flight's flight order opens in the browser (a PDF download) as soon as the server has made it.
             controller.FlightOrderReady += url => _dispatcher.TryEnqueue(() =>
             {
@@ -164,11 +169,21 @@ namespace msfsclient.ViewModels
         {
             var start = inTheAir ? _state.Quickstart?.AirStart : _state.Quickstart?.GroundStart;
             if (start == null) return "This practice flight has no such start.";
-            if (_tracking.Running) return "Stop tracking before moving the aircraft: the jump would end up in your recorded flight.";
             if (!_simConnect.IsConnected) return "Start MSFS and load a flight first; then the client can move your aircraft.";
+            // Tracking already runs after "Go flying": pause it around the move, so no position is sent from the moment the
+            // aircraft jumps, and start it again once it is settled at the start.
+            var resume = _tracking.Running;
+            if (resume) _session?.Stop();
             var moved = _simConnect.MoveAircraft(start.Latitude, start.Longitude, start.AltitudeFt ?? 0, start.Heading ?? 0,
                 onGround: !inTheAir, airspeedKnots: inTheAir ? 100u : 0u);
+            if (resume) _ = ResumeTrackingAfterMoveAsync();
             return moved ? null : "The simulator did not move the aircraft. Choose the start in the world map instead.";
+        }
+
+        private async Task ResumeTrackingAfterMoveAsync()
+        {
+            await Task.Delay(TimeSpan.FromSeconds(3)); // continues on the UI thread
+            if (!_tracking.Running && CanStartTracking) StartTracking();
         }
 
         /// <summary>The pilot clicked a notification: the window should come to the front.</summary>
