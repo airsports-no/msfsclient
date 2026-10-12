@@ -1,0 +1,111 @@
+using System.Collections.Generic;
+using msfsclient.Core.Api;
+using msfsclient.Core.History;
+using msfsclient.Core.Observations;
+using msfsclient.Core.Preflight;
+using msfsclient.Core.Tracking;
+using msfsclient.Core.Ui;
+
+namespace msfsclient.Views
+{
+    // Rows of the lists on the screens, with everything ready to display (x:Bind in item templates binds to these).
+
+    /// <summary>A message from the organizers, with a way to dismiss it.</summary>
+    public sealed record AnnouncementItem(int Id, string Source, string Message)
+    {
+        public static AnnouncementItem From(Announcement a)
+        {
+            var parts = new List<string>();
+            if (!string.IsNullOrWhiteSpace(a.ContestName)) parts.Add(a.ContestName);
+            if (!string.IsNullOrWhiteSpace(a.TaskName)) parts.Add(a.TaskName);
+            return new AnnouncementItem(a.Id, parts.Count > 0 ? string.Join(" - ", parts) : "From the organizers", a.Message);
+        }
+    }
+
+    /// <summary>
+    /// An air-traffic-control style flight progress strip: a colour tab at the left (green while the window is open), the
+    /// contest and task in condensed type, the facts in boxed cells, then the links.
+    /// </summary>
+    public sealed record StripItem(TrackingTarget Target, bool Live, MyFlight? Cancellable, bool Cancelling)
+    {
+        public string ContestName => Target.ContestName ?? "";
+        public bool HasContest => !string.IsNullOrWhiteSpace(Target.ContestName);
+        public string TaskName => Target.TaskName;
+        public string TaskType => Target.TaskType ?? "";
+        public bool HasTaskType => !string.IsNullOrWhiteSpace(Target.TaskType);
+        public IReadOnlyList<Fact> Facts => Target.Facts;
+        public string? LogoUrl => Target.LogoUrl;
+        public bool HasLogo => Target.LogoUrl != null;
+        public bool MapPrivate => Target.MapPrivate;
+        public bool HasMap => Target.MapLink != null;
+        public bool HasFlightOrders => Target.FlightOrderPath != null;
+        public bool HasDirections => Target.DirectionsUrl != null;
+        public bool HasWebsite => Target.WebsiteUrl != null;
+        public bool CanCancel => Cancellable != null;
+        public string CancelText => Cancelling ? "Cancelling…" : "Cancel flight";
+        public bool CancelEnabled => !Cancelling;
+        public bool NotLive => !Live;
+    }
+
+    public sealed record FlightItem(MyFlight Flight, bool Past, int? CancellingId)
+    {
+        public string ContestName => Flight.ContestName;
+        public string TaskName => Flight.TaskName;
+        public string Takeoff => $"Take-off {TimeFormat.FormatLocal(Flight.TakeoffTime)}";
+        /// <summary>Said plainly, so a pilot does not take the missing button for a fault.</summary>
+        public string PrivateNote => Past ? "Results are not available to you: this task is private to the organizer." : "The live map is private to the organizer.";
+        public bool IsPrivate => Flight.MapViewable == false;
+        public bool CanOpen => Flight.MapViewable != false;
+        public string OpenText => Past ? "Open results" : "Open map";
+        public bool CanCancel => !Past && Flight.CanCancel();
+        public string CancelText => CancellingId == Flight.Id ? "Cancelling…" : "Cancel flight";
+        public bool CancelEnabled => CancellingId == null;
+    }
+
+    public sealed record CheckItem(PreflightCheck Check)
+    {
+        public string Title => Check.Title;
+        public string Detail => Check.Detail;
+        public bool HasAction => Check.Action != null;
+        public string ActionText => Check.Action switch
+        {
+            CheckAction.OpenClockSettings => "Open date and time settings",
+            CheckAction.ConnectSimulator => "Connect again",
+            _ => "",
+        };
+        public string DotBrushKey => Check.Status switch
+        {
+            CheckStatus.Ok => "LiveGreenBrush",
+            CheckStatus.Warning => "AmberBrush",
+            CheckStatus.Problem => "ErrorBrush",
+            _ => "StrongOutlineBrush",
+        };
+        public string StatusName => Check.Status switch
+        {
+            CheckStatus.Ok => "OK",
+            CheckStatus.Warning => "Look at this",
+            CheckStatus.Problem => "Fix this",
+            _ => "Not checked",
+        };
+    }
+
+    public sealed record HistoryItem(TrackSessionSummary Session)
+    {
+        public string Started => TimeFormat.FormatLocal(Gpx.Time(Session.StartedAtMillis));
+        public string Summary => Session.Recording
+            ? $"Recording now, {Session.PointCount} positions"
+            : $"{TimeFormat.FormatDuration(Session.DurationMillis)}, {Session.PointCount} positions";
+        public bool Finished => !Session.Recording;
+        public bool HasPoints => Session.PointCount > 0;
+    }
+
+    public sealed record PhotoItem(ObservationPhoto Photo, string State, bool Done, bool Pending, bool CanMark)
+    {
+        public string Name => Photo.Name;
+        public string? File => Photo.File;
+        public bool Marked => Done || Pending;
+        public string MarkText => Marked ? "Mark again" : "Mark";
+    }
+
+    public sealed record DebugRow(string Label, string Value);
+}

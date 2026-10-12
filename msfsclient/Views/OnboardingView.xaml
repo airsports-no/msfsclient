@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<local:ShellPart
+    x:Class="msfsclient.Views.OnboardingView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:msfsclient.Views"
+    xmlns:helpers="using:msfsclient.Helpers"
+    FontFamily="{StaticResource BarlowRegular}">
+    <ScrollViewer>
+        <StackPanel Padding="24" Spacing="12">
+            <TextBlock Text="Complete your profile" Style="{StaticResource PageTitle}" />
+            <TextBox x:Name="First" Header="First name" Style="{StaticResource FormBox}" TextChanged="Input_Changed" />
+            <TextBox x:Name="Last" Header="Last name" Style="{StaticResource FormBox}" TextChanged="Input_Changed" />
+            <TextBox x:Name="Country" Header="Country code (e.g. NO)" Style="{StaticResource FormBox}" MaxLength="2" CharacterCasing="Upper" TextChanged="Input_Changed" />
+            <Grid ColumnSpacing="8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="2*" />
+                </Grid.ColumnDefinitions>
+                <TextBox x:Name="Prefix" Header="Prefix" Style="{StaticResource FormBox}" InputScope="TelephoneCountryCode" />
+                <TextBox x:Name="Phone" Grid.Column="1" Header="Phone" Style="{StaticResource FormBox}" InputScope="TelephoneNumber" TextChanged="Input_Changed" />
+            </Grid>
+            <TextBlock Text="{x:Bind helpers:Ui.OrEmpty(Vm.State.Error), Mode=OneWay}" Visibility="{x:Bind helpers:Ui.ShowText(Vm.State.Error), Mode=OneWay}"
+                       Style="{StaticResource ErrorText}" />
+            <Button x:Name="Save" Style="{StaticResource PrimaryButton}" Click="Save_Click" />
+        </StackPanel>
+    </ScrollViewer>
+</local:ShellPart>

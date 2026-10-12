@@ -1,0 +1,448 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using CommunityToolkit.Mvvm.ComponentModel;
+using Microsoft.UI.Dispatching;
+using Microsoft.UI.Xaml;
+using msfsclient.Contracts.Services;
+using msfsclient.Core.Api;
+using msfsclient.Core.App;
+using msfsclient.Core.History;
+using msfsclient.Core.Observations;
+using msfsclient.Core.Preflight;
+using msfsclient.Core.Tracking;
+using msfsclient.Core.Training;
+using msfsclient.Core.Ui;
+using msfsclient.Services;
+
+namespace msfsclient.ViewModels
+{
+    /// <summary>
+    /// The one view model of the window: a thin wrapper around the Core <see cref="AppController"/> (screens and server data)
+    /// and the <see cref="TrackingSession"/> (positions), plus the simulator connection. Every change raises a single
+    /// PropertyChanged for all properties; the views bind one way to the read-only properties below.
+    /// </summary>
+    public sealed partial class ShellViewModel : ObservableObject
+    {
+        private readonly AppController _controller;
+        private readonly ISimConnectService _simConnect;
+        private readonly SimPositionSource _sim;
+        private readonly PositionQueue _queue;
+        private readonly TraccarUploader _uploader;
+        private readonly TrackLog _trackLog;
+        private readonly DispatcherQueue _dispatcher;
+        private readonly DispatcherTimer _pump;
+        private readonly DispatcherTimer _tick;
+
+        private UiState _state;
+        private TrackingSession? _session;
+        private TrackingState _tracking = new();
+        private long _nowMillis = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        private long _lastPollMillis;
+        private long _lastConnectAttemptMillis;
+        private bool _autoStopHandled;
+        private IntPtr _windowHandle;
+
+        public ShellViewModel(
+            AppController controller, ISimConnectService simConnect, SimPositionSource sim, PositionQueue queue, TraccarUploader uploader,
+            TrackLog trackLog, PlatformServices platform, IAppConfigService config)
+        {
+            _controller = controller;
+            _simConnect = simConnect;
+            _sim = sim;
+            _queue = queue;
+            _uploader = uploader;
+            _trackLog = trackLog;
+            Platform = platform;
+            Config = config;
+            _dispatcher = DispatcherQueue.GetForCurrentThread();
+            _state = controller.State;
+            _tracking = new TrackingState { Backlog = queue.Size() };
+
+            controller.StateChanged += s => _dispatcher.TryEnqueue(() => { _state = s; EnsureSession(); Changed(); });
+            simConnect.ConnectionStatusChanged += (_, _) => _dispatcher.TryEnqueue(Changed);
+
+            // SimConnect delivers its messages through a pump on the UI thread (see GEMINI.md).
+            _pump = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) };
+            _pump.Tick += (_, _) => _simConnect.ReceiveMessage();
+            _tick = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+            _tick.Tick += (_, _) => OnTick();
+        }
+
+        public PlatformServices Platform { get; }
+        public IAppConfigService Config { get; }
+        public AppController Controller => _controller;
+        public UiState State => _state;
+        public TrackingState Tracking => _tracking;
+        public TrackLog TrackLog => _trackLog;
+        public SimPositionSource Sim => _sim;
+        public long NowMillis => _nowMillis;
+
+        /// <summary>Raised when the screen changes, so the window can swap the page and move focus.</summary>
+        public event Action<Screen>? ScreenChanged;
+
+        /// <summary>Raised for a stop that the pilot did not ask for (the 12 hour limit).</summary>
+        public event Action? AutoStopped;
+
+        public void Start(IntPtr windowHandle)
+        {
+            _windowHandle = windowHandle;
+            _trackLog.CloseAbandonedSessions(); // a session left open by a crash ends at its last fix
+            _pump.Start();
+            _tick.Start();
+            ConnectSimulator();
+            EnsureSession();
+            _ = _controller.Start();
+        }
+
+        public void Stop()
+        {
+            _session?.Stop();
+            _pump.Stop();
+            _tick.Stop();
+            _simConnect.Disconnect();
+        }
+
+        private Screen _lastScreen = Screen.Loading;
+
+        private void Changed()
+        {
+            OnPropertyChanged(string.Empty);
+            if (_state.Screen != _lastScreen)
+            {
+                _lastScreen = _state.Screen;
+                _historySummary = null;
+                ScreenChanged?.Invoke(_state.Screen);
+            }
+        }
+
+        /// <summary>One tracking session per simulator tracking id (the profile's <c>simulator_tracking_id</c>).</summary>
+        private void EnsureSession()
+        {
+            var deviceId = _state.Person?.SimulatorTrackingId;
+            if (string.IsNullOrWhiteSpace(deviceId) || _session?.DeviceId == deviceId) return;
+            _session?.Stop();
+            var session = new TrackingSession(_sim, _queue, _uploader, deviceId, trackLog: _trackLog);
+            session.StateChanged += s => _dispatcher.TryEnqueue(() =>
+            {
+                if (!ReferenceEquals(session, _session)) return;
+                _tracking = s;
+                if (s.AutoStopped && !_autoStopHandled)
+                {
+                    _autoStopHandled = true;
+                    AutoStopped?.Invoke();
+                    _ = _controller.TrackingAutoStoppedAsync();
+                }
+                Changed();
+            });
+            _session = session;
+            _tracking = session.State;
+        }
+
+        private void OnTick()
+        {
+            _nowMillis = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            // Reconnect to the simulator every 10 s while it is not running (it may be started after the client).
+            if (!_simConnect.IsConnected && _nowMillis - _lastConnectAttemptMillis >= 10_000) ConnectSimulator();
+            // While tracking, poll the server so the pilot sees whether positions arrive: every 10 s, 5 s in training mode.
+            var interval = _state.TrainingMode ? 5_000 : 10_000;
+            if (_tracking.Running && _state.Screen is Screen.Home or Screen.Timer or Screen.Observations && _nowMillis - _lastPollMillis >= interval)
+            {
+                _lastPollMillis = _nowMillis;
+                _ = _controller.RefreshTasksAsync();
+            }
+            Changed();
+        }
+
+        public void ConnectSimulator()
+        {
+            _lastConnectAttemptMillis = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            if (_windowHandle == IntPtr.Zero || _simConnect.IsConnected) return;
+            try { _simConnect.Connect(_windowHandle); }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"SimConnect connect failed: {ex.Message}"); }
+        }
+
+        // ---- Tracking ----------------------------------------------------------------------------------------------
+
+        public bool CanStartTracking => !string.IsNullOrWhiteSpace(_state.Person?.SimulatorTrackingId);
+
+        public void StartTracking()
+        {
+            EnsureSession();
+            if (_session == null) return;
+            _autoStopHandled = false;
+            _lastPollMillis = 0;
+            if (!_simConnect.IsConnected) ConnectSimulator();
+            _session.Start();
+        }
+
+        /// <summary>The pilot confirmed Stop: stop, offer the flight just recorded, and leave the now pointless timer.</summary>
+        public void StopTracking()
+        {
+            _session?.Stop();
+            _ = _controller.TrackingStoppedAsync();
+            if (_state.Screen == Screen.Timer) _controller.CloseTimer();
+        }
+
+        /// <summary>Signing out or deleting the account stops tracking first.</summary>
+        public void SignOut()
+        {
+            _session?.Stop();
+            _controller.SignOut();
+        }
+
+        public async Task DeleteAccountAsync()
+        {
+            _session?.Stop();
+            await _controller.DeleteAccountAsync();
+        }
+
+        /// <summary>The flight named in the stop confirmation ("Contest - Task").</summary>
+        public string? FlightLabel
+        {
+            get
+            {
+                var task = _state.Tasks.FirstOrDefault();
+                if (task == null) return null;
+                var c = task.ActiveContestants.FirstOrDefault();
+                var contest = (c?.ContestId is { } id ? _state.Contests.GetValueOrDefault(id)?.Name : null) ?? c?.ContestName;
+                var label = string.Join(" - ", new[] { contest, task.NavigationTask.Name }.Where(s => !string.IsNullOrWhiteSpace(s)));
+                return label.Length == 0 ? null : label;
+            }
+        }
+
+        public string? TrackedFor => _tracking.StartedAtMillis is { } started ? TimeFormat.TrackedFor(_nowMillis - started) : null;
+
+        // ---- Clock ---------------------------------------------------------------------------------------------------
+
+        /// <summary>The PC clock against network time (positions are stamped with the PC clock).</summary>
+        public ClockStatus Clock => _state.NetworkClockOffsetMillis is { } offset
+            ? ClockCheck.Status(offset, ClockReference.Network, _state.NetworkClockUncertaintyMillis)
+            : new ClockStatus.Unknown();
+
+        public SimStatus SimStatus => Core.Tracking.SimStatus.Of(_simConnect.IsConnected, _sim.Last?.TimestampMillis, _nowMillis);
+
+        // ---- Top bar ---------------------------------------------------------------------------------------------------
+
+        public bool ShowAvatar => _state.Person != null && !_state.IsOutside;
+
+        public bool ShowBack => _state.Screen is Screen.Map or Screen.Flights or Screen.Profile or Screen.Timer or Screen.Observations
+            or Screen.Preflight or Screen.History or Screen.Debug;
+
+        /// <summary>Back from wherever the pilot is (the window's Back button, Escape, the mouse back button).</summary>
+        public void Back()
+        {
+            switch (_state.Screen)
+            {
+                case Screen.Map: _controller.CloseMap(); break;
+                case Screen.Flights: _controller.CloseFlights(); break;
+                case Screen.Profile: _controller.CloseProfile(); break;
+                case Screen.Timer: _controller.CloseTimer(); break;
+                case Screen.Observations: _controller.CloseObservations(); break;
+                case Screen.Preflight: _controller.ClosePreflight(); break;
+                case Screen.History: _controller.CloseHistory(); break;
+                case Screen.Debug: _controller.CloseDebug(); break;
+                case Screen.Tour: _controller.FinishTour(); break;
+            }
+        }
+
+        public string Initials
+        {
+            get
+            {
+                var p = _state.Person;
+                var initials = string.Concat(new[] { p?.FirstName, p?.LastName }.Where(s => !string.IsNullOrEmpty(s)).Select(s => char.ToUpperInvariant(s![0])));
+                return initials.Length > 0 ? initials : p?.Email is { Length: > 0 } e ? char.ToUpperInvariant(e[0]).ToString() : "?";
+            }
+        }
+
+        public string? PictureUrl => Urls.AbsoluteUrl(_state.Person?.Picture);
+
+        public string VersionLine => $"Airsports {_controller.AppVersionLabel}";
+
+        // ---- Dock ------------------------------------------------------------------------------------------------------
+
+        public bool ShowDock => _state.Person != null && _state.Screen is Screen.Home or Screen.Timer or Screen.Observations;
+
+        public bool DockCompact => _state.Screen != Screen.Home;
+
+        public bool ShowTimerTab => _state.ActiveContestants.Any(c => c.AdaptiveStart);
+
+        public bool ShowPhotosTab => _state.ActiveContestants.Any(c => c.ObservationRegistration == true);
+
+        public bool ShowDeckSwitch => ShowTimerTab || ShowPhotosTab;
+
+        public string PhotosTabLabel => _state.Observations.Counter is { } counter ? $"Photos  {counter}" : "Photos";
+
+        public bool TrainingOn => _state.TrainingMode && GateFeedback.TrainingAvailable(_state.Tasks);
+
+        public bool ShowGateBanner => TrainingOn && _tracking.Running;
+
+        public GateFeedback? Gate => GateFeedback.Latest(_state.ActiveContestants);
+
+        public ReceivingStatus Receiving
+        {
+            get
+            {
+                var active = _state.ActiveContestants;
+                var scoring = ServerStatus.Scoring(active);
+                return ReceivingStatus.Of(_state.Tasks.Count > 0, ServerStatus.LastHeardIso(active), _nowMillis,
+                    scoring is ScoringStatus.Running or ScoringStatus.Finished, ServerStatus.MapDelayMinutes(active));
+            }
+        }
+
+        public ScoringStatus Scoring => ServerStatus.Scoring(_state.ActiveContestants);
+
+        public long? WindowClosedMinutes => WindowClosed.MinutesAgo(
+            _tracking.Running,
+            _state.ActiveContestants.Select(c => IsoTime.EpochMillisOrNull(c.FinishedByTime)).Where(e => e != null).Select(e => e!.Value).ToList(),
+            _state.LastWindowEndMillis,
+            _state.Upcoming.Select(f => IsoTime.EpochMillisOrNull(f.Flight?.TrackerStartTime)).Where(e => e != null).Select(e => e!.Value).ToList(),
+            _nowMillis);
+
+        /// <summary>The status lines under the play/stop button, in order, with how each is shown.</summary>
+        public IReadOnlyList<StatusLine> DockLines
+        {
+            get
+            {
+                var lines = new List<StatusLine>();
+                if (!_tracking.Running)
+                {
+                    lines.Add(new StatusLine("Tracking is off", StatusTone.Title));
+                    lines.Add(new StatusLine(CanStartTracking ? "Press play to share your position." : "Your profile has no simulator tracking id yet. Open the profile on the website.", StatusTone.Muted));
+                    var sim = SimStatus;
+                    if (sim.IsProblem) lines.Add(new StatusLine(sim.Text, StatusTone.Warning));
+                    return lines;
+                }
+                lines.Add(new StatusLine("Tracking is on", StatusTone.Live));
+                var status = SimStatus;
+                if (_tracking.LastFixMillis == null && status is SimStatus.Receiving) lines.Add(new StatusLine("Waiting for the first position…", StatusTone.Muted));
+                else lines.Add(new StatusLine(status.Text, status.IsProblem ? StatusTone.Error : StatusTone.Muted));
+                if (WindowClosedMinutes is { } closed)
+                    lines.Add(new StatusLine($"The tracking window closed {closed} min ago and tracking is still on. Stop tracking if you have landed.", StatusTone.Warning));
+                if (_tracking.StartedAtMillis is { } started && _nowMillis - started >= TrackingSession.WarnAfterMillis)
+                {
+                    var minutes = (_nowMillis - started) / 60_000;
+                    lines.Add(new StatusLine($"Tracking has been on for {minutes / 60} h {minutes % 60} min. It stops by itself after {TrackingSession.MaxMillis / 3_600_000} h.", StatusTone.Warning));
+                }
+                // On the Timer and Photos pages only trouble is shown, so a pilot there still sees that positions are not getting through.
+                if (_tracking.LastError is { } error) lines.Add(new StatusLine($"Upload problem: {error} (retrying)", StatusTone.Error));
+                var receiving = Receiving;
+                if (DockCompact)
+                {
+                    if (receiving is ReceivingStatus.WaitingForFirstPosition) lines.Add(new StatusLine("Server has not received a position yet", StatusTone.Error));
+                    else if (receiving is ReceivingStatus.Stale stale) lines.Add(new StatusLine($"No position received for {stale.SecondsAgo} s", StatusTone.Error));
+                    return lines;
+                }
+                switch (receiving)
+                {
+                    case ReceivingStatus.WaitingForFirstPosition:
+                        lines.Add(new StatusLine("Server has not received a position yet", StatusTone.Error));
+                        break;
+                    case ReceivingStatus.Receiving r:
+                        lines.Add(new StatusLine($"Server receiving: last position {r.SecondsAgo} s ago", StatusTone.Muted));
+                        if (r.MapDelayMinutes > 0) lines.Add(new StatusLine($"The live map is delayed by {r.MapDelayMinutes} min in this task.", StatusTone.Small));
+                        break;
+                    case ReceivingStatus.ReceivingTimeNotYetKnown:
+                        lines.Add(new StatusLine("Server receiving positions", StatusTone.Muted));
+                        break;
+                    case ReceivingStatus.Stale s:
+                        lines.Add(new StatusLine($"No position received for {s.SecondsAgo} s", StatusTone.Error));
+                        break;
+                }
+                var scoring = Scoring;
+                if (scoring == ScoringStatus.Running) lines.Add(new StatusLine("Scoring is running", StatusTone.Live));
+                else if (scoring == ScoringStatus.Finished) lines.Add(new StatusLine("Scoring has finished", StatusTone.Muted));
+                // Only worth mentioning once positions arrive: the first one starts the calculator.
+                else if (scoring == ScoringStatus.NotStarted && receiving is ReceivingStatus.Receiving) lines.Add(new StatusLine("Scoring is starting…", StatusTone.Muted));
+                lines.Add(new StatusLine($"Queued positions: {_tracking.Backlog}", StatusTone.Small));
+                return lines;
+            }
+        }
+
+        // ---- Home ------------------------------------------------------------------------------------------------------
+
+        public string Greeting => $"Hello, {new[] { _state.Person?.FirstName, _state.Person?.Email }.FirstOrDefault(s => !string.IsNullOrWhiteSpace(s)) ?? "pilot"}";
+
+        private UiState? _targetsFor;
+        private TrackingTargets? _targets;
+
+        /// <summary>What the flight strips show; worked out once per state.</summary>
+        public TrackingTargets Targets
+        {
+            get
+            {
+                if (_targets == null || !ReferenceEquals(_targetsFor, _state))
+                {
+                    _targets = TrackingTargets.Of(_state.Tasks, _state.Upcoming, _state.Contests, t => TimeFormat.FormatTimeLocal(t), t => TimeFormat.FormatLocal(t));
+                    _targetsFor = _state;
+                }
+                return _targets;
+            }
+        }
+
+        public string StripHeader
+        {
+            get
+            {
+                var t = Targets;
+                if (t.Now.Count > 0) return _tracking.Running ? "Tracking for" : "You will track";
+                if (t.Next != null) return "Next flight";
+                return _state.HomeLoaded ? "No flight scheduled" : "Checking your flights…";
+            }
+        }
+
+        public bool ShowLiveDot => _tracking.Running && Targets.Now.Count > 0;
+
+        public bool ShowNoFlightNote => _state.HomeLoaded && Targets.Now.Count == 0 && Targets.Next == null;
+
+        /// <summary>The same rule as on My flights: the server's verdict (or the task's flag) says whether the pilot may cancel.</summary>
+        public MyFlight? Cancellable(TrackingTarget t) => _state.Upcoming.FirstOrDefault(f => f.Id == t.FlightId && f.CanCancel());
+
+        public IReadOnlyList<PreflightCheck> Checks => PreflightChecks.Of(
+            _state.Tasks.Count > 0 || _state.Upcoming.Count > 0, Platform.Online(), Clock, SimStatus);
+
+        public string PreflightSummary => PreflightChecks.Summary(Checks);
+
+        private string? _historySummary;
+
+        public string HistorySummary
+        {
+            get
+            {
+                if (_historySummary == null)
+                {
+                    var n = _trackLog.Sessions().Count;
+                    _historySummary = n == 0 ? "Nothing recorded yet" : $"{n} recorded";
+                }
+                return _historySummary;
+            }
+        }
+
+        public bool TrainingAvailable => GateFeedback.TrainingAvailable(_state.Tasks);
+
+        // ---- Observations ----------------------------------------------------------------------------------------------
+
+        /// <summary>The latest simulator position, when it is fresh enough to stamp a mark with.</summary>
+        public ObservationFix? FreshFix
+        {
+            get
+            {
+                if (!_tracking.Running || _tracking.LastFixMillis is not { } time || _tracking.LastLatitude is not { } lat || _tracking.LastLongitude is not { } lon) return null;
+                return _nowMillis - time <= ObservationRules.FixMaxAgeMillis ? new ObservationFix(lat, lon, time) : null;
+            }
+        }
+
+        public string? ObservationBlocker => ObservationRules.Blocker(_state.Observations, _tracking.Running, FreshFix != null, _nowMillis);
+
+        public void MarkObservation(ObservationPhoto photo)
+        {
+            if (FreshFix is { } fix) _ = _controller.MarkObservationAsync(photo, fix);
+        }
+    }
+
+    public enum StatusTone { Title, Live, Muted, Small, Warning, Error }
+
+    public sealed record StatusLine(string Text, StatusTone Tone);
+}

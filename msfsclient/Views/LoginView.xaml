@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<local:ShellPart
+    x:Class="msfsclient.Views.LoginView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:msfsclient.Views"
+    xmlns:helpers="using:msfsclient.Helpers"
+    FontFamily="{StaticResource BarlowRegular}">
+    <ScrollViewer>
+        <StackPanel Padding="24" Spacing="10" VerticalAlignment="Center">
+            <TextBlock Text="Airsports" Style="{StaticResource PageTitle}" FontSize="40" Margin="0,24,0,8" />
+            <TextBox x:Name="Email" Header="Email" InputScope="EmailSmtpAddress" Style="{StaticResource FormBox}" TextChanged="Email_Changed"
+                     IsSpellCheckEnabled="False" />
+            <PasswordBox x:Name="Password" Header="Password" PasswordChanged="Password_Changed" KeyDown="Password_KeyDown" />
+            <Button x:Name="Submit" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Stretch" Margin="0,6,0,0" Click="Submit_Click" />
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <HyperlinkButton x:Name="ModeButton" Style="{StaticResource TextButton}" Click="Mode_Click" />
+                <HyperlinkButton x:Name="ResetButton" Content="Forgot password?" Style="{StaticResource TextButton}" Click="Reset_Click" />
+            </StackPanel>
+            <TextBlock Text="{x:Bind helpers:Ui.OrEmpty(Vm.State.Notice), Mode=OneWay}" Visibility="{x:Bind helpers:Ui.ShowText(Vm.State.Notice), Mode=OneWay}"
+                       Style="{StaticResource BodyText}" AutomationProperties.LiveSetting="Polite" />
+            <TextBlock Text="{x:Bind helpers:Ui.OrEmpty(Vm.State.Error), Mode=OneWay}" Visibility="{x:Bind helpers:Ui.ShowText(Vm.State.Error), Mode=OneWay}"
+                       Style="{StaticResource ErrorText}" AutomationProperties.LiveSetting="Assertive" />
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,16,0,0">
+                <TextBlock Text="By using Airsports you accept the " Style="{StaticResource SmallText}" VerticalAlignment="Center" />
+                <HyperlinkButton Content="terms &amp; privacy policy" Padding="2,0" FontSize="13" Click="Terms_Click" />
+            </StackPanel>
+            <local:VersionText HorizontalAlignment="Center" />
+        </StackPanel>
+    </ScrollViewer>
+</local:ShellPart>

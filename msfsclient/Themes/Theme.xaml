@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The pilot-app look (port of the mobile app's ui/theme/Theme.kt): ink header and dock, cool paper background, white
+    cards, the website's indigo as the brand colour, live green for tracking and open windows, amber for photo marking
+    and private-map notes. Barlow for text, Barlow Condensed for headings, times and numerals.
+-->
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Light">
+            <SolidColorBrush x:Key="InkBrush" Color="#0E1726" />
+            <SolidColorBrush x:Key="PaperBrush" Color="#F3F5F9" />
+            <SolidColorBrush x:Key="CardBrush" Color="#FFFFFF" />
+            <SolidColorBrush x:Key="IndigoBrush" Color="#4338CA" />
+            <SolidColorBrush x:Key="LiveGreenBrush" Color="#12B76A" />
+            <SolidColorBrush x:Key="LiveGreenTextBrush" Color="#027A48" />
+            <SolidColorBrush x:Key="AmberBrush" Color="#F5A524" />
+            <SolidColorBrush x:Key="AmberTintBrush" Color="#29F5A524" />
+            <SolidColorBrush x:Key="ErrorBrush" Color="#D92D4A" />
+            <SolidColorBrush x:Key="OutlineBrush" Color="#D5DBE6" />
+            <SolidColorBrush x:Key="StrongOutlineBrush" Color="#9AA5B8" />
+            <SolidColorBrush x:Key="TextBrush" Color="#0E1726" />
+            <SolidColorBrush x:Key="MutedTextBrush" Color="#445066" />
+            <SolidColorBrush x:Key="ErrorContainerBrush" Color="#FDE4E8" />
+            <SolidColorBrush x:Key="OnErrorContainerBrush" Color="#4D0218" />
+            <!-- The brand colour drives every accent control (buttons, switches, links, focus). -->
+            <Color x:Key="SystemAccentColor">#4338CA</Color>
+            <Color x:Key="SystemAccentColorLight1">#5B51D6</Color>
+            <Color x:Key="SystemAccentColorLight2">#7A72E0</Color>
+            <Color x:Key="SystemAccentColorLight3">#9A94EA</Color>
+            <Color x:Key="SystemAccentColorDark1">#3A30B3</Color>
+            <Color x:Key="SystemAccentColorDark2">#30289A</Color>
+            <Color x:Key="SystemAccentColorDark3">#262080</Color>
+        </ResourceDictionary>
+        <ResourceDictionary x:Key="Dark">
+            <SolidColorBrush x:Key="InkBrush" Color="#070D18" />
+            <SolidColorBrush x:Key="PaperBrush" Color="#0A1220" />
+            <SolidColorBrush x:Key="CardBrush" Color="#121B2C" />
+            <SolidColorBrush x:Key="IndigoBrush" Color="#8B85F5" />
+            <SolidColorBrush x:Key="LiveGreenBrush" Color="#2FCB84" />
+            <SolidColorBrush x:Key="LiveGreenTextBrush" Color="#2FCB84" />
+            <SolidColorBrush x:Key="AmberBrush" Color="#FFB84A" />
+            <SolidColorBrush x:Key="AmberTintBrush" Color="#29FFB84A" />
+            <SolidColorBrush x:Key="ErrorBrush" Color="#FF7A90" />
+            <SolidColorBrush x:Key="OutlineBrush" Color="#263148" />
+            <SolidColorBrush x:Key="StrongOutlineBrush" Color="#5B6880" />
+            <SolidColorBrush x:Key="TextBrush" Color="#E6EAF2" />
+            <SolidColorBrush x:Key="MutedTextBrush" Color="#AAB4C8" />
+            <SolidColorBrush x:Key="ErrorContainerBrush" Color="#4A1623" />
+            <SolidColorBrush x:Key="OnErrorContainerBrush" Color="#FFD6DD" />
+            <Color x:Key="SystemAccentColor">#8B85F5</Color>
+            <Color x:Key="SystemAccentColorLight1">#A09BF7</Color>
+            <Color x:Key="SystemAccentColorLight2">#B5B1F9</Color>
+            <Color x:Key="SystemAccentColorLight3">#CAC7FB</Color>
+            <Color x:Key="SystemAccentColorDark1">#7670E0</Color>
+            <Color x:Key="SystemAccentColorDark2">#625BCB</Color>
+            <Color x:Key="SystemAccentColorDark3">#4D46B6</Color>
+        </ResourceDictionary>
+        <!-- High contrast: system colours only, so the pilot's chosen contrast theme wins everywhere. -->
+        <ResourceDictionary x:Key="HighContrast">
+            <SolidColorBrush x:Key="InkBrush" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="PaperBrush" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="CardBrush" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="IndigoBrush" Color="{ThemeResource SystemColorHotlightColor}" />
+            <SolidColorBrush x:Key="LiveGreenBrush" Color="{ThemeResource SystemColorHighlightColor}" />
+            <SolidColorBrush x:Key="LiveGreenTextBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="AmberBrush" Color="{ThemeResource SystemColorHighlightColor}" />
+            <SolidColorBrush x:Key="AmberTintBrush" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="ErrorBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="OutlineBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="StrongOutlineBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="TextBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="MutedTextBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="ErrorContainerBrush" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="OnErrorContainerBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+        </ResourceDictionary>
+    </ResourceDictionary.ThemeDictionaries>
+
+
+    <!-- The dock is always dark ink, in both themes. -->
+    <SolidColorBrush x:Key="DockBrush" Color="#0E1726" />
+    <SolidColorBrush x:Key="DockContentBrush" Color="#E6EAF2" />
+    <SolidColorBrush x:Key="DockMutedBrush" Color="#B3E6EAF2" />
+    <SolidColorBrush x:Key="DockPrimaryBrush" Color="#A5A0FF" />
+    <SolidColorBrush x:Key="DockErrorBrush" Color="#FF7A90" />
+    <SolidColorBrush x:Key="DockGreenBrush" Color="#2FCB84" />
+    <SolidColorBrush x:Key="DockAmberBrush" Color="#FFB84A" />
+    <SolidColorBrush x:Key="DockOverlayBrush" Color="#14FFFFFF" />
+    <SolidColorBrush x:Key="HeaderContentBrush" Color="#E6EAF2" />
+
+    <!-- Buttons 8 px, as on the website (DaisyUI) and in the mobile app. -->
+    <CornerRadius x:Key="ControlCornerRadius">8</CornerRadius>
+    <CornerRadius x:Key="OverlayCornerRadius">10</CornerRadius>
+
+    <FontFamily x:Key="BarlowRegular">ms-appx:///Assets/Fonts/barlow_regular.ttf#Barlow</FontFamily>
+    <FontFamily x:Key="BarlowMedium">ms-appx:///Assets/Fonts/barlow_medium.ttf#Barlow Medium</FontFamily>
+    <FontFamily x:Key="BarlowSemiBold">ms-appx:///Assets/Fonts/barlow_semibold.ttf#Barlow SemiBold</FontFamily>
+    <FontFamily x:Key="BarlowBold">ms-appx:///Assets/Fonts/barlow_bold.ttf#Barlow</FontFamily>
+    <FontFamily x:Key="CondensedMedium">ms-appx:///Assets/Fonts/barlowcondensed_medium.ttf#Barlow Condensed Medium</FontFamily>
+    <FontFamily x:Key="CondensedSemiBold">ms-appx:///Assets/Fonts/barlowcondensed_semibold.ttf#Barlow Condensed SemiBold</FontFamily>
+    <FontFamily x:Key="CondensedBold">ms-appx:///Assets/Fonts/barlowcondensed_bold.ttf#Barlow Condensed</FontFamily>
+
+    <!-- Text styles. Sentence case, left-aligned, no all-caps eyebrows. -->
+    <Style x:Key="BodyText" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource BarlowRegular}" />
+        <Setter Property="FontSize" Value="15" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="Foreground" Value="{ThemeResource TextBrush}" />
+    </Style>
+    <Style x:Key="MutedText" TargetType="TextBlock" BasedOn="{StaticResource BodyText}">
+        <Setter Property="Foreground" Value="{ThemeResource MutedTextBrush}" />
+    </Style>
+    <Style x:Key="SmallText" TargetType="TextBlock" BasedOn="{StaticResource MutedText}">
+        <Setter Property="FontSize" Value="13" />
+    </Style>
+    <Style x:Key="LabelText" TargetType="TextBlock" BasedOn="{StaticResource MutedText}">
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="FontFamily" Value="{StaticResource BarlowMedium}" />
+    </Style>
+    <Style x:Key="StrongText" TargetType="TextBlock" BasedOn="{StaticResource BodyText}">
+        <Setter Property="FontFamily" Value="{StaticResource BarlowSemiBold}" />
+        <Setter Property="FontSize" Value="16" />
+    </Style>
+    <Style x:Key="ErrorText" TargetType="TextBlock" BasedOn="{StaticResource BodyText}">
+        <Setter Property="Foreground" Value="{ThemeResource ErrorBrush}" />
+    </Style>
+    <Style x:Key="NoticeText" TargetType="TextBlock" BasedOn="{StaticResource BodyText}">
+        <Setter Property="Foreground" Value="{ThemeResource IndigoBrush}" />
+        <Setter Property="FontFamily" Value="{StaticResource BarlowSemiBold}" />
+    </Style>
+    <Style x:Key="PageTitle" TargetType="TextBlock" BasedOn="{StaticResource BodyText}">
+        <Setter Property="FontFamily" Value="{StaticResource CondensedBold}" />
+        <Setter Property="FontSize" Value="34" />
+        <Setter Property="LineHeight" Value="36" />
+    </Style>
+    <Style x:Key="Greeting" TargetType="TextBlock" BasedOn="{StaticResource PageTitle}">
+        <Setter Property="FontSize" Value="38" />
+        <Setter Property="LineHeight" Value="40" />
+    </Style>
+    <Style x:Key="CondensedTitle" TargetType="TextBlock" BasedOn="{StaticResource BodyText}">
+        <Setter Property="FontFamily" Value="{StaticResource CondensedSemiBold}" />
+        <Setter Property="FontSize" Value="24" />
+        <Setter Property="LineHeight" Value="26" />
+    </Style>
+    <Style x:Key="CondensedValue" TargetType="TextBlock" BasedOn="{StaticResource BodyText}">
+        <Setter Property="FontFamily" Value="{StaticResource CondensedSemiBold}" />
+        <Setter Property="FontSize" Value="20" />
+        <Setter Property="TextWrapping" Value="NoWrap" />
+    </Style>
+
+    <!-- Website-style card: base fill, hairline border, 10 px corners (tiles). -->
+    <Style x:Key="Card" TargetType="Border">
+        <Setter Property="Background" Value="{ThemeResource CardBrush}" />
+        <Setter Property="BorderBrush" Value="{ThemeResource OutlineBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="Padding" Value="14" />
+    </Style>
+
+    <!-- A typographic menu tile: title and one status line, no icon. -->
+    <Style x:Key="TileButton" TargetType="Button">
+        <Setter Property="Background" Value="{ThemeResource CardBrush}" />
+        <Setter Property="BorderBrush" Value="{ThemeResource OutlineBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="Padding" Value="14" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="VerticalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Left" />
+        <Setter Property="VerticalContentAlignment" Value="Top" />
+    </Style>
+
+    <!-- Text buttons: a link look without the underline, for actions in strips and cards. -->
+    <Style x:Key="TextButton" TargetType="HyperlinkButton">
+        <Setter Property="FontFamily" Value="{StaticResource BarlowSemiBold}" />
+        <Setter Property="Padding" Value="8,6" />
+    </Style>
+    <Style x:Key="DangerTextButton" TargetType="HyperlinkButton" BasedOn="{StaticResource TextButton}">
+        <Setter Property="Foreground" Value="{ThemeResource ErrorBrush}" />
+    </Style>
+    <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource AccentButtonStyle}">
+        <Setter Property="FontFamily" Value="{StaticResource BarlowSemiBold}" />
+        <Setter Property="Padding" Value="16,9" />
+        <Setter Property="MinHeight" Value="40" />
+    </Style>
+    <Style x:Key="OutlinedButton" TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}">
+        <Setter Property="FontFamily" Value="{StaticResource BarlowSemiBold}" />
+        <Setter Property="Padding" Value="16,9" />
+        <Setter Property="MinHeight" Value="40" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="{ThemeResource StrongOutlineBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+    </Style>
+
+    <Style x:Key="FormBox" TargetType="TextBox">
+        <Setter Property="FontFamily" Value="{StaticResource BarlowRegular}" />
+        <Setter Property="FontSize" Value="15" />
+    </Style>
+</ResourceDictionary>

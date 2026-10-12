@@ -781,6 +781,13 @@ public sealed class AppController
         Update(_ => new UiState { Screen = Screen.Login });
     }
 
+    /// <summary>The token the web view sends (in a header, never in the URL) to sign the pilot in on the website.</summary>
+    public async Task<string?> IdTokenForWebAsync()
+    {
+        try { return await _auth.Tokens.IdTokenAsync(forceRefresh: false); }
+        catch (Exception) { return null; }
+    }
+
     /// <summary>The time "now" on the controller's clock (tests replace it).</summary>
     public long NowMillis() => _now();
 }

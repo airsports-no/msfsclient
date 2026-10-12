@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<local:ShellPart
+    x:Class="msfsclient.Views.VerifyEmailView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:msfsclient.Views"
+    xmlns:helpers="using:msfsclient.Helpers"
+    FontFamily="{StaticResource BarlowRegular}">
+    <StackPanel Padding="24" Spacing="12" VerticalAlignment="Center">
+        <TextBlock Text="Verify your email" Style="{StaticResource PageTitle}" />
+        <TextBlock Text="{x:Bind Message, Mode=OneWay}" Style="{StaticResource BodyText}" />
+        <Button Content="I have verified my email" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Stretch" Click="Check_Click"
+                IsEnabled="{x:Bind helpers:Ui.Not(Vm.State.Busy), Mode=OneWay}" />
+        <Button Content="Send the email again" Style="{StaticResource OutlinedButton}" HorizontalAlignment="Stretch" Click="Resend_Click"
+                IsEnabled="{x:Bind helpers:Ui.Not(Vm.State.Busy), Mode=OneWay}" />
+        <HyperlinkButton Content="Use a different account" Style="{StaticResource TextButton}" Click="SignOut_Click" />
+        <TextBlock Text="{x:Bind helpers:Ui.OrEmpty(Vm.State.Notice), Mode=OneWay}" Visibility="{x:Bind helpers:Ui.ShowText(Vm.State.Notice), Mode=OneWay}"
+                   Style="{StaticResource BodyText}" AutomationProperties.LiveSetting="Polite" />
+        <TextBlock Text="{x:Bind helpers:Ui.OrEmpty(Vm.State.Error), Mode=OneWay}" Visibility="{x:Bind helpers:Ui.ShowText(Vm.State.Error), Mode=OneWay}"
+                   Style="{StaticResource ErrorText}" AutomationProperties.LiveSetting="Assertive" />
+    </StackPanel>
+</local:ShellPart>

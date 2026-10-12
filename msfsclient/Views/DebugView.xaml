@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The hidden debug view (seven clicks on the version): the simulator connection instead of GPS accuracy. -->
+<local:ShellPart
+    x:Class="msfsclient.Views.DebugView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:msfsclient.Views"
+    FontFamily="{StaticResource BarlowRegular}">
+    <ScrollViewer>
+        <StackPanel Padding="16" Spacing="14">
+            <TextBlock Text="Simulator and upload" Style="{StaticResource PageTitle}" AutomationProperties.HeadingLevel="Level1" />
+            <TextBlock Text="Nothing here is sent anywhere." Style="{StaticResource MutedText}" />
+            <Border Style="{StaticResource Card}">
+                <ItemsControl ItemsSource="{x:Bind Rows, Mode=OneWay}" IsTabStop="False">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="local:DebugRow">
+                            <Grid ColumnSpacing="12" Margin="0,3">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{x:Bind Label}" Style="{StaticResource MutedText}" />
+                                <TextBlock Grid.Column="1" Text="{x:Bind Value}" Style="{StaticResource BodyText}" TextAlignment="Right" IsTextSelectionEnabled="True" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</local:ShellPart>

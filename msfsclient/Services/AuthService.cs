@@ -1,259 +1,155 @@
 using System;
-using System.IO;
 using System.Net.Http;
 using System.Net.Http.Json;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Firebase.Auth;
 using Firebase.Auth.Providers;
-using msfsclient.Contracts.Services;
-using Firebase.Auth.Repository;
+using msfsclient.Core.Auth;
 
 namespace msfsclient.Services
 {
-    public class AuthService : IAuthService
+    /// <summary>
+    /// Email and password sign-in with Firebase (project airsports-613ce), behind the Core <see cref="IAuthService"/>. The
+    /// Firebase web API key is public by design. The signed-in user is kept in the Windows credential store.
+    /// </summary>
+    public sealed class AuthService : IAuthService, IAuthTokenProvider
     {
-        private readonly FirebaseAuthClient _client;
-        private readonly HttpClient _httpClient;
-        private UserCredential? _userCredential;
         private const string ApiKey = "AIzaSyD_LDULS2RvLvhTtnLyEzARtbs-WgtFOAo";
         private const string AuthDomain = "airsports-613ce.firebaseapp.com";
+        private const string IdentityToolkit = "https://identitytoolkit.googleapis.com/v1/accounts:";
 
-        private string? _cachedToken;
-        public bool IsAuthenticated => _client.User != null && _client.User.Info.IsEmailVerified;
-        public User? CurrentUser => _client.User;
-        public string? JwtToken => _cachedToken ?? _client.User?.Credential?.IdToken;
-        public string? LastErrorMessage { get; private set; }
+        private readonly FirebaseAuthClient _client;
+        private readonly HttpClient _http;
+        private readonly VaultUserRepository _repository;
 
-        public AuthService(HttpClient httpClient)
+        public AuthService(HttpClient http, string? legacyUserFile)
         {
-            _httpClient = httpClient;
-            string localFolder;
-            try
-            {
-                // Try to get the packaged app local folder
-                localFolder = Windows.Storage.ApplicationData.Current.LocalFolder.Path;
-            }
-            catch (Exception)
-            {
-                // Fallback for unpackaged mode
-                localFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "msfsclient");
-                if (!Directory.Exists(localFolder))
-                {
-                    Directory.CreateDirectory(localFolder);
-                }
-            }
-
-            var userFilePath = Path.Combine(localFolder, "user.json");
-            System.Diagnostics.Debug.WriteLine($"AuthService: Using user file path: {userFilePath}");
-
-            var config = new FirebaseAuthConfig
+            _http = http;
+            _repository = new VaultUserRepository(legacyUserFile);
+            _client = new FirebaseAuthClient(new FirebaseAuthConfig
             {
                 ApiKey = ApiKey,
                 AuthDomain = AuthDomain,
-                Providers = new FirebaseAuthProvider[]
-                {
-                    new EmailProvider()
-                },
-                UserRepository = new FileUserRepository(userFilePath)
-            };
-
-            _client = new FirebaseAuthClient(config);
-
-            if (_client.User != null)
-            {
-                System.Diagnostics.Debug.WriteLine($"AuthService: Restored user: {_client.User.Info.Email}, Verified: {_client.User.Info.IsEmailVerified}");
-            }
-            else
-            {
-                System.Diagnostics.Debug.WriteLine("AuthService: No user restored from repository.");
-            }
+                Providers = [new EmailProvider()],
+                UserRepository = _repository,
+            });
         }
 
-        public async Task<bool> LoginAsync(string email, string password)
+        public IAuthTokenProvider Tokens => this;
+
+        public bool IsSignedIn() => _client.User != null;
+
+        public bool IsEmailVerified() => _client.User?.Info.IsEmailVerified == true;
+
+        public string? Email() => _client.User?.Info.Email;
+
+        public async Task<string?> IdTokenAsync(bool forceRefresh)
         {
+            var user = _client.User;
+            if (user == null) return null;
             try
             {
-                LastErrorMessage = null;
-                _cachedToken = null; // Clear cached token on new login
-                _userCredential = await _client.SignInWithEmailAndPasswordAsync(email, password);
-                
-                if (_client.User != null)
-                {
-                    System.Diagnostics.Debug.WriteLine($"AuthService: Login successful for {_client.User.Info.Email}. Verified: {_client.User.Info.IsEmailVerified}");
-                    
-                    if (!_client.User.Info.IsEmailVerified)
-                    {
-                        LastErrorMessage = "Your email address has not been verified. Please check your inbox for a verification email.";
-                        return false;
-                    }
-                }
-                
-                return IsAuthenticated;
+                return await user.GetIdTokenAsync(forceRefresh);
             }
-            catch (FirebaseAuthHttpException ex)
+            catch (FirebaseAuthHttpException ex) when (ex.Reason is AuthErrorReason.InvalidIDToken or AuthErrorReason.UserNotFound or AuthErrorReason.UserDisabled or AuthErrorReason.LoginCredentialsTooOld)
             {
-                LastErrorMessage = ex.Reason switch
-                {
-                    AuthErrorReason.WrongPassword => "The password you entered is incorrect.",
-                    AuthErrorReason.UserNotFound => "No account found with this email address.",
-                    AuthErrorReason.UserDisabled => "This account has been disabled.",
-                    AuthErrorReason.TooManyAttemptsTryLater => "Too many failed login attempts. Please try again later.",
-                    AuthErrorReason.InvalidEmailAddress => "The email address is poorly formatted.",
-                    _ => $"Login failed: {ex.Reason}"
-                };
-                System.Diagnostics.Debug.WriteLine($"AuthService: Login failed: {ex.Reason} - {ex.Message}");
-                return false;
-            }
-            catch (FirebaseAuthException ex)
-            {
-                LastErrorMessage = $"Auth Error: {ex.Reason}";
-                System.Diagnostics.Debug.WriteLine($"AuthService: Login failed: {LastErrorMessage}");
-                return false;
-            }
-            catch (Exception ex)
-            {
-                LastErrorMessage = $"General Error: {ex.Message}";
-                System.Diagnostics.Debug.WriteLine($"AuthService: Login failed: {LastErrorMessage}");
-                return false;
+                // The refresh token no longer works (password changed, account removed): the pilot has to sign in again.
+                SignOut();
+                return null;
             }
         }
 
-        public async Task<bool> RegisterAsync(string email, string password, string firstName, string lastName)
+        public async Task SignInWithPasswordAsync(string email, string password) =>
+            await _client.SignInWithEmailAndPasswordAsync(email, password);
+
+        public async Task CreateAccountAsync(string email, string password)
         {
-            try
-            {
-                LastErrorMessage = null;
-                var displayName = $"{firstName} {lastName}".Trim();
-                var credential = await _client.CreateUserWithEmailAndPasswordAsync(email, password, displayName);
-                _userCredential = credential;
-                System.Diagnostics.Debug.WriteLine($"AuthService: Registration successful for {email}");
-                // Success if user was created, even if not yet verified
-                return _client.User != null;
-            }
-            catch (FirebaseAuthHttpException ex)
-            {
-                LastErrorMessage = $"HTTP Error: {ex.Reason} - {ex.Message}";
-                System.Diagnostics.Debug.WriteLine($"AuthService: Registration failed: {LastErrorMessage}");
-                return false;
-            }
-            catch (FirebaseAuthException ex)
-            {
-                LastErrorMessage = $"Auth Error: {ex.Reason}";
-                System.Diagnostics.Debug.WriteLine($"AuthService: Registration failed: {LastErrorMessage}");
-                return false;
-            }
-            catch (Exception ex)
-            {
-                LastErrorMessage = $"General Error: {ex.Message}";
-                System.Diagnostics.Debug.WriteLine($"AuthService: Registration failed: {LastErrorMessage}");
-                return false;
-            }
+            await _client.CreateUserWithEmailAndPasswordAsync(email, password, null);
+            await ResendVerificationAsync();
         }
 
-        public async Task SendEmailVerificationAsync()
+        public Task SendPasswordResetAsync(string email) =>
+            PostAsync("sendOobCode", new { requestType = "PASSWORD_RESET", email });
+
+        public async Task ResendVerificationAsync()
         {
-            if (_client.User == null) return;
+            var token = await IdTokenAsync(forceRefresh: false) ?? throw new InvalidOperationException("Not signed in");
+            await PostAsync("sendOobCode", new { requestType = "VERIFY_EMAIL", idToken = token });
+        }
 
-            // In Firebase.Auth 4.x, we can use the client or user object if supported, 
-            // but the direct REST API call is also fine if we have the token.
-            var token = await _client.User.GetIdTokenAsync();
-            if (token == null) return;
-
-            var url = $"https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key={ApiKey}";
-            var payload = new
+        public async Task<bool> CheckVerifiedAsync()
+        {
+            var user = _client.User;
+            if (user == null) return false;
+            // A fresh token carries the new email_verified claim; the account lookup says whether it is verified now.
+            var token = await user.GetIdTokenAsync(forceRefresh: true);
+            using var response = await PostAsync("lookup", new { idToken = token });
+            using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            var verified = doc.RootElement.TryGetProperty("users", out var users) && users.GetArrayLength() > 0
+                && users[0].TryGetProperty("emailVerified", out var v) && v.GetBoolean();
+            if (verified && !user.Info.IsEmailVerified)
             {
-                requestType = "VERIFY_EMAIL",
-                idToken = token
-            };
+                user.Info.IsEmailVerified = true;
+                _repository.SaveUser(user);
+            }
+            return verified;
+        }
 
-            var response = await _httpClient.PostAsJsonAsync(url, payload);
+        public void SignOut()
+        {
+            try { _client.SignOut(); }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Firebase sign-out: {ex.Message}"); }
+            _repository.DeleteUser();
+        }
+
+        public string DescribeError(Exception e) => e switch
+        {
+            FirebaseAuthHttpException http => http.Reason switch
+            {
+                AuthErrorReason.WrongPassword or AuthErrorReason.UnknownEmailAddress or AuthErrorReason.UserNotFound => "The email or password is not right.",
+                AuthErrorReason.InvalidEmailAddress => "That is not a valid email address.",
+                AuthErrorReason.EmailExists => "An account with this email already exists. Sign in instead.",
+                AuthErrorReason.WeakPassword => "Choose a longer password (at least 6 characters).",
+                AuthErrorReason.UserDisabled => "This account has been disabled.",
+                AuthErrorReason.TooManyAttemptsTryLater => "Too many attempts. Wait a little and try again.",
+                _ => $"Sign-in failed ({http.Reason}).",
+            },
+            FirebaseAuthException auth => $"Sign-in failed ({auth.Reason}).",
+            HttpRequestException => "No connection to the sign-in service. Check the internet connection.",
+            _ => e.Message,
+        };
+
+        private async Task<HttpResponseMessage> PostAsync(string action, object body)
+        {
+            var response = await _http.PostAsJsonAsync($"{IdentityToolkit}{action}?key={ApiKey}", body);
             if (!response.IsSuccessStatusCode)
             {
                 var error = await response.Content.ReadAsStringAsync();
-                System.Diagnostics.Debug.WriteLine($"AuthService: Failed to send verification email: {error}");
-                throw new Exception($"Failed to send verification email: {error}");
+                response.Dispose();
+                throw new InvalidOperationException(FirebaseMessage(error));
             }
-            System.Diagnostics.Debug.WriteLine("AuthService: Verification email sent.");
+            return response;
         }
 
-        public async Task ResetPasswordAsync(string email)
+        /// <summary>The REST error code in words ("EMAIL_NOT_FOUND" and friends).</summary>
+        private static string FirebaseMessage(string body)
         {
             try
             {
-                var url = $"https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key={ApiKey}";
-                var payload = new
+                using var doc = JsonDocument.Parse(body);
+                var code = doc.RootElement.GetProperty("error").GetProperty("message").GetString() ?? "";
+                return code switch
                 {
-                    requestType = "PASSWORD_RESET",
-                    email = email
+                    "EMAIL_NOT_FOUND" => "No account uses this email address.",
+                    "TOO_MANY_ATTEMPTS_TRY_LATER" => "Too many attempts. Wait a little and try again.",
+                    "INVALID_ID_TOKEN" or "USER_NOT_FOUND" => "Please sign in again.",
+                    _ => code,
                 };
-
-                var response = await _httpClient.PostAsJsonAsync(url, payload);
-                if (!response.IsSuccessStatusCode)
-                {
-                    var error = await response.Content.ReadAsStringAsync();
-                    LastErrorMessage = $"Reset Password Error: {error}";
-                    System.Diagnostics.Debug.WriteLine($"AuthService: Reset password failed: {error}");
-                    throw new Exception(error);
-                }
-                System.Diagnostics.Debug.WriteLine($"AuthService: Password reset email sent to {email}");
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                LastErrorMessage = $"General Error: {ex.Message}";
-                System.Diagnostics.Debug.WriteLine($"AuthService: Reset password exception: {ex.Message}");
-                throw;
-            }
-        }
-
-        public async Task ReloadUserAsync()
-        {
-            if (_client.User != null)
-            {
-                try
-                {
-                    System.Diagnostics.Debug.WriteLine("AuthService: Reloading user state...");
-                    
-                    // Add a timeout to prevent infinite hang if network is problematic
-                    var reloadTask = _client.User.GetIdTokenAsync(true);
-                    if (await Task.WhenAny(reloadTask, Task.Delay(5000)) == reloadTask)
-                    {
-                        _cachedToken = await reloadTask;
-                        System.Diagnostics.Debug.WriteLine($"AuthService: User state reloaded. Verified: {_client.User.Info.IsEmailVerified}");
-                    }
-                    else
-                    {
-                        System.Diagnostics.Debug.WriteLine("AuthService: Reload user state timed out after 5s.");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"AuthService: Failed to reload user state: {ex.Message}");
-                    
-                    // If refreshing the token fails, the session is likely expired or invalid.
-                    // We should logout to ensure IsAuthenticated returns false and the UI redirects.
-                    Logout();
-                }
-            }
-        }
-
-        public void Logout()
-        {
-            try
-            {
-                if (_client.User != null)
-                {
-                    System.Diagnostics.Debug.WriteLine($"AuthService: Logging out user {_client.User.Info.Email}");
-                    _client.SignOut();
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Firebase SignOut Error: {ex.Message}");
-            }
-            finally
-            {
-                _userCredential = null;
-                _cachedToken = null;
+                return "The sign-in service did not answer.";
             }
         }
     }

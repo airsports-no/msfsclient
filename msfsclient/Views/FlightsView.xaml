@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- My flights, upcoming and past (port of FlightsScreen). -->
+<local:ShellPart
+    x:Class="msfsclient.Views.FlightsView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:msfsclient.Views"
+    xmlns:helpers="using:msfsclient.Helpers"
+    FontFamily="{StaticResource BarlowRegular}">
+    <Grid Padding="16,12" RowSpacing="8">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <StackPanel Spacing="10">
+            <TextBlock Text="My flights" Style="{StaticResource PageTitle}" AutomationProperties.HeadingLevel="Level1" />
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <ToggleButton x:Name="UpcomingTab" Content="Upcoming" Click="Upcoming_Click" FontFamily="{StaticResource BarlowSemiBold}" />
+                <ToggleButton x:Name="PastTab" Content="Past" Click="Past_Click" FontFamily="{StaticResource BarlowSemiBold}" />
+            </StackPanel>
+        </StackPanel>
+        <StackPanel Grid.Row="1" Spacing="4">
+            <TextBlock Text="{x:Bind helpers:Ui.OrEmpty(Vm.State.Error), Mode=OneWay}" Visibility="{x:Bind helpers:Ui.ShowText(Vm.State.Error), Mode=OneWay}"
+                       Style="{StaticResource ErrorText}" AutomationProperties.LiveSetting="Polite" />
+            <TextBlock Text="{x:Bind helpers:Ui.OrEmpty(Vm.State.FlightsNotice), Mode=OneWay}" Visibility="{x:Bind helpers:Ui.ShowText(Vm.State.FlightsNotice), Mode=OneWay}"
+                       Style="{StaticResource NoticeText}" AutomationProperties.LiveSetting="Polite" />
+            <TextBlock Text="{x:Bind EmptyText, Mode=OneWay}" Visibility="{x:Bind helpers:Ui.ShowText(EmptyText), Mode=OneWay}" Style="{StaticResource BodyText}" />
+        </StackPanel>
+        <ScrollViewer Grid.Row="2">
+            <ItemsControl ItemsSource="{x:Bind Flights, Mode=OneWay}" IsTabStop="False">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="local:FlightItem">
+                        <Border Style="{StaticResource Card}" Margin="0,0,0,8" Padding="16">
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="{x:Bind ContestName}" Style="{StaticResource MutedText}" />
+                                <TextBlock Text="{x:Bind TaskName}" Style="{StaticResource BodyText}" FontFamily="{StaticResource CondensedBold}" FontSize="26"
+                                           AutomationProperties.HeadingLevel="Level2" />
+                                <TextBlock Text="{x:Bind Takeoff}" Style="{StaticResource BodyText}" />
+                                <Grid Visibility="{x:Bind IsPrivate}" Background="{ThemeResource AmberTintBrush}" Margin="0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="5" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border Background="{ThemeResource AmberBrush}" />
+                                    <TextBlock Grid.Column="1" Margin="10" Text="{x:Bind PrivateNote}" Style="{StaticResource BodyText}" />
+                                </Grid>
+                                <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
+                                    <Button Content="{x:Bind OpenText}" Style="{StaticResource OutlinedButton}" Visibility="{x:Bind CanOpen}" Tag="{x:Bind}" Click="Open_Click" />
+                                    <HyperlinkButton Content="{x:Bind CancelText}" Style="{StaticResource DangerTextButton}" Visibility="{x:Bind CanCancel}"
+                                                     IsEnabled="{x:Bind CancelEnabled}" Tag="{x:Bind}" Click="Cancel_Click" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </Grid>
+</local:ShellPart>

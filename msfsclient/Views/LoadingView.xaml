@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<local:ShellPart
+    x:Class="msfsclient.Views.LoadingView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:msfsclient.Views">
+    <ProgressRing IsActive="True" Width="48" Height="48" HorizontalAlignment="Center" VerticalAlignment="Center"
+                  AutomationProperties.Name="Loading" />
+</local:ShellPart>

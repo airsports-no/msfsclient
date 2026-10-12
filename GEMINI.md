@@ -1,31 +1,55 @@
 # Air Sports MSFS Client
 
 ## Project Overview
-This is a WinUI 3 application designed to interface with Microsoft Flight Simulator (MSFS) via SimConnect. It tracks flight data and provides a real-time dashboard for pilots.
+A WinUI 3 application that tracks a Microsoft Flight Simulator (MSFS) flight via SimConnect for Airsports Live Tracking. It
+has the same features and look as the Air Sports mobile app (airsports-mobile, Kotlin Multiplatform), ported to C#; see
+`msfs_client_port_plan.md` in the backend repo (`documentation/`) for the plan and what differs from the phone apps.
+
+## Solution layout
+- `msfsclient.Core/` (net8.0, no WinUI or SimConnect references): API client and models, the `AppController` state
+  machine, tracking (SQLite position queue, Traccar uploader, session), track log and GPX, photo observations, clock check,
+  pre-flight rules. Ported from `shared/src/commonMain` of the mobile repo; keep names close to the Kotlin ones.
+- `msfsclient.Core.Tests/` (xUnit): the mobile app's tests, ported case by case. They are the specification.
+  `dotnet test msfsclient.Core.Tests` runs anywhere, also on Linux (CI).
+- `msfsclient/`: the WinUI app: XAML views, `ShellViewModel`, SimConnect, Firebase sign-in, Windows-only services.
 
 ## Core Mandates
 - **SimConnect Lifecycle:** Ensure SimConnect is initialized with the correct Window Handle (`HWND`) using `WinRT.Interop.WindowNative.GetWindowHandle`.
-- **UI Thread Safety:** All updates to Observable properties and collections must be dispatched to the UI thread using `DispatcherQueue`.
-- **Data Precision:** Latitude/Longitude should be formatted to at least 4 decimal places.
+- **UI Thread Safety:** Core raises `StateChanged` on any thread; `ShellViewModel` dispatches to the UI thread with `DispatcherQueue`. Never touch UI objects from Core callbacks directly.
+- **Data Precision:** Numbers sent to servers or written to files use `CultureInfo.InvariantCulture` (a dot, whatever the PC's region).
+- **Wording:** Text shown to pilots is plain sentence case, no jargon, no exclamation marks; copy it from the Kotlin screens.
 
 ## Technical Architecture
 - **Framework:** .NET 8, WinUI 3 (Windows App SDK)
-- **Pattern:** MVVM (using CommunityToolkit.Mvvm)
-- **Services:**
-  - `ISimConnectService`: Manages the low-level connection to MSFS.
-  - `ITraccarService`: Handles data transmission to the Airsports/Traccar server.
-  - `IAuthService`: Handles user authentication via Firebase.
-  - `IProfileService`: Manages user profile data.
+- **Pattern:** one `ShellViewModel` (CommunityToolkit.Mvvm) wraps the Core `AppController` and the `TrackingSession`. Views are
+  `ShellPart` user controls bound one way (`x:Bind`) to it; forms keep their own input until submitted.
+- **Services (msfsclient/Services):**
+  - `SimConnectService` (`ISimConnectService`): the low-level connection to MSFS.
+  - `SimPositionSource`: SimConnect data -> Core `TrackPoint` (PC clock UTC, knots -> m/s, feet -> metres).
+  - `AuthService`: Firebase email/password sign-in behind Core `IAuthService`; the refresh token is kept in the Windows
+    credential store (`VaultUserRepository`), not in a file.
+  - `AppConfigService`: base URLs (`--base-url`, `--test-mode`), version and build number, local folder.
+  - `PlatformServices`: browser links, share dialog, GPX save dialog, photo picker, connection state.
+  - `PreviewMode`: `--preview [home|timer|photos|flights|preflight|history|profile|debug|training|tour]` runs on sample data
+    with a simulated aircraft, for screenshots and checking screens without an account or MSFS.
+- **Local data:** `airsports.db` (SQLite) in the app's local folder: position queue, track log, photo observation queue,
+  settings. `MSFSCLIENT_DATA_DIR` overrides the folder (testing).
 
 ## SimConnect Implementation
-- **Polling:** The application uses a `DispatcherTimer` in `MainWindow.xaml.cs` (100ms interval) to call `ReceiveMessage()` on the `SimConnectService`.
-- **Data Requests:** Flight data is requested periodically (`SIMCONNECT_PERIOD.SECOND`) to ensure a steady stream of updates without overwhelming the bus.
+- **Polling:** `ShellViewModel` runs a 100 ms `DispatcherTimer` that calls `ReceiveMessage()`, and reconnects every 10 s while MSFS is not running.
+- **Data Requests:** Flight data is requested once a second (`SIMCONNECT_PERIOD.SECOND`).
 
 ## Traccar Integration
-- **Tracking ID:** The `simulator_tracking_id` from the user profile is used as the device identifier.
-- **Data Transmission:** When tracking is enabled, position and speed data are sent to `https://traccar.airsports.no/` via POST requests with URL-encoded parameters.
-- **Thread Safety:** Traccar updates are executed on background threads to ensure the UI remains responsive.
+- **Tracking ID:** The profile's `simulator_tracking_id` is the Traccar device id.
+- **Upload:** every position is stored first, then sent in time order to `https://traccar.airsports.no/` (OsmAnd protocol:
+  timestamp in seconds, speed in knots, altitude in metres) with backoff 5 s doubling to 5 min. Traccar gets its own
+  `HttpClient`: the Firebase token never goes there.
+
+## Backend
+- API `https://airsports.no/api/v1/`, `Authorization: JWT <Firebase ID token>`, one refresh and retry on 401/403.
+- The simulator uses `userprofile/get_current_sim_navigation_task/` (the phones use the `app` variant).
+- Every authorised request carries `X-App-Platform: msfs`, `X-App-Version` (shared version name) and `X-App-Build`.
 
 ## UI Conventions
-- **Converters:** Use the custom converters in `msfsclient.Helpers.Converters` for data formatting and status visualization.
-- **Styling:** Adhere to the `Dark` theme defined in `App.xaml`.
+- Design tokens (colours, fonts, shapes) are in `Themes/Theme.xaml`, for light, dark and high contrast. Barlow for text, Barlow Condensed for headings and numbers.
+- The dock (`FlightDeck`) is always dark ink. The page column is at most about 560 px wide, centred.

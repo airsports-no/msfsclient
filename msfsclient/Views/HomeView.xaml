@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Home (port of ui/HomeScreen.kt): greeting, announcements, the flight strip, menu tiles, training mode, links, version. -->
+<local:ShellPart
+    x:Class="msfsclient.Views.HomeView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:msfsclient.Views"
+    xmlns:helpers="using:msfsclient.Helpers"
+    xmlns:tracking="using:msfsclient.Core.Tracking"
+    FontFamily="{StaticResource BarlowRegular}">
+
+    <local:ShellPart.Resources>
+        <DataTemplate x:Key="FactTemplate" x:DataType="tracking:Fact">
+            <Border BorderBrush="{ThemeResource OutlineBrush}" BorderThickness="1" CornerRadius="2" Padding="8,5">
+                <StackPanel>
+                    <TextBlock Text="{x:Bind Label}" Style="{StaticResource LabelText}" />
+                    <TextBlock Text="{x:Bind Value}" Style="{StaticResource CondensedValue}" />
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+    </local:ShellPart.Resources>
+
+    <ScrollViewer>
+        <StackPanel Padding="16,20" Spacing="20">
+            <!-- One-off confirmation (a registered or cancelled flight, the automatic stop). -->
+            <Border Style="{StaticResource Card}" Padding="16,4,4,4" Visibility="{x:Bind helpers:Ui.ShowText(Vm.State.HomeNotice), Mode=OneWay}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="{x:Bind helpers:Ui.OrEmpty(Vm.State.HomeNotice), Mode=OneWay}" Style="{StaticResource NoticeText}" VerticalAlignment="Center"
+                               AutomationProperties.LiveSetting="Polite" />
+                    <HyperlinkButton Grid.Column="1" Content="OK" Style="{StaticResource TextButton}" Click="DismissNotice_Click" />
+                </Grid>
+            </Border>
+
+            <ItemsControl ItemsSource="{x:Bind Announcements, Mode=OneWay}" IsTabStop="False">
+                <ItemsControl.ItemContainerTransitions>
+                    <TransitionCollection />
+                </ItemsControl.ItemContainerTransitions>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="local:AnnouncementItem">
+                        <Border Background="{ThemeResource CardBrush}" BorderBrush="{ThemeResource OutlineBrush}" BorderThickness="1" CornerRadius="10" Margin="0,0,0,8">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="6" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Border Background="{ThemeResource AmberBrush}" CornerRadius="10,0,0,10" />
+                                <StackPanel Grid.Column="1" Padding="12,10,4,2">
+                                    <TextBlock Text="{x:Bind Source}" Style="{StaticResource LabelText}" />
+                                    <TextBlock Text="{x:Bind Message}" Style="{StaticResource BodyText}" FontSize="16" IsTextSelectionEnabled="True" />
+                                    <HyperlinkButton Content="OK" HorizontalAlignment="Right" Style="{StaticResource TextButton}" Tag="{x:Bind Id}" Click="DismissAnnouncement_Click"
+                                                     AutomationProperties.Name="Dismiss announcement" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <TextBlock Text="{x:Bind Vm.Greeting, Mode=OneWay}" Style="{StaticResource Greeting}" AutomationProperties.HeadingLevel="Level1" />
+
+            <!-- Which flight(s) the client is tracking for: the open windows now, or else the next scheduled flight. -->
+            <StackPanel Spacing="10">
+                <Grid>
+                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <Ellipse Width="10" Height="10" Fill="{ThemeResource LiveGreenBrush}" Visibility="{x:Bind Vm.ShowLiveDot, Mode=OneWay}" />
+                        <TextBlock Text="{x:Bind Vm.StripHeader, Mode=OneWay}" Style="{StaticResource MutedText}" FontFamily="{StaticResource BarlowSemiBold}" FontSize="16"
+                                   AutomationProperties.HeadingLevel="Level2" />
+                    </StackPanel>
+                    <HyperlinkButton Content="Refresh" HorizontalAlignment="Right" Style="{StaticResource TextButton}" Click="Refresh_Click" />
+                </Grid>
+
+                <ItemsControl ItemsSource="{x:Bind Strips, Mode=OneWay}" IsTabStop="False">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="local:StripItem">
+                            <Border Background="{ThemeResource CardBrush}" BorderBrush="{ThemeResource StrongOutlineBrush}" BorderThickness="1" CornerRadius="2" Margin="0,0,0,10">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="10" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <!-- Green while the window is open, indigo otherwise. -->
+                                    <Border Background="{ThemeResource LiveGreenBrush}" Visibility="{x:Bind Live}" />
+                                    <Border Background="{ThemeResource IndigoBrush}" Visibility="{x:Bind NotLive}" />
+                                    <StackPanel Grid.Column="1" Padding="12,12,12,8" Spacing="10">
+                                        <Grid ColumnSpacing="12">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Spacing="2">
+                                                <TextBlock Text="{x:Bind ContestName}" Visibility="{x:Bind HasContest}" Style="{StaticResource MutedText}"
+                                                           FontFamily="{StaticResource CondensedMedium}" FontSize="20" />
+                                                <TextBlock Text="{x:Bind TaskName}" Style="{StaticResource BodyText}" FontFamily="{StaticResource CondensedBold}" FontSize="32" LineHeight="34"
+                                                           AutomationProperties.HeadingLevel="Level3" />
+                                                <TextBlock Text="{x:Bind TaskType}" Visibility="{x:Bind HasTaskType}" Foreground="{ThemeResource IndigoBrush}"
+                                                           FontFamily="{StaticResource BarlowSemiBold}" FontSize="14" TextWrapping="Wrap" />
+                                            </StackPanel>
+                                            <Image Grid.Column="1" Width="48" Height="48" Stretch="UniformToFill" Visibility="{x:Bind HasLogo}"
+                                                   Source="{x:Bind helpers:Ui.Image(LogoUrl)}" AutomationProperties.Name="Contest logo" />
+                                        </Grid>
+                                        <ItemsControl ItemsSource="{x:Bind Facts}" ItemTemplate="{StaticResource FactTemplate}" IsTabStop="False">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <helpers:WrapPanel />
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                        </ItemsControl>
+                                        <Grid Visibility="{x:Bind MapPrivate}" Background="{ThemeResource AmberTintBrush}">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="5" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Border Background="{ThemeResource AmberBrush}" />
+                                            <TextBlock Grid.Column="1" Margin="10" Text="The live map of this task is private to the organizer." Style="{StaticResource BodyText}" />
+                                        </Grid>
+                                        <helpers:WrapPanel Spacing="4">
+                                            <HyperlinkButton Content="Share live link" Style="{StaticResource TextButton}" Visibility="{x:Bind HasMap}" Tag="{x:Bind}" Click="Share_Click" />
+                                            <Button Content="Live map" Style="{StaticResource OutlinedButton}" Visibility="{x:Bind HasMap}" Tag="{x:Bind}" Click="LiveMap_Click" />
+                                            <HyperlinkButton Content="Flight orders" Style="{StaticResource TextButton}" Visibility="{x:Bind HasFlightOrders}" Tag="{x:Bind}" Click="FlightOrders_Click" />
+                                            <HyperlinkButton Content="Directions" Style="{StaticResource TextButton}" Visibility="{x:Bind HasDirections}" Tag="{x:Bind}" Click="Directions_Click" />
+                                            <HyperlinkButton Content="{x:Bind CancelText}" Style="{StaticResource DangerTextButton}" Visibility="{x:Bind CanCancel}"
+                                                             IsEnabled="{x:Bind CancelEnabled}" Tag="{x:Bind}" Click="Cancel_Click" />
+                                            <HyperlinkButton Content="Website" Style="{StaticResource TextButton}" Visibility="{x:Bind HasWebsite}" Tag="{x:Bind}" Click="Website_Click" />
+                                        </helpers:WrapPanel>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <TextBlock Text="Your positions are not scored while no flight is scheduled for you." Style="{StaticResource BodyText}" FontSize="16"
+                           Visibility="{x:Bind Vm.ShowNoFlightNote, Mode=OneWay}" />
+            </StackPanel>
+
+            <TextBlock Text="{x:Bind helpers:Ui.OrEmpty(Vm.State.Error), Mode=OneWay}" Visibility="{x:Bind helpers:Ui.ShowText(Vm.State.Error), Mode=OneWay}"
+                       Style="{StaticResource ErrorText}" AutomationProperties.LiveSetting="Polite" />
+
+            <!-- Typographic tiles: the title and a status line, no icon. -->
+            <Grid ColumnSpacing="12" RowSpacing="12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <Button Style="{StaticResource TileButton}" Click="Preflight_Click" AutomationProperties.Name="{x:Bind PreflightName, Mode=OneWay}">
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Pre-flight" Style="{StaticResource CondensedTitle}" />
+                        <TextBlock Text="{x:Bind Vm.PreflightSummary, Mode=OneWay}" Style="{StaticResource MutedText}" />
+                    </StackPanel>
+                </Button>
+                <Button Grid.Column="1" Style="{StaticResource TileButton}" Click="Flights_Click">
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="My flights" Style="{StaticResource CondensedTitle}" />
+                        <TextBlock Text="Upcoming and past" Style="{StaticResource MutedText}" />
+                    </StackPanel>
+                </Button>
+                <Button Grid.Row="1" Style="{StaticResource TileButton}" Click="History_Click">
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Track history" Style="{StaticResource CondensedTitle}" />
+                        <TextBlock Text="{x:Bind Vm.HistorySummary, Mode=OneWay}" Style="{StaticResource MutedText}" />
+                    </StackPanel>
+                </Button>
+                <Button Grid.Row="1" Grid.Column="1" Style="{StaticResource TileButton}" Click="Today_Click">
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Register today" Style="{StaticResource CondensedTitle}" />
+                        <TextBlock Text="Where registration is open" Style="{StaticResource MutedText}" />
+                    </StackPanel>
+                </Button>
+            </Grid>
+
+            <!-- Training mode is offered only where the organizer allows live feedback. -->
+            <Border Style="{StaticResource Card}" Padding="14,8,8,8" Visibility="{x:Bind Vm.TrainingAvailable, Mode=OneWay}">
+                <Grid ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="Training mode" Style="{StaticResource CondensedTitle}" VerticalAlignment="Center" />
+                            <Button Content="?" Width="26" Height="26" Padding="0" CornerRadius="13" FontFamily="{StaticResource BarlowBold}"
+                                    Foreground="{ThemeResource IndigoBrush}" BorderBrush="{ThemeResource IndigoBrush}" BorderThickness="1.5" Background="Transparent"
+                                    Click="TrainingHelp_Click" AutomationProperties.Name="What is training mode?" />
+                        </StackPanel>
+                        <TextBlock Text="Get feedback on your timing each time you pass a gate" Style="{StaticResource MutedText}" />
+                    </StackPanel>
+                    <ToggleSwitch x:Name="TrainingSwitch" Grid.Column="1" OnContent="" OffContent="" MinWidth="0" Toggled="Training_Toggled"
+                                  AutomationProperties.Name="Training mode" />
+                </Grid>
+            </Border>
+
+            <!-- Organizing and browsing contests is done on the website, in the browser (the client is for flying). -->
+            <StackPanel>
+                <HyperlinkButton Content="Contests and dashboard on the website" Style="{StaticResource TextButton}" Click="Dashboard_Click" />
+                <HyperlinkButton Content="Terms and privacy" Style="{StaticResource TextButton}" Click="Terms_Click" />
+            </StackPanel>
+            <local:VersionText />
+        </StackPanel>
+    </ScrollViewer>
+</local:ShellPart>
