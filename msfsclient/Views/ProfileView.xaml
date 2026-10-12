@@ -62,6 +62,14 @@
                 <HyperlinkButton Content="Open in the browser" Style="{StaticResource TextButton}" Padding="0,6" Click="Hud_Click"
                                  Visibility="{x:Bind helpers:Ui.ShowText(Vm.HudUrl), Mode=OneWay}" />
             </StackPanel>
+            <StackPanel Spacing="2">
+                <TextBlock Text="Toolbar panel in MSFS" Style="{StaticResource StrongText}" />
+                <TextBlock x:Name="PanelText" Style="{StaticResource MutedText}" />
+                <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
+                    <Button x:Name="PanelInstall" Style="{StaticResource OutlinedButton}" Click="PanelInstall_Click" />
+                    <HyperlinkButton x:Name="PanelRemove" Content="Remove" Style="{StaticResource DangerTextButton}" Click="PanelRemove_Click" />
+                </StackPanel>
+            </StackPanel>
             <Border Height="1" Background="{ThemeResource OutlineBrush}" Margin="0,8" />
             <Button Content="Sign out" Style="{StaticResource OutlinedButton}" HorizontalAlignment="Stretch" Click="SignOut_Click" />
             <HyperlinkButton Content="Delete account" Style="{StaticResource DangerTextButton}" HorizontalAlignment="Center" Click="Delete_Click" />

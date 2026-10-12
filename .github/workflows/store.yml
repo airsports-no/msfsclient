@@ -65,6 +65,20 @@ jobs:
           [IO.File]::WriteAllText($path, $text, [Text.UTF8Encoding]::new($true))
           "Package version: $version"
 
+      # Shipped inside the app (Profile > Toolbar panel in MSFS), and the same zip goes to flightsim.to.
+      - name: MSFS toolbar panel
+        shell: pwsh
+        run: |
+          if (-not (Test-Path msfs-panel/prebuilt/InGamePanels/InGamePanel_Airsports.spb)) {
+            throw "No compiled panel definition: build it once with ./msfs-panel/build-panel.ps1 -Sdk and commit msfs-panel/prebuilt."
+          }
+          ./msfs-panel/build-panel.ps1 -Version "1.0.${{ inputs.build_number }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: msfs-toolbar-panel-${{ inputs.build_number }}
+          path: msfs-panel/dist/*.zip
+
       - name: Build the Store package
         run: >
           msbuild msfsclient/msfsclient.csproj -restore -nologo -v:minimal

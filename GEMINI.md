@@ -64,6 +64,11 @@ has the same features and look as the Air Sports mobile app (airsports-mobile, K
     `setTraining` (`"on"`; only where the server offers training), `dismissAnnouncement` (`"id"`).
   - The snapshot holds only what the client already shows: no route, no gates beyond the server's own training feedback.
 
+- **Toolbar panel:** `msfs-panel/` (see its README). The panel page wraps the same `hud.js`/`hud.css`; `build-panel.ps1`
+  assembles the Community package from a committed `prebuilt/InGamePanels/InGamePanel_Airsports.spb` (built once with the
+  MSFS SDK, whose package tool starts the simulator). The client bundles the package when it exists and installs it from
+  the profile into each Community folder it finds (`CommunityFolders`, `PanelInstaller` in Core).
+
 ## Build and release
 - `.github/workflows/ci.yml`: Core tests on Linux; on Windows the Store package (unsigned) and the portable release.
 - `.github/workflows/store.yml` (run by hand): tests, sets the package version to `1.0.<build>.0`, builds the Store

@@ -37,6 +37,13 @@
     <ProjectReference Include="..\msfsclient.Core\msfsclient.Core.csproj" />
   </ItemGroup>
 
+  <!-- The MSFS toolbar panel, installed into the simulator's Community folder from the profile. Included when it has been
+       assembled (msfs-panel/build-panel.ps1); without it the profile points to the download instead. -->
+  <ItemGroup Condition="Exists('..\msfs-panel\dist\airsports-flight-display\layout.json')">
+    <Content Include="..\msfs-panel\dist\airsports-flight-display\**\*" CopyToOutputDirectory="PreserveNewest"
+             Link="MsfsPanel\airsports-flight-display\%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
   <ItemGroup>
     <Manifest Include="$(ApplicationManifest)" />
   </ItemGroup>

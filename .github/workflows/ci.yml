@@ -38,6 +38,16 @@ jobs:
           dotnet-version: 8.0.x
       - uses: microsoft/setup-msbuild@v2
 
+      # Assembled before the app is built, so the client ships with it (Profile > Toolbar panel in MSFS).
+      - name: MSFS toolbar panel
+        shell: pwsh
+        run: |
+          if (Test-Path msfs-panel/prebuilt/InGamePanels/InGamePanel_Airsports.spb) {
+            ./msfs-panel/build-panel.ps1 -Version "1.0.${{ github.run_number }}"
+          } else {
+            Write-Host "::notice::No compiled panel definition yet: build it once with ./msfs-panel/build-panel.ps1 -Sdk and commit msfs-panel/prebuilt."
+          }
+
       - name: Store package (msixupload)
         run: >
           msbuild msfsclient/msfsclient.csproj -restore -nologo -v:minimal
@@ -54,6 +64,11 @@ jobs:
         with:
           name: msfsclient-store-package
           path: packages/*.msixupload
+      - uses: actions/upload-artifact@v4
+        with:
+          name: msfs-toolbar-panel
+          path: msfs-panel/dist/*.zip
+          if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
         with:
           name: msfsclient-portable-win-x64

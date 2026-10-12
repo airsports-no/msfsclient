@@ -117,6 +117,12 @@ public sealed class HudServer(IHudHost host, int port = HudServer.DefaultPort) :
                 case ("GET", "/" or "/index.html"):
                     await RespondAsync(stream, 200, "text/html; charset=utf-8", Page());
                     break;
+                case ("GET", "/hud.js"):
+                    await RespondAsync(stream, 200, "text/javascript; charset=utf-8", Text("hud.js"));
+                    break;
+                case ("GET", "/hud.css"):
+                    await RespondAsync(stream, 200, "text/css; charset=utf-8", Text("hud.css"));
+                    break;
                 case ("GET", _) when path.StartsWith("/fonts/", StringComparison.Ordinal) && Font(path[1..]) is { } font:
                     await RespondAsync(stream, 200, "font/ttf", font);
                     break;
@@ -218,16 +224,18 @@ public sealed class HudServer(IHudHost host, int port = HudServer.DefaultPort) :
         return o.StartsWith("coui://", StringComparison.Ordinal) || o == $"http://localhost:{port}" || o == $"http://127.0.0.1:{port}" || o == $"http://[::1]:{port}";
     }
 
-    private static string? _page;
+    private static readonly ConcurrentDictionary<string, string> Texts = new();
 
     /// <summary>The display page (Hud/hud.html, embedded).</summary>
-    public static string Page()
+    public static string Page() => Text("hud.html");
+
+    /// <summary>An embedded text file of the display: hud.html, hud.js or hud.css (also copied into the MSFS toolbar panel).</summary>
+    public static string Text(string name) => Texts.GetOrAdd(name, n =>
     {
-        if (_page != null) return _page;
-        using var stream = typeof(HudServer).Assembly.GetManifestResourceStream("hud.html")!;
+        using var stream = typeof(HudServer).Assembly.GetManifestResourceStream(n) ?? throw new FileNotFoundException(n);
         using var reader = new StreamReader(stream);
-        return _page = reader.ReadToEnd();
-    }
+        return reader.ReadToEnd();
+    });
 
     /// <summary>A font the page uses (Barlow, as in the client), from the embedded resources; null for anything else.</summary>
     private static byte[]? Font(string name)

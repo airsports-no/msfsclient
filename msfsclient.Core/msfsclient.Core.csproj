@@ -16,6 +16,8 @@
   <ItemGroup>
     <!-- The in-sim display page, served by HudServer at /. -->
     <EmbeddedResource Include="Hud\hud.html" LogicalName="hud.html" />
+    <EmbeddedResource Include="Hud\hud.js" LogicalName="hud.js" />
+    <EmbeddedResource Include="Hud\hud.css" LogicalName="hud.css" />
     <EmbeddedResource Include="Hud\fonts\*.ttf" LogicalName="fonts/%(Filename)%(Extension)" />
   </ItemGroup>
 

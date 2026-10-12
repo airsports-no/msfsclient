@@ -53,7 +53,9 @@ public class HudServerTest
     {
         using var server = Started(new FakeHost());
         using var http = new HttpClient { BaseAddress = new Uri($"http://localhost:{server.Port}/") };
-        Assert.Contains("Airsports", await http.GetStringAsync("/"));
+        Assert.Contains("airsports-hud", await http.GetStringAsync("/"));
+        Assert.Contains("new WebSocket", await http.GetStringAsync("/hud.js"));
+        Assert.Contains("#airsports-hud", await http.GetStringAsync("/hud.css"));
         using var doc = JsonDocument.Parse(await http.GetStringAsync("/state"));
         Assert.Equal("Cup - Day 1", doc.RootElement.GetProperty("flight").GetString());
         Assert.True(doc.RootElement.GetProperty("signedIn").GetBoolean());
