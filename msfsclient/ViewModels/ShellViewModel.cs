@@ -78,6 +78,8 @@ namespace msfsclient.ViewModels
                 if (!_tracking.Running && CanStartTracking) StartTracking();
             });
             // The practice flight's flight order opens in the browser (a PDF download) as soon as the server has made it.
+            // Live maps open in the browser, beside the simulator.
+            controller.OpenInBrowser += url => _dispatcher.TryEnqueue(() => Platform.OpenUri(url));
             controller.FlightOrderReady += url => _dispatcher.TryEnqueue(() =>
             {
                 Platform.OpenUri(url);

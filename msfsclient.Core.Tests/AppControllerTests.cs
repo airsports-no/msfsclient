@@ -123,22 +123,18 @@ public class AppControllerTest
     }
 
     [Fact]
-    public async Task OpenMapAcceptsOurLinksAndIgnoresOtherSites()
+    public async Task LiveMapsOpenInTheBrowserAndOtherSitesAreIgnored()
     {
         var c = await Started(Server(true), new FakeAuth());
+        var opened = new List<string>();
+        c.OpenInBrowser += opened.Add;
         c.OpenMap("https://app.airsports.no/competition-map/3/7");
-        Assert.Equal("/competition-map/3/7", c.State.MapPath);
-        c.CloseMap();
         c.OpenMap("/competition-map/3/8?contestantIds=5"); // a relative path is ours too
-        Assert.Equal("/competition-map/3/8?contestantIds=5", c.State.MapPath);
-        c.CloseMap();
         // A link to anywhere else must not silently show the dashboard: nothing happens.
         c.OpenMap("https://evil.example.com/x");
-        Assert.Equal(Screen.Home, c.State.Screen);
         c.OpenMap(null); // explicit "open the website" is the dashboard
-        Assert.Equal("/", c.State.MapPath);
-        c.CloseMap();
-        Assert.Equal(Screen.Home, c.State.Screen);
+        Assert.Equal(["https://app.airsports.no/competition-map/3/7", "https://app.airsports.no/competition-map/3/8?contestantIds=5", "https://app.airsports.no/"], opened);
+        Assert.Equal(Screen.Home, c.State.Screen); // never inside the app
     }
 
     private static string TaskJson(bool adaptive) => $$"""[{"navigation_task":{"pk":7,"name":"Day 1"},"active_contestants":[{"id":1,"adaptive_start":{{(adaptive ? "true" : "false")}}}]}]""";
@@ -283,9 +279,11 @@ public class AppControllerTest
         Assert.Equal("/competition-map/10/7?contestantIds=55", f.MapPath);
         Assert.Equal(42.5, f.Score);
 
+        var opened = new List<string>();
+        c.OpenInBrowser += opened.Add;
         c.ViewFinishedFlight();
-        Assert.Equal(Screen.Map, c.State.Screen);
-        Assert.Equal("/competition-map/10/7?contestantIds=55", c.State.MapPath);
+        Assert.Equal(["https://app.airsports.no/competition-map/10/7?contestantIds=55"], opened); // in the browser
+        Assert.NotEqual(Screen.Map, c.State.Screen);
         Assert.Null(c.State.FinishedFlight); // the offer is shown once
     }
 
