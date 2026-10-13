@@ -161,7 +161,9 @@
                                                 <TextBlock Text="{x:Bind TaskType}" Visibility="{x:Bind HasTaskType}" Foreground="{ThemeResource IndigoBrush}"
                                                            FontFamily="{StaticResource BarlowSemiBold}" FontSize="14" TextWrapping="Wrap" />
                                             </StackPanel>
-                                            <Image Grid.Column="1" Width="48" Height="48" Stretch="UniformToFill" Visibility="{x:Bind HasLogo}"
+                                            <!-- The whole logo, uncropped: up to 88 px high and 140 px wide, so wide logos stay readable. -->
+                                            <Image Grid.Column="1" MaxHeight="88" MaxWidth="140" Stretch="Uniform" VerticalAlignment="Top" HorizontalAlignment="Right"
+                                                   Visibility="{x:Bind HasLogo}"
                                                    Source="{x:Bind helpers:Ui.Image(LogoUrl), FallbackValue={x:Null}}" AutomationProperties.Name="Contest logo" />
                                         </Grid>
                                         <ItemsControl ItemsSource="{x:Bind Facts}" ItemTemplate="{StaticResource FactTemplate}" IsTabStop="False">

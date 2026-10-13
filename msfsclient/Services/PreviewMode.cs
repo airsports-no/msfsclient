@@ -118,7 +118,7 @@ namespace msfsclient.Services
                     json = """[{"id":1,"contest_name":"Spring Cup","task_name":"Day 1 - Precision","message":"Briefing at 08:30 in the club house."}]""";
                 else if (path.EndsWith("/contests/", StringComparison.Ordinal))
                     json = """
-                        {"results":[{"id":10,"name":"Spring Cup","location":"59.9,10.7","country":"NO","time_zone":"Europe/Oslo","contest_website":"https://airsports.no",
+                        {"results":[{"id":10,"name":"Spring Cup","logo":"ms-appx:///Assets/Square150x150Logo.scale-200.png","location":"59.9,10.7","country":"NO","time_zone":"Europe/Oslo","contest_website":"https://airsports.no",
                          "navigationtask_set":[{"pk":100,"name":"Day 1 - Precision","allow_self_management":true,"task_subtype_definition":{"display_name":"Precision flying"}},
                          {"pk":101,"name":"Day 2 - Navigation","allow_self_management":true}]}],"next":null}
                         """;
