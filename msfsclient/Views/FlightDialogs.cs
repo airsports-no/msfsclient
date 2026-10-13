@@ -53,7 +53,7 @@ namespace msfsclient.Views
             var view = await Dialogs.ConfirmAsync(root, "Flight recorded", panel, canView ? "View your flight" : "OK", canView ? "Close" : null);
             // The offer is shown once.
             controller.DismissFinishedFlight();
-            if (canView && view && flight.MapPath is { } path) controller.OpenMap(path);
+            if (canView && view && flight.MapPath is { } path) controller.OpenPath(path);
         }
     }
 }

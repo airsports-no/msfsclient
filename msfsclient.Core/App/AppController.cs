@@ -468,19 +468,13 @@ public sealed class AppController
     }
 
     /// <summary>
-    /// Raised (on any thread) with a full URL the app opens in the browser: the live maps, which pilots keep open beside the
-    /// simulator rather than inside the client.
-    /// </summary>
-    public event Action<string>? OpenInBrowser;
-
-    /// <summary>
-    /// Opens a live-map/results link in the browser. <paramref name="link"/> may be a relative path or an airsports.no URL; a
+    /// Opens a live-map/results link in the web view. <paramref name="link"/> may be a relative path or an airsports.no URL; a
     /// link to anywhere else is ignored rather than silently showing the dashboard. Null opens the dashboard.
     /// </summary>
     public void OpenMap(string? link)
     {
         var path = link == null ? "/" : Urls.WebPath(link);
-        if (path != null) OpenInBrowser?.Invoke(Urls.SiteUrl(path));
+        if (path != null) OpenPath(path);
     }
 
     /// <summary>
@@ -922,7 +916,7 @@ public sealed class AppController
     {
         var path = State.FinishedFlight?.MapPath;
         DismissFinishedFlight();
-        if (path != null) OpenMap(path);
+        if (path != null) OpenPath(path);
     }
 
     public void CloseProfile() => Update(s => s with { Screen = Screen.Home, ProfileNotice = null });
