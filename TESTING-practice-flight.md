@@ -10,8 +10,8 @@ order in the browser as soon as the server has made it.
 |---|---|---|
 | Server change | backend branch `msfs-quickstart` (migrations 0193, 0194) | pushed, **not deployed** |
 | Client | branch `feature/mobile-app-port` | committed, not pushed |
-| Client + panel bundle (as on flightsim.to) | `dist\Airsports-MSFS-2.0.0-34.zip` | built, starts |
-| Toolbar panel alone | `msfs-panel\dist\airsports-flight-display-1.0.34.zip` | built with the MSFS 2024 SDK |
+| Client + panel bundle (as on flightsim.to) | `dist\Airsports-MSFS-2.0.0-35.zip` | built, starts |
+| Toolbar panel alone | `msfs-panel\dist\airsports-flight-display-1.0.35.zip` | built with the MSFS 2024 SDK |
 | Offline preview | `msfsclient.exe --preview quickstart` | works without any server |
 
 Nothing works against the live site until the server branch is deployed there: the client then falls back to the
@@ -44,7 +44,7 @@ Deploy `msfs-quickstart`, run the migrations, and do steps 3–6 of A there.
 
 ## 2. Start the client
 
-1. Unzip `dist\Airsports-MSFS-2.0.0-34.zip`, for example to `C:\AirsportsTest`.
+1. Unzip `dist\Airsports-MSFS-2.0.0-35.zip`, for example to `C:\AirsportsTest`.
 2. Use a **test account without flights**: the card is only offered to pilots with no flight now and none upcoming.
 3. To keep this test apart from your normal client (sign-in, settings, "Not now"), give it its own data folder.
    In PowerShell:
