@@ -18,7 +18,8 @@
 #airsports-hud button.danger { background: var(--red); }
 #airsports-hud button:focus-visible { outline: 2px solid var(--indigo); outline-offset: 2px; }
 #airsports-hud section { margin-top: 12px; }
-#airsports-hud .row { display: flex; align-items: center; gap: 16px; }
+#airsports-hud .row { display: flex; align-items: center; }
+#airsports-hud .row > * + * { margin-left: 16px; }
 #airsports-hud .track { width: 72px; height: 72px; border-radius: 36px; flex: none; display: flex; align-items: center; justify-content: center; background: var(--green); padding: 0; }
 #airsports-hud .track.on { background: var(--red); }
 #airsports-hud .track .play { width: 0; height: 0; border-top: 14px solid transparent; border-bottom: 14px solid transparent; border-left: 24px solid #032B18; margin-left: 6px; }
@@ -31,7 +32,9 @@
 #airsports-hud .Warning { color: var(--amber); font-weight: 600; }
 #airsports-hud .Error { color: var(--red); }
 #airsports-hud .panel { background: var(--overlay); border-radius: 12px; padding: 10px 14px; }
-#airsports-hud .gate { display: flex; align-items: baseline; gap: 12px; font-family: var(--condensed); font-weight: 700; }
+#airsports-hud .gate { display: flex; align-items: baseline; font-family: var(--condensed); font-weight: 700; }
+/* Margins, not "gap": the MSFS panel (Coherent GT) does not support gap in flex layouts. */
+#airsports-hud .gate .name + .text { margin-left: 14px; }
 #airsports-hud .gate .name { font-size: 28px; }
 #airsports-hud .gate .text { font-size: 34px; }
 #airsports-hud .OnTime { color: var(--green); }
@@ -40,7 +43,8 @@
 #airsports-hud .timer .big { font-family: var(--condensed); font-weight: 700; font-size: 72px; line-height: 1; }
 #airsports-hud .timer .big.down { color: var(--red); }
 #airsports-hud .timer .start { width: 100%; font-family: var(--condensed); font-weight: 700; font-size: 32px; background: var(--indigo); color: #14104F; padding: 12px; margin-top: 8px; }
-#airsports-hud .photo { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-top: 1px solid var(--overlay); }
+#airsports-hud .photo { display: flex; align-items: center; padding: 6px 0; border-top: 1px solid var(--overlay); }
+#airsports-hud .photo > * + * { margin-left: 10px; }
 #airsports-hud .photo:first-of-type { border-top: 0; }
 #airsports-hud .photo .name { flex: 1; }
 #airsports-hud .photo .state { color: var(--muted); font-size: 13px; }
@@ -49,7 +53,8 @@
 #airsports-hud .announcement .source { color: var(--muted); font-size: 12px; }
 #airsports-hud .confirm { display: none; }
 #airsports-hud .confirm.open { display: block; }
-#airsports-hud .confirm .buttons { display: flex; gap: 8px; margin-top: 8px; }
+#airsports-hud .confirm .buttons { display: flex; margin-top: 8px; }
+#airsports-hud .confirm .buttons > * + * { margin-left: 8px; }
 #airsports-hud #offline { color: var(--muted); }
 #airsports-hud .hidden { display: none !important; }
 #airsports-hud #toast { position: fixed; left: 16px; right: 16px; bottom: 12px; background: var(--content); color: var(--ink); border-radius: 10px; padding: 10px 14px; font-weight: 600; display: none; }
