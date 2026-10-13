@@ -44,6 +44,7 @@ namespace msfsclient.Views
         public bool HasFlightOrders => Target.FlightOrderPath != null;
         public bool HasDirections => Target.DirectionsUrl != null;
         public bool HasWebsite => Target.WebsiteUrl != null;
+        public bool HasContestPage => Target.ContestPagePath != null;
         public bool CanCancel => Cancellable != null;
         public string CancelText => Cancelling ? "Cancelling…" : "Cancel flight";
         public bool CancelEnabled => !Cancelling;

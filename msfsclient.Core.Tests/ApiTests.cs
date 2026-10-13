@@ -398,6 +398,7 @@ public class TrackingTargetsTest
         Assert.Null(t.WebsiteUrl);
         Assert.Null(t.DirectionsUrl);
         Assert.Null(t.TaskType);
+        Assert.Equal("/mission-dashboard/99", t.ContestPagePath); // the id alone is enough for the contest page
     }
 
     [Fact]
@@ -415,6 +416,7 @@ public class TrackingTargetsTest
         Assert.Equal("Day 2", target.TaskName);
         Assert.Equal([new("Take-off", "on 2026-10-11T09:00:00Z"), new("Airspeed", "80 knots"), new Fact("Contestant", "#2")], target.Facts);
         Assert.Equal("https://cdn.example/banner.jpg", target.BannerUrl);
+        Assert.Equal("/mission-dashboard/10", target.ContestPagePath);
     }
 
     [Fact]

@@ -220,6 +220,12 @@ namespace msfsclient.Views
             if (Item(sender)?.Target.FlightOrderPath is { } path) Vm.Platform.OpenUri(Urls.SiteUrl(path));
         }
 
+        /// <summary>The contest's page on the website opens in the browser (the live map stays in the client).</summary>
+        private void ContestPage_Click(object sender, RoutedEventArgs e)
+        {
+            if (Item(sender)?.Target.ContestPagePath is { } path) Vm.Platform.OpenUri(Urls.SiteUrl(path));
+        }
+
         private void Directions_Click(object sender, RoutedEventArgs e)
         {
             if (Item(sender)?.Target.DirectionsUrl is { } url) Vm.Platform.OpenUri(url);

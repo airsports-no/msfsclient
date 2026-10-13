@@ -22,6 +22,9 @@ public static partial class Urls
     public static string? AbsoluteUrl(string? url) =>
         string.IsNullOrWhiteSpace(url) ? null : url.StartsWith('/') ? Site + url : url;
 
+    /// <summary>The contest's page on the website: its tasks, results and how to take part.</summary>
+    public static string ContestPagePath(int contestId) => $"/mission-dashboard/{contestId}";
+
     /// <summary>The competition map page for a task with one contestant selected (the website's <c>contestantIds</c> parameter).</summary>
     public static string CompetitionMapPath(int contestId, int navigationTaskId, int contestantId) =>
         $"/competition-map/{contestId}/{navigationTaskId}?contestantIds={contestantId}";

@@ -184,6 +184,8 @@
                                         <helpers:WrapPanel Spacing="4">
                                             <HyperlinkButton Content="Share live link" Style="{StaticResource TextButton}" Visibility="{x:Bind HasMap}" Tag="{x:Bind}" Click="Share_Click" />
                                             <Button Content="Live map" Style="{StaticResource OutlinedButton}" Visibility="{x:Bind HasMap}" Tag="{x:Bind}" Click="LiveMap_Click" />
+                                            <HyperlinkButton Content="Contest page" Style="{StaticResource TextButton}" Visibility="{x:Bind HasContestPage}" Tag="{x:Bind}" Click="ContestPage_Click"
+                                                             ToolTipService.ToolTip="The contest on the Air Sports website, in your browser" />
                                             <HyperlinkButton Content="Flight orders" Style="{StaticResource TextButton}" Visibility="{x:Bind HasFlightOrders}" Tag="{x:Bind}" Click="FlightOrders_Click" />
                                             <HyperlinkButton Content="Directions" Style="{StaticResource TextButton}" Visibility="{x:Bind HasDirections}" Tag="{x:Bind}" Click="Directions_Click" />
                                             <HyperlinkButton Content="{x:Bind CancelText}" Style="{StaticResource DangerTextButton}" Visibility="{x:Bind CanCancel}"

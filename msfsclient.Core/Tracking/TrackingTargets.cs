@@ -22,6 +22,8 @@ public sealed record TrackingTarget
     /// <summary>Path or URL of the live map for this task.</summary>
     public string? MapLink { get; init; }
     public string? WebsiteUrl { get; init; }
+    /// <summary>The contest's page on the Air Sports website (<c>/mission-dashboard/&lt;id&gt;</c>), opened in the browser; null when the contest is not known.</summary>
+    public string? ContestPagePath { get; init; }
     public string? DirectionsUrl { get; init; }
     /// <summary>The live map is private to the organizer and this pilot may not open it (the details above are still shown).</summary>
     public bool MapPrivate { get; init; }
@@ -90,6 +92,7 @@ public sealed record TrackingTargets(IReadOnlyList<TrackingTarget> Now, Tracking
                 MapPrivate = c.MapViewable == false,
                 MapLink = c.MapViewable == false ? null : c.MapPath ?? task.NavigationTask.TrackingLink,
                 WebsiteUrl = Urls.NotBlank(contest?.Website),
+                ContestPagePath = c.ContestId is { } pageId ? Urls.ContestPagePath(pageId) : null,
                 DirectionsUrl = Directions(contest?.Location),
             };
         })).ToList();
@@ -120,6 +123,7 @@ public sealed record TrackingTargets(IReadOnlyList<TrackingTarget> Now, Tracking
                 MapPrivate = fl?.MapViewable == false,
                 MapLink = fl?.MapViewable == false ? null : f.MapLink,
                 WebsiteUrl = Urls.NotBlank(f.Contest?.Website),
+                ContestPagePath = fl?.ContestId is { } nextId ? Urls.ContestPagePath(nextId) : null,
                 DirectionsUrl = Directions(f.Contest?.Location),
             };
         }
