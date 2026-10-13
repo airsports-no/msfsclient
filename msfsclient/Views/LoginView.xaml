@@ -17,9 +17,9 @@
                 <HyperlinkButton x:Name="ModeButton" Style="{StaticResource TextButton}" Click="Mode_Click" />
                 <HyperlinkButton x:Name="ResetButton" Content="Forgot password?" Style="{StaticResource TextButton}" Click="Reset_Click" />
             </StackPanel>
-            <TextBlock Text="{x:Bind helpers:Ui.OrEmpty(Vm.State.Notice), Mode=OneWay}" Visibility="{x:Bind helpers:Ui.ShowText(Vm.State.Notice), Mode=OneWay}"
+            <TextBlock Text="{x:Bind helpers:Ui.OrEmpty(Vm.State.Notice), Mode=OneWay, FallbackValue=''}" Visibility="{x:Bind helpers:Ui.ShowText(Vm.State.Notice), Mode=OneWay, FallbackValue=Collapsed}"
                        Style="{StaticResource BodyText}" AutomationProperties.LiveSetting="Polite" />
-            <TextBlock Text="{x:Bind helpers:Ui.OrEmpty(Vm.State.Error), Mode=OneWay}" Visibility="{x:Bind helpers:Ui.ShowText(Vm.State.Error), Mode=OneWay}"
+            <TextBlock Text="{x:Bind helpers:Ui.OrEmpty(Vm.State.Error), Mode=OneWay, FallbackValue=''}" Visibility="{x:Bind helpers:Ui.ShowText(Vm.State.Error), Mode=OneWay, FallbackValue=Collapsed}"
                        Style="{StaticResource ErrorText}" AutomationProperties.LiveSetting="Assertive" />
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,16,0,0">
                 <TextBlock Text="By using Airsports you accept the " Style="{StaticResource SmallText}" VerticalAlignment="Center" />

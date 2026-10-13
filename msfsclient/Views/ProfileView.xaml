@@ -11,7 +11,7 @@
         <StackPanel Padding="16" Spacing="12">
             <TextBlock Text="Profile" Style="{StaticResource PageTitle}" AutomationProperties.HeadingLevel="Level1" />
             <StackPanel HorizontalAlignment="Center" Spacing="8">
-                <PersonPicture Width="96" Height="96" Initials="{x:Bind Vm.Initials, Mode=OneWay}" ProfilePicture="{x:Bind helpers:Ui.Image(Vm.PictureUrl), Mode=OneWay}"
+                <PersonPicture Width="96" Height="96" Initials="{x:Bind Vm.Initials, Mode=OneWay}" ProfilePicture="{x:Bind helpers:Ui.Image(Vm.PictureUrl), Mode=OneWay, FallbackValue={x:Null}}"
                                AutomationProperties.Name="Profile picture" />
                 <Button Content="Change photo" Style="{StaticResource OutlinedButton}" HorizontalAlignment="Center" Click="Photo_Click"
                         IsEnabled="{x:Bind helpers:Ui.Not(Vm.State.ProfileSaving), Mode=OneWay}" />
@@ -21,9 +21,9 @@
             <TextBox x:Name="First" Header="First name" Style="{StaticResource FormBox}" TextChanged="Input_Changed" />
             <TextBox x:Name="Last" Header="Last name" Style="{StaticResource FormBox}" TextChanged="Input_Changed" />
             <TextBox x:Name="Bio" Header="About me" Style="{StaticResource FormBox}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="88" MaxHeight="160" />
-            <TextBlock Text="{x:Bind helpers:Ui.OrEmpty(Vm.State.ProfileNotice), Mode=OneWay}" Visibility="{x:Bind helpers:Ui.ShowText(Vm.State.ProfileNotice), Mode=OneWay}"
+            <TextBlock Text="{x:Bind helpers:Ui.OrEmpty(Vm.State.ProfileNotice), Mode=OneWay, FallbackValue=''}" Visibility="{x:Bind helpers:Ui.ShowText(Vm.State.ProfileNotice), Mode=OneWay, FallbackValue=Collapsed}"
                        Style="{StaticResource NoticeText}" AutomationProperties.LiveSetting="Polite" />
-            <TextBlock Text="{x:Bind helpers:Ui.OrEmpty(Vm.State.Error), Mode=OneWay}" Visibility="{x:Bind helpers:Ui.ShowText(Vm.State.Error), Mode=OneWay}"
+            <TextBlock Text="{x:Bind helpers:Ui.OrEmpty(Vm.State.Error), Mode=OneWay, FallbackValue=''}" Visibility="{x:Bind helpers:Ui.ShowText(Vm.State.Error), Mode=OneWay, FallbackValue=Collapsed}"
                        Style="{StaticResource ErrorText}" AutomationProperties.LiveSetting="Assertive" />
             <Button x:Name="Save" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Stretch" Click="Save_Click" />
 
@@ -60,7 +60,7 @@
                 <TextBlock Text="Flight display" Style="{StaticResource StrongText}" />
                 <TextBlock Text="{x:Bind HudText, Mode=OneWay}" Style="{StaticResource MutedText}" IsTextSelectionEnabled="True" />
                 <HyperlinkButton Content="Open in the browser" Style="{StaticResource TextButton}" Padding="0,6" Click="Hud_Click"
-                                 Visibility="{x:Bind helpers:Ui.ShowText(Vm.HudUrl), Mode=OneWay}" />
+                                 Visibility="{x:Bind helpers:Ui.ShowText(Vm.HudUrl), Mode=OneWay, FallbackValue=Collapsed}" />
             </StackPanel>
             <StackPanel Spacing="2">
                 <TextBlock Text="Toolbar panel in MSFS" Style="{StaticResource StrongText}" />

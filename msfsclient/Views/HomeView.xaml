@@ -23,13 +23,13 @@
     <ScrollViewer>
         <StackPanel Padding="16,20" Spacing="20">
             <!-- One-off confirmation (a registered or cancelled flight, the automatic stop). -->
-            <Border Style="{StaticResource Card}" Padding="16,4,4,4" Visibility="{x:Bind helpers:Ui.ShowText(Vm.State.HomeNotice), Mode=OneWay}">
+            <Border Style="{StaticResource Card}" Padding="16,4,4,4" Visibility="{x:Bind helpers:Ui.ShowText(Vm.State.HomeNotice), Mode=OneWay, FallbackValue=Collapsed}">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <TextBlock Text="{x:Bind helpers:Ui.OrEmpty(Vm.State.HomeNotice), Mode=OneWay}" Style="{StaticResource NoticeText}" VerticalAlignment="Center"
+                    <TextBlock Text="{x:Bind helpers:Ui.OrEmpty(Vm.State.HomeNotice), Mode=OneWay, FallbackValue=''}" Style="{StaticResource NoticeText}" VerticalAlignment="Center"
                                AutomationProperties.LiveSetting="Polite" />
                     <HyperlinkButton Grid.Column="1" Content="OK" Style="{StaticResource TextButton}" Click="DismissNotice_Click" />
                 </Grid>
@@ -76,7 +76,7 @@
                         <TextBlock Text="{x:Bind QuickstartTitle, Mode=OneWay}" Style="{StaticResource BodyText}" FontFamily="{StaticResource CondensedBold}" FontSize="28"
                                    LineHeight="30" AutomationProperties.HeadingLevel="Level2" />
                         <TextBlock Text="{x:Bind QuickstartDescription, Mode=OneWay}" Style="{StaticResource BodyText}"
-                                   Visibility="{x:Bind helpers:Ui.ShowText(QuickstartDescription), Mode=OneWay}" />
+                                   Visibility="{x:Bind helpers:Ui.ShowText(QuickstartDescription), Mode=OneWay, FallbackValue=Collapsed}" />
                         <Border BorderBrush="{ThemeResource OutlineBrush}" BorderThickness="1" CornerRadius="2" Padding="8,5" HorizontalAlignment="Left">
                             <StackPanel>
                                 <TextBlock Text="Start at" Style="{StaticResource LabelText}" />
@@ -103,7 +103,7 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                         <TextBlock Text="{x:Bind QuickstartError, Mode=OneWay}" Style="{StaticResource ErrorText}"
-                                   Visibility="{x:Bind helpers:Ui.ShowText(QuickstartError), Mode=OneWay}" AutomationProperties.LiveSetting="Assertive" />
+                                   Visibility="{x:Bind helpers:Ui.ShowText(QuickstartError), Mode=OneWay, FallbackValue=Collapsed}" AutomationProperties.LiveSetting="Assertive" />
                         <TextBlock x:Name="QuickstartResult" Style="{StaticResource NoticeText}" Visibility="Collapsed" AutomationProperties.LiveSetting="Polite" />
                         <helpers:WrapPanel Spacing="4">
                             <Button Content="{x:Bind GoFlyingLabel, Mode=OneWay}" Style="{StaticResource PrimaryButton}" Click="QuickstartGoFlying_Click"
@@ -162,7 +162,7 @@
                                                            FontFamily="{StaticResource BarlowSemiBold}" FontSize="14" TextWrapping="Wrap" />
                                             </StackPanel>
                                             <Image Grid.Column="1" Width="48" Height="48" Stretch="UniformToFill" Visibility="{x:Bind HasLogo}"
-                                                   Source="{x:Bind helpers:Ui.Image(LogoUrl)}" AutomationProperties.Name="Contest logo" />
+                                                   Source="{x:Bind helpers:Ui.Image(LogoUrl), FallbackValue={x:Null}}" AutomationProperties.Name="Contest logo" />
                                         </Grid>
                                         <ItemsControl ItemsSource="{x:Bind Facts}" ItemTemplate="{StaticResource FactTemplate}" IsTabStop="False">
                                             <ItemsControl.ItemsPanel>
@@ -199,7 +199,7 @@
                            Visibility="{x:Bind Vm.ShowNoFlightNote, Mode=OneWay}" />
             </StackPanel>
 
-            <TextBlock Text="{x:Bind helpers:Ui.OrEmpty(Vm.State.Error), Mode=OneWay}" Visibility="{x:Bind helpers:Ui.ShowText(Vm.State.Error), Mode=OneWay}"
+            <TextBlock Text="{x:Bind helpers:Ui.OrEmpty(Vm.State.Error), Mode=OneWay, FallbackValue=''}" Visibility="{x:Bind helpers:Ui.ShowText(Vm.State.Error), Mode=OneWay, FallbackValue=Collapsed}"
                        Style="{StaticResource ErrorText}" AutomationProperties.LiveSetting="Polite" />
 
             <!-- Typographic tiles: the title and a status line, no icon. -->

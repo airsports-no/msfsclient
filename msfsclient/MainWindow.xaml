@@ -40,7 +40,7 @@
                     Padding="0" Background="Transparent" BorderThickness="0" CornerRadius="18"
                     AutomationProperties.Name="Profile" ToolTipService.ToolTip="Profile">
                 <PersonPicture Width="36" Height="36" Initials="{x:Bind Vm.Initials, Mode=OneWay}"
-                               ProfilePicture="{x:Bind helpers:Ui.Image(Vm.PictureUrl), Mode=OneWay}" />
+                               ProfilePicture="{x:Bind helpers:Ui.Image(Vm.PictureUrl), Mode=OneWay, FallbackValue={x:Null}}" />
             </Button>
         </Grid>
 

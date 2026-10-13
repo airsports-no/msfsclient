@@ -21,11 +21,11 @@
             </StackPanel>
         </StackPanel>
         <StackPanel Grid.Row="1" Spacing="4">
-            <TextBlock Text="{x:Bind helpers:Ui.OrEmpty(Vm.State.Error), Mode=OneWay}" Visibility="{x:Bind helpers:Ui.ShowText(Vm.State.Error), Mode=OneWay}"
+            <TextBlock Text="{x:Bind helpers:Ui.OrEmpty(Vm.State.Error), Mode=OneWay, FallbackValue=''}" Visibility="{x:Bind helpers:Ui.ShowText(Vm.State.Error), Mode=OneWay, FallbackValue=Collapsed}"
                        Style="{StaticResource ErrorText}" AutomationProperties.LiveSetting="Polite" />
-            <TextBlock Text="{x:Bind helpers:Ui.OrEmpty(Vm.State.FlightsNotice), Mode=OneWay}" Visibility="{x:Bind helpers:Ui.ShowText(Vm.State.FlightsNotice), Mode=OneWay}"
+            <TextBlock Text="{x:Bind helpers:Ui.OrEmpty(Vm.State.FlightsNotice), Mode=OneWay, FallbackValue=''}" Visibility="{x:Bind helpers:Ui.ShowText(Vm.State.FlightsNotice), Mode=OneWay, FallbackValue=Collapsed}"
                        Style="{StaticResource NoticeText}" AutomationProperties.LiveSetting="Polite" />
-            <TextBlock Text="{x:Bind EmptyText, Mode=OneWay}" Visibility="{x:Bind helpers:Ui.ShowText(EmptyText), Mode=OneWay}" Style="{StaticResource BodyText}" />
+            <TextBlock Text="{x:Bind EmptyText, Mode=OneWay}" Visibility="{x:Bind helpers:Ui.ShowText(EmptyText), Mode=OneWay, FallbackValue=Collapsed}" Style="{StaticResource BodyText}" />
         </StackPanel>
         <ScrollViewer Grid.Row="2">
             <ItemsControl ItemsSource="{x:Bind Flights, Mode=OneWay}" IsTabStop="False">

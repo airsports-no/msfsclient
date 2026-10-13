@@ -23,6 +23,9 @@ has the same features and look as the Air Sports mobile app (airsports-mobile, K
 - **Framework:** .NET 8, WinUI 3 (Windows App SDK)
 - **Pattern:** one `ShellViewModel` (CommunityToolkit.Mvvm) wraps the Core `AppController` and the `TrackingSession`. Views are
   `ShellPart` user controls bound one way (`x:Bind`) to it; forms keep their own input until submitted.
+  x:Bind does not call a function binding when its argument becomes null, so `helpers:Ui.ShowText(...)`, `Ui.OrEmpty(...)` and
+  `Ui.Image(...)` on a value that can go back to null need a `FallbackValue` (`Collapsed`, `''`, `{x:Null}`); without it a
+  notice or error stays on screen after it is cleared.
 - **Services (msfsclient/Services):**
   - `SimConnectService` (`ISimConnectService`): the low-level connection to MSFS.
   - `SimPositionSource`: SimConnect data -> Core `TrackPoint` (PC clock UTC, knots -> m/s, feet -> metres).

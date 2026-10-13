@@ -20,7 +20,7 @@
                 <TextBox x:Name="Prefix" Header="Prefix" Style="{StaticResource FormBox}" InputScope="TelephoneCountryCode" />
                 <TextBox x:Name="Phone" Grid.Column="1" Header="Phone" Style="{StaticResource FormBox}" InputScope="TelephoneNumber" TextChanged="Input_Changed" />
             </Grid>
-            <TextBlock Text="{x:Bind helpers:Ui.OrEmpty(Vm.State.Error), Mode=OneWay}" Visibility="{x:Bind helpers:Ui.ShowText(Vm.State.Error), Mode=OneWay}"
+            <TextBlock Text="{x:Bind helpers:Ui.OrEmpty(Vm.State.Error), Mode=OneWay, FallbackValue=''}" Visibility="{x:Bind helpers:Ui.ShowText(Vm.State.Error), Mode=OneWay, FallbackValue=Collapsed}"
                        Style="{StaticResource ErrorText}" />
             <Button x:Name="Save" Style="{StaticResource PrimaryButton}" Click="Save_Click" />
         </StackPanel>

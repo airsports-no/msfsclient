@@ -27,7 +27,7 @@
                 <StackPanel Spacing="6">
                     <Button Padding="0" BorderThickness="0" Background="Transparent" Tag="{x:Bind}" Click="Open_Click" HorizontalAlignment="Stretch"
                             AutomationProperties.Name="{x:Bind Name}">
-                        <Border Background="{ThemeResource OutlineBrush}" Height="180" CornerRadius="4"><Image Source="{x:Bind helpers:Ui.Image(File)}" Stretch="UniformToFill" /></Border>
+                        <Border Background="{ThemeResource OutlineBrush}" Height="180" CornerRadius="4"><Image Source="{x:Bind helpers:Ui.Image(File), FallbackValue={x:Null}}" Stretch="UniformToFill" /></Border>
                     </Button>
                     <TextBlock Text="{x:Bind Name}" Style="{StaticResource StrongText}" />
                     <TextBlock Text="{x:Bind State}" Style="{StaticResource SmallText}" />
@@ -93,8 +93,8 @@
                 <TextBlock Grid.Column="1" Margin="12" Text="{x:Bind BlockerText, Mode=OneWay}" Style="{StaticResource BodyText}" AutomationProperties.LiveSetting="Polite" />
             </Grid>
 
-            <TextBlock Text="{x:Bind helpers:Ui.OrEmpty(Vm.State.Observations.Error), Mode=OneWay}"
-                       Visibility="{x:Bind helpers:Ui.ShowText(Vm.State.Observations.Error), Mode=OneWay}" Style="{StaticResource ErrorText}"
+            <TextBlock Text="{x:Bind helpers:Ui.OrEmpty(Vm.State.Observations.Error), Mode=OneWay, FallbackValue=''}"
+                       Visibility="{x:Bind helpers:Ui.ShowText(Vm.State.Observations.Error), Mode=OneWay, FallbackValue=Collapsed}" Style="{StaticResource ErrorText}"
                        AutomationProperties.LiveSetting="Assertive" />
 
             <StackPanel Orientation="Horizontal" Spacing="8">
@@ -102,7 +102,7 @@
                 <ToggleButton x:Name="ListTab" Content="List" Click="List_Click" FontFamily="{StaticResource BarlowSemiBold}" />
             </StackPanel>
 
-            <TextBlock Text="{x:Bind EmptyText, Mode=OneWay}" Visibility="{x:Bind helpers:Ui.ShowText(EmptyText), Mode=OneWay}" Style="{StaticResource MutedText}" />
+            <TextBlock Text="{x:Bind EmptyText, Mode=OneWay}" Visibility="{x:Bind helpers:Ui.ShowText(EmptyText), Mode=OneWay, FallbackValue=Collapsed}" Style="{StaticResource MutedText}" />
             <Button Content="Try again" Style="{StaticResource OutlinedButton}" Click="Retry_Click" Visibility="{x:Bind ShowRetry, Mode=OneWay}" />
 
             <ItemsRepeater x:Name="PhotoList" ItemsSource="{x:Bind Photos, Mode=OneWay}" />

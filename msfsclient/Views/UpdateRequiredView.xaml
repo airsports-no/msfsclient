@@ -10,7 +10,7 @@
         <TextBlock Text="Update required" Style="{StaticResource PageTitle}" />
         <TextBlock Text="This version of Airsports is too old to work with the service. Please update the app to continue." Style="{StaticResource BodyText}" />
         <Button Content="Open the store" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Stretch" Click="Store_Click"
-                Visibility="{x:Bind helpers:Ui.ShowText(Vm.State.UpdateUrl), Mode=OneWay}" />
+                Visibility="{x:Bind helpers:Ui.ShowText(Vm.State.UpdateUrl), Mode=OneWay, FallbackValue=Collapsed}" />
         <local:VersionText />
     </StackPanel>
 </local:ShellPart>

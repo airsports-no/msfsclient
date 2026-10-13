@@ -14,9 +14,9 @@
         <Button Content="Send the email again" Style="{StaticResource OutlinedButton}" HorizontalAlignment="Stretch" Click="Resend_Click"
                 IsEnabled="{x:Bind helpers:Ui.Not(Vm.State.Busy), Mode=OneWay}" />
         <HyperlinkButton Content="Use a different account" Style="{StaticResource TextButton}" Click="SignOut_Click" />
-        <TextBlock Text="{x:Bind helpers:Ui.OrEmpty(Vm.State.Notice), Mode=OneWay}" Visibility="{x:Bind helpers:Ui.ShowText(Vm.State.Notice), Mode=OneWay}"
+        <TextBlock Text="{x:Bind helpers:Ui.OrEmpty(Vm.State.Notice), Mode=OneWay, FallbackValue=''}" Visibility="{x:Bind helpers:Ui.ShowText(Vm.State.Notice), Mode=OneWay, FallbackValue=Collapsed}"
                    Style="{StaticResource BodyText}" AutomationProperties.LiveSetting="Polite" />
-        <TextBlock Text="{x:Bind helpers:Ui.OrEmpty(Vm.State.Error), Mode=OneWay}" Visibility="{x:Bind helpers:Ui.ShowText(Vm.State.Error), Mode=OneWay}"
+        <TextBlock Text="{x:Bind helpers:Ui.OrEmpty(Vm.State.Error), Mode=OneWay, FallbackValue=''}" Visibility="{x:Bind helpers:Ui.ShowText(Vm.State.Error), Mode=OneWay, FallbackValue=Collapsed}"
                    Style="{StaticResource ErrorText}" AutomationProperties.LiveSetting="Assertive" />
     </StackPanel>
 </local:ShellPart>
