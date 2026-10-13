@@ -63,6 +63,15 @@ public sealed class AppSettings(AirsportsDatabase db)
 
     private const string SimMessagesKey = "sim_messages";
 
+    /// <summary>The newest flight notification already seen (userprofile/client_notifications); null before the first check.</summary>
+    public int? LastClientNotificationId
+    {
+        get => int.TryParse(Get(LastClientNotificationKey), NumberStyles.Integer, CultureInfo.InvariantCulture, out var v) ? v : null;
+        set { if (value == null) Remove(LastClientNotificationKey); else Put(LastClientNotificationKey, value.Value.ToString(CultureInfo.InvariantCulture)); }
+    }
+
+    private const string LastClientNotificationKey = "client_notification_after";
+
     private string? Get(string key) => db.Scalar("SELECT value FROM Setting WHERE key = $k", ("$k", key)) as string;
 
     private void Put(string key, string value) => db.Execute("INSERT OR REPLACE INTO Setting(key, value) VALUES ($k, $v)", ("$k", key), ("$v", value));

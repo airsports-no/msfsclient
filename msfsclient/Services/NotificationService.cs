@@ -56,5 +56,23 @@ namespace msfsclient.Services
                 System.Diagnostics.Debug.WriteLine($"Notification not shown: {ex.Message}");
             }
         }
+
+        /// <summary>A flight notification (what the phones get by push): "Tracking opens soon", "Live scoring has finished", ...</summary>
+        public void ShowFlightNotification(ClientNotification n)
+        {
+            if (!_registered) return;
+            try
+            {
+                var notification = new AppNotificationBuilder()
+                    .AddText(n.Title)
+                    .AddText(n.Body)
+                    .BuildNotification();
+                AppNotificationManager.Default.Show(notification);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Notification not shown: {ex.Message}");
+            }
+        }
     }
 }

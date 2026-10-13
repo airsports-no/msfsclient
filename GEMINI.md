@@ -34,7 +34,11 @@ has the same features and look as the Air Sports mobile app (airsports-mobile, K
   - `AppConfigService`: base URLs (`--base-url`, `--test-mode`), version and build number, local folder.
   - `PlatformServices`: browser links, share dialog, GPX save dialog, photo picker, connection state.
   - `NotificationService`: Windows notifications for announcements that arrive while the client runs and its window is
-    not in front (announcements are checked every 5 minutes; the desktop has no push).
+    not in front (announcements are checked every 5 minutes; the desktop has no push), and for the flight notifications
+    the phones get by push (tracking opens soon, no positions, scoring started, tracking still on, flight scored). Those
+    come from `GET userprofile/client_notifications/?after=<id>`, polled every minute (`PollFlightNotificationsAsync`);
+    the newest id seen is kept in `AppSettings`, the first check only notes it, and ones older than 15 minutes are not
+    shown. They are also printed in the simulator when it is connected and simulator messages are on.
   - `PreviewMode`: `--preview [home|timer|photos|flights|preflight|history|profile|debug|training|tour]` runs on sample data
     with a simulated aircraft, for screenshots and checking screens without an account or MSFS.
 - **Local data:** `airsports.db` (SQLite) in the app's local folder: position queue, track log, photo observation queue,

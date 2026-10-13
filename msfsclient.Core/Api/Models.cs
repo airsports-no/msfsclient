@@ -287,6 +287,22 @@ public sealed record Announcement
 }
 
 /// <summary>
+/// A flight notification for this client (<c>userprofile/client_notifications/</c>): what the phones get by push, e.g.
+/// "Tracking opens soon" or "Live scoring has finished". The desktop has no push, so the client fetches them.
+/// </summary>
+public sealed record ClientNotification
+{
+    public int Id { get; init; }
+    /// <summary>tracking_window_opens, not_tracking, scoring_started, still_tracking or flight_scored.</summary>
+    public string Kind { get; init; } = "";
+    public string Title { get; init; } = "";
+    public string Body { get; init; } = "";
+    public int? ContestantId { get; init; }
+    public int? NavigationTaskId { get; init; }
+    public string? CreatedAt { get; init; }
+}
+
+/// <summary>
 /// The practice flight the server offers new simulator pilots (<c>userprofile/msfs_quickstart/</c>, 404 when none): the task,
 /// where to start in the simulator, how to register, and the pilot's own registration.
 /// </summary>

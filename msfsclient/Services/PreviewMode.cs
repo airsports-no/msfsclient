@@ -122,6 +122,7 @@ namespace msfsclient.Services
                          "navigationtask_set":[{"pk":100,"name":"Day 1 - Precision","allow_self_management":true,"task_subtype_definition":{"display_name":"Precision flying"}},
                          {"pk":101,"name":"Day 2 - Navigation","allow_self_management":true}]}],"next":null}
                         """;
+                else if (path.Contains("client_notifications")) json = "[]";
                 else if (path.Contains("mobile/config")) status = HttpStatusCode.NotFound;
                 // Anything else (the Traccar position upload): accepted.
                 var response = new HttpResponseMessage(status) { Content = new StringContent(json ?? "", Encoding.UTF8, "application/json") };

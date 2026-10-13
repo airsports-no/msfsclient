@@ -42,6 +42,7 @@ namespace msfsclient.ViewModels
         private long _nowMillis = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         private long _lastPollMillis;
         private long _lastFlightOrderPollMillis;
+        private long _lastFlightNotificationPollMillis;
         private long _lastConnectAttemptMillis;
         private long _lastAnnouncementCheckMillis = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         private readonly NotificationService _notifications;
@@ -72,6 +73,21 @@ namespace msfsclient.ViewModels
             // An announcement that arrives while the pilot is in another window (MSFS) gets a Windows notification; in front, Home shows it.
             controller.NewAnnouncement += a => _dispatcher.TryEnqueue(() => { if (!WindowActive) _notifications.ShowAnnouncement(a); });
             notifications.Activated += () => _dispatcher.TryEnqueue(() => BringToFront?.Invoke());
+            // Flight notifications (what the phones get by push): a Windows notification, and a line in the simulator.
+            controller.FlightNotification += n => _dispatcher.TryEnqueue(() =>
+            {
+                _notifications.ShowFlightNotification(n);
+                if (SimMessagesEnabled && _simConnect.IsConnected)
+                {
+                    var kind = n.Kind switch
+                    {
+                        "not_tracking" or "still_tracking" => Core.Hud.SimMessageKind.Warning,
+                        "scoring_started" or "flight_scored" => Core.Hud.SimMessageKind.Good,
+                        _ => Core.Hud.SimMessageKind.Info,
+                    };
+                    _simConnect.ShowText($"Air Sports: {n.Title}. {n.Body}", kind, 15);
+                }
+            });
             // "Go flying" starts tracking at once (immediate tracking): the pilot does not need to find the play button.
             controller.StartTrackingRequested += () => _dispatcher.TryEnqueue(() =>
             {
@@ -279,6 +295,12 @@ namespace msfsclient.ViewModels
             {
                 _lastPollMillis = _nowMillis;
                 _ = _controller.RefreshTasksAsync();
+            }
+            // No push on the desktop: look for new flight notifications every minute while signed in.
+            if (!_state.IsOutside && _nowMillis - _lastFlightNotificationPollMillis >= 60_000)
+            {
+                _lastFlightNotificationPollMillis = _nowMillis;
+                _ = _controller.PollFlightNotificationsAsync();
             }
             // Just registered for the practice flight: look for its flight order every 5 s until it is made.
             if (_state.AwaitingFlightOrderFor != null && _nowMillis - _lastFlightOrderPollMillis >= 5_000)

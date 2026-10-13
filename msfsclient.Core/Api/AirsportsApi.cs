@@ -104,6 +104,18 @@ public sealed class AirsportsApi(HttpClient client, IAuthTokenProvider tokens, s
         return await BodyAsync<Quickstart>(response);
     }
 
+    /// <summary>
+    /// The pilot's flight notifications newer than <paramref name="after"/> (newest first, last 24 hours). Empty from a server
+    /// without them (404).
+    /// </summary>
+    public async Task<IReadOnlyList<ClientNotification>> ClientNotificationsAsync(int? after)
+    {
+        var url = _baseUrl + "userprofile/client_notifications/" + (after is { } a ? $"?after={a.ToString(System.Globalization.CultureInfo.InvariantCulture)}" : "");
+        var response = await AuthorizedRawAsync(() => new HttpRequestMessage(HttpMethod.Get, url));
+        if (response.StatusCode == HttpStatusCode.NotFound) return [];
+        return await BodyAsync<List<ClientNotification>>(await CheckedAsync(response));
+    }
+
     /// <summary>The organizers' announcements that concern this pilot and are still showing (newest first).</summary>
     public async Task<IReadOnlyList<Announcement>> AnnouncementsAsync() =>
         await BodyAsync<List<Announcement>>(await AuthorizedAsync(() => new HttpRequestMessage(HttpMethod.Get, _baseUrl + "userprofile/announcements/")));

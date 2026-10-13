@@ -193,6 +193,52 @@ public sealed class AppController
             _knownAnnouncements.Clear();
             _announcementsLoaded = false;
         }
+        // The flight notifications too: the next account starts from its own newest one.
+        if (_settings != null) _settings.LastClientNotificationId = null;
+    }
+
+    // ---- Flight notifications (what the phones get by push) -------------------------------------------------------
+
+    /// <summary>
+    /// A flight notification older than this is not shown when it is first seen: they are about now (a window opening, no
+    /// positions arriving), so one that arrived while the client was closed is stale.
+    /// </summary>
+    public const long FlightNotificationMaxAgeMillis = 15 * 60_000;
+
+    /// <summary>
+    /// Raised (on any thread) for each new flight notification, oldest first. The desktop has no push: the app polls
+    /// (<see cref="PollFlightNotificationsAsync"/>) and shows them as Windows notifications and in the simulator.
+    /// </summary>
+    public event Action<ClientNotification>? FlightNotification;
+
+    private readonly SemaphoreSlim _flightNotificationPoll = new(1, 1);
+
+    /// <summary>
+    /// Fetches the flight notifications newer than the last one seen and raises <see cref="FlightNotification"/> for the recent
+    /// ones. The first check (no newest id remembered yet) only notes where the list stands, so a new account or install is not
+    /// shown old ones.
+    /// </summary>
+    public async Task PollFlightNotificationsAsync()
+    {
+        if (_settings == null || !await _flightNotificationPoll.WaitAsync(0)) return;
+        try
+        {
+            var after = _settings.LastClientNotificationId;
+            IReadOnlyList<ClientNotification> list;
+            try { list = await _api.ClientNotificationsAsync(after); }
+            catch (Exception) { return; }
+            _settings.LastClientNotificationId = list.Select(n => n.Id).Append(after ?? 0).Max();
+            if (after == null) return;
+            var now = _now();
+            foreach (var n in list.Where(n => n.Id > after).OrderBy(n => n.Id))
+            {
+                if (IsoTime.EpochMillisOrNull(n.CreatedAt) is { } created && now - created <= FlightNotificationMaxAgeMillis) FlightNotification?.Invoke(n);
+            }
+        }
+        finally
+        {
+            _flightNotificationPoll.Release();
+        }
     }
 
     private void NotifyNew(IEnumerable<Announcement> shown)
