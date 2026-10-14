@@ -41,6 +41,10 @@ namespace msfsclient.Services
         public void SaveUser(User user) => Write(new Stored(
             user.Info.Uid, user.Info.Email, user.Info.IsEmailVerified, user.Info.DisplayName, user.Credential.RefreshToken, user.Credential.ProviderType));
 
+        /// <summary>Keeps a user signed in some other way than the Firebase client (Google / Apple through the website).</summary>
+        public void Store(string uid, string? email, bool verified, string? displayName, string refreshToken, FirebaseProviderType provider) =>
+            Write(new Stored(uid, email, verified, displayName, refreshToken, provider));
+
         public void DeleteUser()
         {
             _memory = null;

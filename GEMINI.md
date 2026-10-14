@@ -31,6 +31,12 @@ has the same features and look as the Air Sports mobile app (airsports-mobile, K
   - `SimPositionSource`: SimConnect data -> Core `TrackPoint` (PC clock UTC, knots -> m/s, feet -> metres).
   - `AuthService`: Firebase email/password sign-in behind Core `IAuthService`; the refresh token is kept in the Windows
     credential store (`VaultUserRepository`), not in a file.
+  - Google / Apple sign-in (Core `DesktopSignIn`, RFC 8252): the client listens on a free 127.0.0.1 port and opens the
+    website's `/accounts/desktop_sign_in/` in the browser (port, state, PKCE-style code challenge). After the sign-in there,
+    the browser comes back to `http://127.0.0.1:<port>/callback` with a one-time code, which the client trades with its
+    secret at `/accounts/desktop_sign_in/token/` for a Firebase custom token. `AuthService.SignInWithCustomTokenAsync`
+    signs in with it over REST (FirebaseAuthentication.net has no custom tokens) and restarts its Firebase client from the
+    stored user. `--preview login` shows the login screen.
   - `AppConfigService`: base URLs (`--base-url`, `--test-mode`), version and build number, local folder.
   - `PlatformServices`: browser links, share dialog, GPX save dialog, photo picker, connection state.
   - `NotificationService`: Windows notifications for announcements that arrive while the client runs and its window is

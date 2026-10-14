@@ -66,6 +66,18 @@ public sealed class FakeAuth(bool signedIn = true, bool verified = true) : IAuth
         return Task.CompletedTask;
     }
 
+    /// <summary>The custom tokens signed in with (Google / Apple sign-in).</summary>
+    public List<string> CustomTokens { get; } = [];
+
+    public Task SignInWithCustomTokenAsync(string customToken)
+    {
+        if (FailWith != null) throw FailWith;
+        CustomTokens.Add(customToken);
+        SignedIn = true;
+        Verified = true;
+        return Task.CompletedTask;
+    }
+
     public Task CreateAccountAsync(string email, string password)
     {
         SignedIn = true;

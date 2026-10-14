@@ -51,7 +51,7 @@ gate. Real competitions add precision landings; the simulator tasks cover the na
 - **Flight orders, a live map you can share with friends, your track history (GPX export) and results.**
 
 ### Your first flight, in five minutes
-1. Install the client (see Installation) and create a free account in it.
+1. Install the client (see Installation) and sign in with Google, Apple or a free Air Sports account.
 2. On Home, the card "New here? Try a practice flight" tells you where to start. Press **Go flying**.
 3. Your flight order opens in the browser and tracking starts. Begin a flight in MSFS at the start location, or let the
    client move your aircraft there.
@@ -84,7 +84,7 @@ Set one up, share the link and see who is the best navigator in your group.
 2. Optional: the toolbar panel. In the client, open your profile (picture or initials at the top right) and press
    "Install the panel". You can also copy `Community\airsports-flight-display` into your MSFS Community folder.
    Restart MSFS and open "Airsports" from the toolbar. The panel needs the client running on the same PC.
-3. Create your free account in the client and follow the README for the first flight.
+3. Sign in with Google, Apple or a free Air Sports account, and follow the README for the first flight.
 
 The README in the zip covers installation, setup, the first flight, regular contest flights and troubleshooting.
 
@@ -92,7 +92,7 @@ The README in the zip covers installation, setup, the first flight, regular cont
 - Windows 10 (1809 or later) or Windows 11, 64-bit
 - MSFS 2020 or MSFS 2024 (Microsoft Store or Steam)
 - An internet connection while flying
-- A free Air Sports Live Tracking account (create it in the client)
+- A Google or Apple account, or a free Air Sports Live Tracking account (create it in the client)
 
 ## Also available
 The client is also in the Microsoft Store, with automatic updates. It installs the toolbar panel from its profile page.

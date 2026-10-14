@@ -20,6 +20,8 @@ public sealed record UiState
     /// <summary>Store page shown on the UpdateRequired screen.</summary>
     public string? UpdateUrl { get; init; }
     public bool Busy { get; init; }
+    /// <summary>"Google" or "Apple" while that sign-in is waiting for the pilot in the browser; null otherwise.</summary>
+    public string? SigningInWith { get; init; }
     public string? Notice { get; init; }
     public string? Error { get; init; }
     public IReadOnlyList<MyFlight> Flights { get; init; } = [];
@@ -472,6 +474,49 @@ public sealed class AppController
         await _auth.SignInWithPasswordAsync(email, password);
         await RefreshAsync();
     });
+
+    /// <summary>Google / Apple sign-in through the website (null: not offered, e.g. in tests that do not need it).</summary>
+    public DesktopSignIn? DesktopSignIn { get; set; }
+
+    private CancellationTokenSource? _providerSignIn;
+    private bool _providerSignInCancelled;
+
+    /// <summary>
+    /// "Continue with Google / Apple": the sign-in happens in the browser (<see cref="Auth.DesktopSignIn"/>); while it runs
+    /// <see cref="UiState.SigningInWith"/> names the provider so the screen can say so and offer to cancel.
+    /// </summary>
+    public async Task SignInWithProviderAsync(string provider)
+    {
+        if (DesktopSignIn is not { } signIn) return;
+        var cancellation = new CancellationTokenSource();
+        Interlocked.Exchange(ref _providerSignIn, cancellation)?.Cancel();
+        _providerSignInCancelled = false;
+        var name = provider == "apple" ? "Apple" : "Google";
+        Update(s => s with { Busy = true, Error = null, Notice = null, SigningInWith = name });
+        try
+        {
+            await signIn.SignInAsync(provider, cancellation.Token);
+            Update(s => s with { Busy = false, SigningInWith = null });
+            await RefreshAsync();
+        }
+        catch (OperationCanceledException)
+        {
+            if (!ReferenceEquals(_providerSignIn, cancellation)) return; // another sign-in took over
+            var error = _providerSignInCancelled ? null : $"The sign-in with {name} took too long. Try again.";
+            Update(s => s with { Busy = false, SigningInWith = null, Error = error });
+        }
+        catch (Exception e)
+        {
+            Update(s => s with { Busy = false, SigningInWith = null, Error = _auth.DescribeError(e) });
+        }
+    }
+
+    /// <summary>The pilot gave up on the sign-in in the browser.</summary>
+    public void CancelProviderSignIn()
+    {
+        _providerSignInCancelled = true;
+        _providerSignIn?.Cancel();
+    }
 
     public Task CreateAccountAsync(string email, string password) => RunAsync(async () =>
     {

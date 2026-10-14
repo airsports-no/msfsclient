@@ -5,7 +5,7 @@ Fly real air sports competitions in MSFS 2020 and MSFS 2024: air navigation race
 with a live map and automatic scoring. The Airsports client sends your aircraft's position to Air Sports Live Tracking
 (https://airsports.no) while you fly. You are scored exactly like the pilots who fly the same tasks in real aircraft.
 
-It is free to use. You need a free Air Sports account; you can create it in the client.
+It is free to use. Sign in with Google, Apple or a free Air Sports account, which you can create in the client.
 
 
 What is in this zip
@@ -49,8 +49,9 @@ to be running on the same PC. After a client update, press "Update the panel" in
 
 3. Set up the client
 --------------------
-1. Sign in with your airsports.no account, or press "Create an account". Open the link in the e-mail you get to verify
-   the address, then press "I have verified my email" in the client.
+1. Sign in with your airsports.no account, with "Continue with Google" or "Continue with Apple" (you finish in your
+   browser, with the same account as on the website and in the Air Sports app), or press "Create an account". With a new
+   email account, open the link in the e-mail you get to verify the address, then press "I have verified my email".
 2. Complete your profile: your name, country code and phone number. Your name is how you appear on the live map and in
    the results.
 3. A short tour shows the main parts of the client. You can see it again from your profile.

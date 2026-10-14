@@ -80,6 +80,8 @@ namespace msfsclient
 
             MainWindow? window = null;
             var platform = new PlatformServices(() => window?.Handle ?? IntPtr.Zero);
+            // Google / Apple sign-in through the website in the browser (not in preview mode: no real sign-in there).
+            if (preview == null) controller.DesktopSignIn = new DesktopSignIn(new HttpClient { Timeout = TimeSpan.FromSeconds(30) }, () => Urls.SiteBase, platform.OpenUri, auth);
             var notifications = new NotificationService();
             if (preview == null) notifications.Register();
             Shell = new ShellViewModel(controller, simConnect, sim, queue, uploader, trackLog, platform, config, notifications);

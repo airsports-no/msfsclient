@@ -26,7 +26,19 @@ namespace msfsclient.Views
             ModeButton.Content = _creating ? "I already have an account" : "Create an account";
             ResetButton.Visibility = _creating ? Visibility.Collapsed : Visibility.Visible;
             ResetButton.IsEnabled = !busy && Email.Text.Contains('@');
+            // While the sign-in with Google / Apple waits in the browser, say so instead of offering the buttons again.
+            var waiting = Vm.State.SigningInWith;
+            ProviderButtons.Visibility = waiting == null ? Visibility.Visible : Visibility.Collapsed;
+            BrowserWait.Visibility = waiting == null ? Visibility.Collapsed : Visibility.Visible;
+            BrowserWaitText.Text = waiting == null ? "" : $"Sign in with {waiting} in your browser. The client continues by itself when you are done.";
+            GoogleButton.IsEnabled = AppleButton.IsEnabled = !busy;
         }
+
+        private void Google_Click(object sender, RoutedEventArgs e) => _ = Vm.Controller.SignInWithProviderAsync("google");
+
+        private void Apple_Click(object sender, RoutedEventArgs e) => _ = Vm.Controller.SignInWithProviderAsync("apple");
+
+        private void CancelProvider_Click(object sender, RoutedEventArgs e) => Vm.Controller.CancelProviderSignIn();
 
         private void Email_Changed(object sender, TextChangedEventArgs e) => Refresh();
 

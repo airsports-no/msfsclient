@@ -30,13 +30,14 @@ namespace msfsclient.Services
 
         public sealed class Auth : IAuthService, IAuthTokenProvider
         {
-            private bool _signedIn = true;
+            private bool _signedIn = Requested() != "login"; // "--preview login" starts signed out
             public IAuthTokenProvider Tokens => this;
             public Task<string?> IdTokenAsync(bool forceRefresh) => Task.FromResult<string?>("preview");
             public bool IsSignedIn() => _signedIn;
             public bool IsEmailVerified() => true;
             public string? Email() => "pilot@example.com";
             public Task SignInWithPasswordAsync(string email, string password) { _signedIn = true; return Task.CompletedTask; }
+            public Task SignInWithCustomTokenAsync(string customToken) { _signedIn = true; return Task.CompletedTask; }
             public Task CreateAccountAsync(string email, string password) => Task.CompletedTask;
             public Task SendPasswordResetAsync(string email) => Task.CompletedTask;
             public Task ResendVerificationAsync() => Task.CompletedTask;

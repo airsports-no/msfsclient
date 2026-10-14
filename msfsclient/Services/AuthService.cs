@@ -10,8 +10,9 @@ using msfsclient.Core.Auth;
 namespace msfsclient.Services
 {
     /// <summary>
-    /// Email and password sign-in with Firebase (project airsports-613ce), behind the Core <see cref="IAuthService"/>. The
-    /// Firebase web API key is public by design. The signed-in user is kept in the Windows credential store.
+    /// Firebase sign-in (project airsports-613ce) behind the Core <see cref="IAuthService"/>: email and password, and Google /
+    /// Apple through the website (Core DesktopSignIn, finished here with a custom token). The Firebase web API key is public
+    /// by design. The signed-in user is kept in the Windows credential store.
     /// </summary>
     public sealed class AuthService : IAuthService, IAuthTokenProvider
     {
@@ -19,7 +20,7 @@ namespace msfsclient.Services
         private const string AuthDomain = "airsports-613ce.firebaseapp.com";
         private const string IdentityToolkit = "https://identitytoolkit.googleapis.com/v1/accounts:";
 
-        private readonly FirebaseAuthClient _client;
+        private FirebaseAuthClient _client;
         private readonly HttpClient _http;
         private readonly VaultUserRepository _repository;
 
@@ -27,14 +28,17 @@ namespace msfsclient.Services
         {
             _http = http;
             _repository = new VaultUserRepository(legacyUserFile);
-            _client = new FirebaseAuthClient(new FirebaseAuthConfig
-            {
-                ApiKey = ApiKey,
-                AuthDomain = AuthDomain,
-                Providers = [new EmailProvider()],
-                UserRepository = _repository,
-            });
+            _client = NewClient();
         }
+
+        /// <summary>A client that starts from the user in the credential store (signed in when there is one).</summary>
+        private FirebaseAuthClient NewClient() => new(new FirebaseAuthConfig
+        {
+            ApiKey = ApiKey,
+            AuthDomain = AuthDomain,
+            Providers = [new EmailProvider()],
+            UserRepository = _repository,
+        });
 
         public IAuthTokenProvider Tokens => this;
 
@@ -62,6 +66,45 @@ namespace msfsclient.Services
 
         public async Task SignInWithPasswordAsync(string email, string password) =>
             await _client.SignInWithEmailAndPasswordAsync(email, password);
+
+        /// <summary>
+        /// Google / Apple sign-in, finished: the website's custom token (Core DesktopSignIn) is traded with Firebase for the
+        /// user's tokens, and the user is kept like after a password sign-in. FirebaseAuthentication.net has no custom
+        /// token sign-in, so it is done over REST and the client is started again from the stored user.
+        /// </summary>
+        public async Task SignInWithCustomTokenAsync(string customToken)
+        {
+            string idToken, refreshToken;
+            using (var response = await PostAsync("signInWithCustomToken", new { token = customToken, returnSecureToken = true }))
+            using (var tokens = JsonDocument.Parse(await response.Content.ReadAsStringAsync()))
+            {
+                idToken = tokens.RootElement.GetProperty("idToken").GetString() ?? throw new InvalidOperationException("The sign-in service did not answer.");
+                refreshToken = tokens.RootElement.GetProperty("refreshToken").GetString() ?? throw new InvalidOperationException("The sign-in service did not answer.");
+            }
+            using var lookup = await PostAsync("lookup", new { idToken });
+            using var users = JsonDocument.Parse(await lookup.Content.ReadAsStringAsync());
+            var user = users.RootElement.GetProperty("users")[0];
+            string? Text(JsonElement element, string name) =>
+                element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
+            var provider = FirebaseProviderType.EmailAndPassword;
+            if (user.TryGetProperty("providerUserInfo", out var providers) && providers.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var p in providers.EnumerateArray())
+                {
+                    provider = Text(p, "providerId") switch
+                    {
+                        "google.com" => FirebaseProviderType.Google,
+                        "apple.com" => FirebaseProviderType.Apple,
+                        _ => provider,
+                    };
+                }
+            }
+            var verified = user.TryGetProperty("emailVerified", out var v) && v.ValueKind == JsonValueKind.True;
+            _repository.Store(
+                Text(user, "localId") ?? throw new InvalidOperationException("The sign-in service did not answer."),
+                Text(user, "email"), verified, Text(user, "displayName"), refreshToken, provider);
+            _client = NewClient();
+        }
 
         public async Task CreateAccountAsync(string email, string password)
         {

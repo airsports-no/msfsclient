@@ -19,6 +19,8 @@ public interface IAuthService
     string? Email();
 
     Task SignInWithPasswordAsync(string email, string password);
+    /// <summary>Signs in with a Firebase custom token from the website (Google / Apple sign-in, <see cref="DesktopSignIn"/>).</summary>
+    Task SignInWithCustomTokenAsync(string customToken);
     /// <summary>Creates the account and sends the verification email.</summary>
     Task CreateAccountAsync(string email, string password);
     Task SendPasswordResetAsync(string email);
