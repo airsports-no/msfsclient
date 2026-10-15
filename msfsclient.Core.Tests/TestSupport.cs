@@ -104,6 +104,9 @@ public static class Api
         new(new HttpClient(handler), tokens ?? new FixedTokens(), appInfo: info);
 
     public static long Ms(string iso) => IsoTime.EpochMillisOrNull(iso)!.Value;
+
+    /// <summary>FakeAuth never checks a password; this only fills the parameter.</summary>
+    public const string FakePassword = "not-a-real-password"; // ggignore
 }
 
 public static class ControllerWaits

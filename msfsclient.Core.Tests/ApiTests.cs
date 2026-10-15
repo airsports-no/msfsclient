@@ -201,6 +201,19 @@ public class FlightsTest
     }
 
     [Fact]
+    public async Task PaginationNeverFollowsALinkToAnotherSite()
+    {
+        var hosts = new List<string>();
+        var e = await Assert.ThrowsAsync<ApiException>(() => With(new MockHandler(r =>
+        {
+            hosts.Add(r.Url.Host);
+            return Json("""{"results":[{"id":1,"name":"A"}],"next":"https://evil.example.com/api/v1/contests/?cursor=abc"}""");
+        })).ContestsByIdsAsync([1]));
+        Assert.Equal(["airsports.no"], hosts); // the token never went to the other host
+        Assert.Contains("another site", e.Detail);
+    }
+
+    [Fact]
     public async Task NoRequestWhenThereAreNoIds() =>
         Assert.Empty(await With(new MockHandler(new Func<SeenRequest, HttpResponseMessage>(_ => throw new InvalidOperationException("must not be called")))).ContestsByIdsAsync([]));
 
@@ -373,6 +386,8 @@ public class TrackingTargetsTest
         Assert.Null(Urls.WebPath("https://evil.example.com/competition-map/1/2"));
         Assert.Null(Urls.WebPath("https://notairsports.no/x"));
         Assert.Null(Urls.WebPath("airsports.no/x"));
+        Assert.Null(Urls.WebPath("//evil.example.com/x")); // protocol-relative: another site
+        Assert.Null(Urls.WebPath(@"/\evil.example.com/x"));
     }
 
     [Fact]

@@ -60,9 +60,9 @@ namespace msfsclient.Views
 
         private static ObservationPhoto? Photo(object sender) => ((sender as FrameworkElement)?.Tag as PhotoItem)?.Photo;
 
-        private void Thumbs_Click(object sender, RoutedEventArgs e) { Vm.Controller.ShowObservationThumbnails(true); Refresh(); }
+        private void Thumbs_Click(object sender, RoutedEventArgs e) { Vm.Controller.ShowObservationThumbnails(true); Refresh(); Notify(); }
 
-        private void List_Click(object sender, RoutedEventArgs e) { Vm.Controller.ShowObservationThumbnails(false); Refresh(); }
+        private void List_Click(object sender, RoutedEventArgs e) { Vm.Controller.ShowObservationThumbnails(false); Refresh(); Notify(); }
 
         private void Retry_Click(object sender, RoutedEventArgs e) => _ = Vm.Controller.LoadObservationsAsync();
 

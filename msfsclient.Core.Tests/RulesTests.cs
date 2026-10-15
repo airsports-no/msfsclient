@@ -494,6 +494,16 @@ public class ReceivingStatusTest
     }
 
     [Fact]
+    public void TheLatestReceptionIsComparedAsInstantsNotAsText()
+    {
+        // 10:00+02:00 is 08:00Z, earlier than 09:30Z, although "10:00" sorts after "09:30" as text.
+        var withOffset = new ActiveContestant { Id = 1, LastReceivedTime = "2026-10-10T10:00:00+02:00" };
+        var utc = new ActiveContestant { Id = 2, LastReceivedTime = "2026-10-10T09:30:00.5Z" };
+        Assert.Equal("2026-10-10T09:30:00.5Z", ServerStatus.LastHeardIso([withOffset, utc]));
+        Assert.Equal("2026-10-10T09:30:00.5Z", ServerStatus.LastHeardIso([utc, new ActiveContestant { Id = 3, LastReceivedTime = "not a time" }]));
+    }
+
+    [Fact]
     public void StoredPositionsAreNotTrustedForReceptionWhenTheTaskDelaysThem()
     {
         Assert.Null(ServerStatus.LastHeardIso([new ActiveContestant { Id = 1, LastPositionTime = "2026-10-10T11:50:00Z", CalculationDelayMinutes = 10.0 }]));

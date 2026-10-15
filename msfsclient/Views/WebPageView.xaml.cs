@@ -68,10 +68,20 @@ namespace msfsclient.Views
                 return;
             }
             if (!Uri.TryCreate(uri, UriKind.Absolute, out var parsed)) return;
+            if (parsed.Scheme == "about") return;
             var host = parsed.Host.ToLowerInvariant();
-            if (host == Urls.AppHost || host == new Uri(Urls.SiteBase).Host || host == "airsports.no" || host.EndsWith(".airsports.no", StringComparison.Ordinal) || parsed.Scheme == "about") return;
-            // Anywhere else leaves the app, in the browser.
+            var site = new Uri(Urls.SiteBase);
+            var ours = host == Urls.AppHost || host == "airsports.no" || host.EndsWith(".airsports.no", StringComparison.Ordinal);
+            // The signed-in site stays in the app only over https (or exactly as configured, e.g. a local test server).
+            if ((host == site.Host.ToLowerInvariant() && parsed.Scheme == site.Scheme) || (ours && parsed.Scheme == Uri.UriSchemeHttps)) return;
             args.Cancel = true;
+            if (ours && parsed.Scheme == Uri.UriSchemeHttp)
+            {
+                // A plain-http link to our site: load the https page instead, never content that could be altered on the way.
+                sender.Navigate(new UriBuilder(parsed) { Scheme = Uri.UriSchemeHttps, Port = -1 }.Uri.ToString());
+                return;
+            }
+            // Anywhere else leaves the app, in the browser.
             Vm.Platform.OpenUri(uri);
         }
 

@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Sockets;
 
 namespace msfsclient.Core.Tracking;
@@ -110,13 +111,19 @@ public sealed class NtpClient(
     private async Task<NtpMeasurement?> SampleAsync(string server)
     {
         NtpMeasurement? best = null;
-        using var udp = new UdpClient();
-        udp.Connect(server, port);
+        // The name is looked up without blocking and within the same time limit as an answer (a slow resolver would
+        // otherwise hold up the caller, e.g. the pre-flight check).
+        IPAddress[] addresses;
+        using (var lookup = new CancellationTokenSource(timeoutMillis)) addresses = await Dns.GetHostAddressesAsync(server, lookup.Token);
+        var address = addresses.FirstOrDefault(a => a.AddressFamily == AddressFamily.InterNetwork) ?? addresses.FirstOrDefault();
+        if (address == null) return null;
+        using var udp = new UdpClient(address.AddressFamily);
+        udp.Connect(address, port);
         for (var i = 0; i < samplesPerServer; i++)
         {
             var sent = _now();
             var request = Ntp.Request(sent);
-            await udp.SendAsync(request, request.Length);
+            using (var sending = new CancellationTokenSource(timeoutMillis)) await udp.SendAsync(request, sending.Token);
             using var cts = new CancellationTokenSource(timeoutMillis);
             UdpReceiveResult received;
             try { received = await udp.ReceiveAsync(cts.Token); }

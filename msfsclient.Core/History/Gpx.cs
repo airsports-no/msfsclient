@@ -23,8 +23,10 @@ public static class Gpx
         sb.Append("  <trk>\n    <name>").Append(XmlEscape(name)).Append("</name>\n    <trkseg>\n");
         foreach (var p in points)
         {
+            // A broken value from the simulator (not a number, or out of range) would make a corrupt file.
+            if (!double.IsFinite(p.Latitude) || !double.IsFinite(p.Longitude) || Math.Abs(p.Latitude) > 90 || Math.Abs(p.Longitude) > 180) continue;
             sb.Append("      <trkpt lat=\"").Append(Fixed(p.Latitude, 7)).Append("\" lon=\"").Append(Fixed(p.Longitude, 7)).Append("\">\n");
-            if (p.Altitude is { } alt) sb.Append("        <ele>").Append(Fixed(alt, 1)).Append("</ele>\n");
+            if (p.Altitude is { } alt && double.IsFinite(alt) && Math.Abs(alt) < 1e9) sb.Append("        <ele>").Append(Fixed(alt, 1)).Append("</ele>\n");
             sb.Append("        <time>").Append(Time(p.TimestampMillis)).Append("</time>\n");
             sb.Append("      </trkpt>\n");
         }

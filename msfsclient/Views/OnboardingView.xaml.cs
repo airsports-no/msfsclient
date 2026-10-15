@@ -1,3 +1,4 @@
+using System.Linq;
 using Microsoft.UI.Xaml.Controls;
 using msfsclient.Core.Api;
 
@@ -17,7 +18,7 @@ namespace msfsclient.Views
             Phone.Text = p?.PhoneNationalNumber ?? "";
         }
 
-        private bool Valid => !string.IsNullOrWhiteSpace(First.Text) && !string.IsNullOrWhiteSpace(Last.Text) && Country.Text.Trim().Length == 2
+        private bool Valid => !string.IsNullOrWhiteSpace(First.Text) && !string.IsNullOrWhiteSpace(Last.Text) && Country.Text.Trim() is { Length: 2 } code && code.All(char.IsAsciiLetter)
             && !string.IsNullOrWhiteSpace(Phone.Text);
 
         protected override void Refresh()

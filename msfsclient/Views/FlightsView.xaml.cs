@@ -9,6 +9,7 @@ namespace msfsclient.Views
     {
         private IReadOnlyList<MyFlight>? _flightsFor;
         private int? _cancellingFor;
+        private bool _pastFor;
 
         public FlightsView()
         {
@@ -25,9 +26,10 @@ namespace msfsclient.Views
             var s = Vm.State;
             UpcomingTab.IsChecked = !s.ShowPastFlights;
             PastTab.IsChecked = s.ShowPastFlights;
-            if (!ReferenceEquals(s.Flights, _flightsFor) || s.CancellingFlightId != _cancellingFor)
+            if (!ReferenceEquals(s.Flights, _flightsFor) || s.ShowPastFlights != _pastFor || s.CancellingFlightId != _cancellingFor)
             {
                 _flightsFor = s.Flights;
+                _pastFor = s.ShowPastFlights;
                 _cancellingFor = s.CancellingFlightId;
                 Flights = s.Flights.Select(f => new FlightItem(f, s.ShowPastFlights, s.CancellingFlightId)).ToList();
             }

@@ -161,6 +161,20 @@ public class GpxTest
     }
 
     [Fact]
+    public void BrokenValuesFromTheSimulatorNeverMakeACorruptFile()
+    {
+        var gpx = Gpx.Build("x",
+        [
+            new LoggedPoint(T, double.NaN, 10.7522, 100, 40.0, 90.0, 5.0), // no position: left out
+            new LoggedPoint(T + 1000, 59.9, 200.0, 100, 40.0, 90.0, 5.0), // impossible longitude: left out
+            new LoggedPoint(T + 2000, 59.9140, 10.7523, double.PositiveInfinity, 40.0, 90.0, 5.0), // kept, without altitude
+        ]);
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(gpx, "<trkpt "));
+        Assert.Contains("""<trkpt lat="59.9140000" lon="10.7523000">""", gpx);
+        Assert.DoesNotContain("<ele>", gpx);
+    }
+
+    [Fact]
     public void TheDecimalSeparatorIsADotWhateverTheRegionalSettings()
     {
         var before = Thread.CurrentThread.CurrentCulture;

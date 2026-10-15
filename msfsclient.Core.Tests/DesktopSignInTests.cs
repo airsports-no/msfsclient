@@ -88,6 +88,7 @@ public class DesktopSignInTest
                 return
                 [
                     $"http://127.0.0.1:{port}/favicon.ico",
+                    $"http://127.0.0.1:{port}/callbackfoo?code=x&state={q["state"]}",
                     $"http://127.0.0.1:{port}/callback?code=stolen&state=someone-else",
                     $"http://127.0.0.1:{port}/callback?code=the-code&state={q["state"]}",
                 ];
@@ -95,7 +96,7 @@ public class DesktopSignInTest
         };
         await SignIn(browser).SignInAsync("google");
         await browser.Done;
-        Assert.Equal([HttpStatusCode.NotFound, HttpStatusCode.BadRequest, HttpStatusCode.Found], browser.Answers.Select(a => a.Status));
+        Assert.Equal([HttpStatusCode.NotFound, HttpStatusCode.NotFound, HttpStatusCode.BadRequest, HttpStatusCode.Found], browser.Answers.Select(a => a.Status));
         Assert.Contains("\"code\":\"the-code\"", Assert.Single(_tokenRequests));
     }
 

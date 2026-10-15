@@ -126,7 +126,9 @@ namespace msfsclient.Services
             var user = _client.User;
             if (user == null) return false;
             // A fresh token carries the new email_verified claim; the account lookup says whether it is verified now.
-            var token = await user.GetIdTokenAsync(forceRefresh: true);
+            // Through IdTokenAsync: a refresh token that no longer works signs the pilot out instead of failing every press.
+            var token = await IdTokenAsync(forceRefresh: true);
+            if (token == null) return false;
             using var response = await PostAsync("lookup", new { idToken = token });
             using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
             var verified = doc.RootElement.TryGetProperty("users", out var users) && users.GetArrayLength() > 0

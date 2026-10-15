@@ -144,6 +144,18 @@ public sealed class AppController
 
     public UiState State { get { lock (_lock) return _state; } }
 
+    /// <summary>
+    /// A clean state after sign-out or account deletion that keeps what is saved on this PC (the timer buffer, the practice
+    /// flights said "Not now" to), as at start-up.
+    /// </summary>
+    private UiState FreshState(Screen screen, string? notice = null) => new()
+    {
+        Screen = screen,
+        Notice = notice,
+        TimerBufferMinutes = _settings?.TimerBufferMinutes ?? 0,
+        DismissedQuickstarts = _settings?.DismissedQuickstartIds ?? new HashSet<int>(),
+    };
+
     /// <summary>Raised on any thread after every change of <see cref="State"/>.</summary>
     public event Action<UiState>? StateChanged;
 
@@ -811,12 +823,17 @@ public sealed class AppController
     /// </summary>
     public async Task CancelObservationAsync(ObservationPhoto photo)
     {
-        var ui = State.Observations;
-        if (ui.ContestantId is not { } id) return;
+        if (State.Observations.ContestantId is not { } id) return;
         await _observationFlush.WaitAsync();
-        try { _observationQueue?.RemoveForPhoto(id, photo.Id); }
+        PhotoObservation? stored;
+        try
+        {
+            _observationQueue?.RemoveForPhoto(id, photo.Id);
+            // Looked up only now: a send that was under way when the pilot pressed cancel has stored its mark by now.
+            stored = State.Observations.Registered.GetValueOrDefault(photo.Id);
+        }
         finally { _observationFlush.Release(); }
-        if (ui.Registered.TryGetValue(photo.Id, out var stored))
+        if (stored != null)
         {
             try
             {
@@ -929,7 +946,7 @@ public sealed class AppController
             if (_settings != null) _settings.CachedProfileJson = null;
             _auth.SignOut();
             ForgetAnnouncements();
-            Update(_ => new UiState { Screen = Screen.Login, Notice = "Your account has been deleted." });
+            Update(_ => FreshState(Screen.Login, "Your account has been deleted."));
         }
         catch (ApiException e)
         {
@@ -1048,7 +1065,7 @@ public sealed class AppController
         if (_settings != null) _settings.CachedProfileJson = null;
         _auth.SignOut();
         ForgetAnnouncements();
-        Update(_ => new UiState { Screen = Screen.Login });
+        Update(_ => FreshState(Screen.Login));
     }
 
     /// <summary>The token the web view sends (in a header, never in the URL) to sign the pilot in on the website.</summary>
