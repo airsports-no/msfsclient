@@ -67,5 +67,15 @@ public static class ServerStatus
     public static int MapDelayMinutes(IReadOnlyCollection<ActiveContestant> contestants) =>
         (int)Math.Ceiling(contestants.Count == 0 ? 0.0 : contestants.Max(c => c.CalculationDelayMinutes ?? 0.0));
 
-    private static string? MaxIso(IEnumerable<string?> values) => values.Where(v => v != null).Max(StringComparer.Ordinal);
+    /// <summary>The latest instant, compared as instants (the server may vary the offset or the fractional seconds).</summary>
+    private static string? MaxIso(IEnumerable<string?> values)
+    {
+        string? latest = null;
+        long latestMillis = long.MinValue;
+        foreach (var v in values)
+        {
+            if (IsoTime.EpochMillisOrNull(v) is { } millis && millis > latestMillis) (latest, latestMillis) = (v, millis);
+        }
+        return latest;
+    }
 }

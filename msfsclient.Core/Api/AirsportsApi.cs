@@ -35,7 +35,7 @@ public sealed class AirsportsApi(HttpClient client, IAuthTokenProvider tokens, s
     /// <see cref="ApiException"/> whose detail is the backend's explanation (e.g. organizer accounts must go through support).
     /// </summary>
     public async Task DeleteAccountAsync(string email) =>
-        await ExplainedAsync(await AuthorizedRawAsync(() => new HttpRequestMessage(HttpMethod.Delete, _baseUrl + "userprofile/delete_account/") { Content = Json(new DeleteAccountRequest(email)) }));
+        await ExplainedOnlyAsync(await AuthorizedRawAsync(() => new HttpRequestMessage(HttpMethod.Delete, _baseUrl + "userprofile/delete_account/") { Content = Json(new DeleteAccountRequest(email)) }));
 
     /// <summary>Replaces the profile photo (a JPEG); returns the updated profile whose <c>picture</c> is the new URL.</summary>
     public async Task<Person> UploadProfilePictureAsync(byte[] jpeg) =>
@@ -56,7 +56,7 @@ public sealed class AirsportsApi(HttpClient client, IAuthTokenProvider tokens, s
 
     /// <summary>Cancels the pilot's own registered flight (the server only allows it for self-managed tasks and the flight's pilot).</summary>
     public async Task CancelFlightAsync(int contestId, int navigationTaskId, int contestantId) =>
-        await ExplainedAsync(await AuthorizedRawAsync(() => new HttpRequestMessage(HttpMethod.Delete,
+        await ExplainedOnlyAsync(await AuthorizedRawAsync(() => new HttpRequestMessage(HttpMethod.Delete,
             _baseUrl + $"contests/{contestId}/navigationtasks/{navigationTaskId}/delete_self_managed_contestant/{contestantId}/")));
 
     /// <summary>The photos the crew of <paramref name="contestantId"/> can mark and what they have marked so far.</summary>
@@ -76,7 +76,7 @@ public sealed class AirsportsApi(HttpClient client, IAuthTokenProvider tokens, s
 
     /// <summary>Cancels a mark (the photo counts as not marked again).</summary>
     public async Task CancelObservationAsync(int contestantId, int observationId) =>
-        await ExplainedAsync(await AuthorizedRawAsync(() => new HttpRequestMessage(HttpMethod.Delete, _baseUrl + $"contestant/{contestantId}/photo_observations/{observationId}/")));
+        await ExplainedOnlyAsync(await AuthorizedRawAsync(() => new HttpRequestMessage(HttpMethod.Delete, _baseUrl + $"contestant/{contestantId}/photo_observations/{observationId}/")));
 
     public async Task<IReadOnlyList<Flight>> MyFutureFlightsAsync() =>
         await BodyAsync<List<Flight>>(await AuthorizedAsync(() => new HttpRequestMessage(HttpMethod.Get, _baseUrl + "userprofile/my_future_flights/")));
@@ -88,7 +88,7 @@ public sealed class AirsportsApi(HttpClient client, IAuthTokenProvider tokens, s
     public async Task<Quickstart?> QuickstartAsync()
     {
         var response = await AuthorizedRawAsync(() => new HttpRequestMessage(HttpMethod.Get, _baseUrl + "userprofile/msfs_quickstart/"));
-        if (response.StatusCode == HttpStatusCode.NotFound) return null;
+        if (response.StatusCode == HttpStatusCode.NotFound) return Released<Quickstart?>(response, null);
         return await BodyAsync<Quickstart>(await CheckedAsync(response));
     }
 
@@ -99,7 +99,7 @@ public sealed class AirsportsApi(HttpClient client, IAuthTokenProvider tokens, s
     public async Task<Quickstart?> RegisterQuickstartAsync()
     {
         var response = await AuthorizedRawAsync(() => new HttpRequestMessage(HttpMethod.Post, _baseUrl + "userprofile/msfs_quickstart_register/") { Content = Json(new { }) });
-        if (response.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.MethodNotAllowed) return null;
+        if (response.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.MethodNotAllowed) return Released<Quickstart?>(response, null);
         await ExplainedAsync(response);
         return await BodyAsync<Quickstart>(response);
     }
@@ -112,7 +112,7 @@ public sealed class AirsportsApi(HttpClient client, IAuthTokenProvider tokens, s
     {
         var url = _baseUrl + "userprofile/client_notifications/" + (after is { } a ? $"?after={a.ToString(System.Globalization.CultureInfo.InvariantCulture)}" : "");
         var response = await AuthorizedRawAsync(() => new HttpRequestMessage(HttpMethod.Get, url));
-        if (response.StatusCode == HttpStatusCode.NotFound) return [];
+        if (response.StatusCode == HttpStatusCode.NotFound) return Released<IReadOnlyList<ClientNotification>>(response, []);
         return await BodyAsync<List<ClientNotification>>(await CheckedAsync(response));
     }
 
@@ -132,8 +132,18 @@ public sealed class AirsportsApi(HttpClient client, IAuthTokenProvider tokens, s
             var page = await BodyAsync<ContestPage>(await AuthorizedAsync(() => new HttpRequestMessage(HttpMethod.Get, url)));
             all.AddRange(page.Results);
             next = page.Next;
+            // The token goes with every page: only follow links to the API itself.
+            if (next != null && !IsApiUrl(next)) throw new ApiException(0, "The server sent a link to another site.");
         }
         return all;
+    }
+
+    /// <summary>An absolute URL with the API's scheme, host and port.</summary>
+    private bool IsApiUrl(string url)
+    {
+        var api = new Uri(_baseUrl);
+        return Uri.TryCreate(url, UriKind.Absolute, out var u) && u.Scheme == api.Scheme
+            && string.Equals(u.Host, api.Host, StringComparison.OrdinalIgnoreCase) && u.Port == api.Port;
     }
 
     /// <summary>
@@ -143,7 +153,7 @@ public sealed class AirsportsApi(HttpClient client, IAuthTokenProvider tokens, s
     public async Task<IReadOnlyList<CurrentTask>> CurrentTasksAsync()
     {
         var response = await AuthorizedRawAsync(() => new HttpRequestMessage(HttpMethod.Get, _baseUrl + "userprofile/get_current_sim_navigation_task/"));
-        if (response.StatusCode == HttpStatusCode.NotFound) return [];
+        if (response.StatusCode == HttpStatusCode.NotFound) return Released<IReadOnlyList<CurrentTask>>(response, []);
         return await BodyAsync<List<CurrentTask>>(await CheckedAsync(response));
     }
 
@@ -172,18 +182,35 @@ public sealed class AirsportsApi(HttpClient client, IAuthTokenProvider tokens, s
         return request;
     }
 
+    /// <summary>The response when it succeeded; otherwise it is released and an <see cref="ApiException"/> is thrown.</summary>
     private static async Task<HttpResponseMessage> CheckedAsync(HttpResponseMessage response)
     {
-        if (!response.IsSuccessStatusCode) throw new ApiException((int)response.StatusCode, await SafeBodyAsync(response));
-        return response;
+        if (response.IsSuccessStatusCode) return response;
+        using (response) throw new ApiException((int)response.StatusCode, await SafeBodyAsync(response));
     }
 
-    /// <summary>Throws with the server's "detail" (or the raw body) when the request failed.</summary>
+    /// <summary>Throws with the server's "detail" (or the raw body) when the request failed, releasing the response.</summary>
     private static async Task ExplainedAsync(HttpResponseMessage response)
     {
         if (response.IsSuccessStatusCode) return;
-        var body = await SafeBodyAsync(response);
-        throw new ApiException((int)response.StatusCode, AirsportsJson.Detail(body) ?? body);
+        using (response)
+        {
+            var body = await SafeBodyAsync(response);
+            throw new ApiException((int)response.StatusCode, AirsportsJson.Detail(body) ?? body);
+        }
+    }
+
+    /// <summary>For calls whose answer is not read: like <see cref="ExplainedAsync"/>, and the response is always released.</summary>
+    private static async Task ExplainedOnlyAsync(HttpResponseMessage response)
+    {
+        using (response) await ExplainedAsync(response);
+    }
+
+    /// <summary>Releases a response that is answered without reading it (an older server's 404).</summary>
+    private static T Released<T>(HttpResponseMessage response, T result)
+    {
+        response.Dispose();
+        return result;
     }
 
     private static async Task<string> SafeBodyAsync(HttpResponseMessage response)

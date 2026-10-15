@@ -89,9 +89,10 @@ public sealed class TrackingSession
                 AutoStopped = false, FixCount = 0,
             };
             try { _logSessionId = _trackLog?.StartSession(DeviceId, _now()); } catch (Exception) { _logSessionId = null; }
+            // Under the lock, like the unsubscribe in Finish: a Stop at the same moment cannot leave a handler behind.
+            _source.PositionReceived += OnPosition;
         }
         Publish();
-        _source.PositionReceived += OnPosition;
         _ = Task.Run(() => DrainLoopAsync(ct), CancellationToken.None);
         _ = Task.Run(async () =>
         {

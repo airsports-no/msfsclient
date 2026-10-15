@@ -65,6 +65,19 @@ public sealed class CommunityFolderTests : IDisposable
     }
 
     [Fact]
+    public void AManifestWithoutATextVersionStillCountsAsInstalled()
+    {
+        var community = Path.Combine(_root, "Community");
+        var installed = Path.Combine(community, PanelInstaller.PackageName);
+        Directory.CreateDirectory(installed);
+        foreach (var manifest in new[] { """{"package_version":null}""", """{"package_version":1}""" })
+        {
+            File.WriteAllText(Path.Combine(installed, "manifest.json"), manifest);
+            Assert.Equal("", PanelInstaller.InstalledVersion(community)); // installed, version unknown (not "not installed")
+        }
+    }
+
+    [Fact]
     public void AnIncompletePackageIsNotInstalled()
     {
         var empty = Path.Combine(_root, "empty");

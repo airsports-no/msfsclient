@@ -69,13 +69,23 @@ public sealed class HudServer(IHudHost host, int port = HudServer.DefaultPort) :
         }
     }
 
-    /// <summary>Sends the current state to every connected display, when it changed since the last time.</summary>
-    public void Publish()
+    private readonly object _publishLock = new();
+
+    /// <summary>
+    /// Sends the current state to every connected display, when it changed since the last time (or always, with
+    /// <paramref name="force"/>). Called from the app's timer and from every display's command loop, so the comparison and
+    /// the update of the last state sent are one step.
+    /// </summary>
+    public void Publish(bool force = false)
     {
         if (_clients.IsEmpty) return;
-        var state = StateMessage();
-        if (state == _lastState) return;
-        _lastState = state;
+        string state;
+        lock (_publishLock)
+        {
+            state = StateMessage();
+            if (!force && state == _lastState) return;
+            _lastState = state;
+        }
         foreach (var client in _clients.Values) _ = client.SendAsync(state);
     }
 
@@ -98,7 +108,10 @@ public sealed class HudServer(IHudHost host, int port = HudServer.DefaultPort) :
         try
         {
             var stream = tcp.GetStream();
-            var request = await ReadRequestAsync(stream);
+            // A connection that never finishes its request is dropped after a few seconds.
+            using var reading = CancellationTokenSource.CreateLinkedTokenSource(_stop.Token);
+            reading.CancelAfter(RequestTimeout);
+            var request = await ReadRequestAsync(stream, reading.Token);
             if (request == null) return;
             if (!IsAllowed(request.Header("origin"), request.Header("host"), Port))
             {
@@ -192,8 +205,7 @@ public sealed class HudServer(IHudHost host, int port = HudServer.DefaultPort) :
                 var result = await ExecuteAsync(message.ToString());
                 await client.SendAsync(JsonSerializer.Serialize(new { type = "result", ok = result.Ok, message = result.Message }, Json));
                 // The command changed the state: everyone sees it at once.
-                _lastState = null;
-                Publish();
+                Publish(force: true);
             }
         }
         catch (Exception)
@@ -253,7 +265,23 @@ public sealed class HudServer(IHudHost host, int port = HudServer.DefaultPort) :
         public string? Header(string name) => Headers.GetValueOrDefault(name);
     }
 
-    private static async Task<Request?> ReadRequestAsync(NetworkStream stream)
+    /// <summary>How long a display may take to send its request.</summary>
+    public static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(10);
+
+    /// <summary>The request on <paramref name="stream"/>, or null when it is not one or does not arrive before <paramref name="cancellation"/>.</summary>
+    private static async Task<Request?> ReadRequestAsync(NetworkStream stream, CancellationToken cancellation)
+    {
+        try
+        {
+            return await ReadRequestCoreAsync(stream, cancellation);
+        }
+        catch (OperationCanceledException)
+        {
+            return null;
+        }
+    }
+
+    private static async Task<Request?> ReadRequestCoreAsync(NetworkStream stream, CancellationToken cancellation)
     {
         var buffer = new byte[16 * 1024];
         var total = 0;
@@ -261,7 +289,7 @@ public sealed class HudServer(IHudHost host, int port = HudServer.DefaultPort) :
         while ((end = IndexOfHeaderEnd(buffer, total)) < 0)
         {
             if (total == buffer.Length) return null;
-            var read = await stream.ReadAsync(buffer.AsMemory(total));
+            var read = await stream.ReadAsync(buffer.AsMemory(total), cancellation);
             if (read == 0) return null;
             total += read;
         }
@@ -282,7 +310,7 @@ public sealed class HudServer(IHudHost host, int port = HudServer.DefaultPort) :
         Array.Copy(buffer, bodyStart, body, 0, have);
         while (have < length)
         {
-            var read = await stream.ReadAsync(body.AsMemory(have));
+            var read = await stream.ReadAsync(body.AsMemory(have), cancellation);
             if (read == 0) return null;
             have += read;
         }

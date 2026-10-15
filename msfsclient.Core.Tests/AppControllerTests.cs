@@ -94,7 +94,7 @@ public class AppControllerTest
     {
         var auth = new FakeAuth(signedIn: false) { FailWith = new InvalidOperationException("bad password") };
         var c = await Started(Server(true), auth);
-        await c.SignInWithPasswordAsync("a@b.no", "x");
+        await c.SignInWithPasswordAsync("a@b.no", FakePassword); // ggignore
         Assert.Equal("nice: bad password", c.State.Error);
         Assert.False(c.State.Busy);
     }
@@ -103,7 +103,7 @@ public class AppControllerTest
     public async Task CreatingAnAccountLeadsToTheVerifyEmailScreen()
     {
         var c = await Started(Server(true), new FakeAuth(signedIn: false));
-        await c.CreateAccountAsync("a@b.no", "secret1");
+        await c.CreateAccountAsync("a@b.no", FakePassword); // ggignore
         Assert.Equal(Screen.VerifyEmail, c.State.Screen);
         await c.CheckVerifiedAsync();
         Assert.Equal(Screen.Home, c.State.Screen);
@@ -116,7 +116,7 @@ public class AppControllerTest
         c.OpenLink("/schedule-flight?contestId=10&navigationTaskId=100");
         Assert.Equal(Screen.Login, c.State.Screen);
 
-        await c.SignInWithPasswordAsync("a@b.no", "x");
+        await c.SignInWithPasswordAsync("a@b.no", FakePassword); // ggignore
         Assert.Equal(Screen.Map, c.State.Screen);
         Assert.Equal("/schedule-flight?contestId=10&navigationTaskId=100", c.State.MapPath);
         Assert.Equal(Screen.Home, c.State.MapReturn);
@@ -654,7 +654,7 @@ public class AnnouncementNotificationTest
 
         c.SignOut();
         _announcements = """[{"id":4,"message":"Old news for the next pilot"}]""";
-        await c.SignInWithPasswordAsync("other@example.com", "secret1");
+        await c.SignInWithPasswordAsync("other@example.com", FakePassword); // ggignore
         Assert.Empty(raised);
     }
 }

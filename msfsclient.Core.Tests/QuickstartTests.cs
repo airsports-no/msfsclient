@@ -88,6 +88,25 @@ public class QuickstartTest
     }
 
     [Fact]
+    public async Task SigningOutKeepsWhatIsSavedOnThisPc()
+    {
+        var settings = new AppSettings(AirsportsDatabase.InMemory()) { TourSeen = true };
+        var c = await Started(settings);
+        c.DismissQuickstart();
+        c.SetTimerBufferMinutes(5);
+        c.SignOut();
+        Assert.Equal(Screen.Login, c.State.Screen);
+        Assert.Equal(5, c.State.TimerBufferMinutes);
+        Assert.Contains(3, c.State.DismissedQuickstarts);
+        // Signed in again: a later "Not now" adds to the saved ones instead of starting from an empty list.
+        _quickstart = Offered.Replace("\"id\":3", "\"id\":4");
+        await c.SignInWithPasswordAsync("pilot@example.com", FakePassword); // ggignore
+        Assert.Equal(4, c.State.Quickstart?.Id);
+        c.DismissQuickstart();
+        Assert.Equal(new HashSet<int> { 3, 4 }, settings.DismissedQuickstartIds);
+    }
+
+    [Fact]
     public async Task NotNowHidesItForGoodButANewPracticeFlightIsOfferedAgain()
     {
         var settings = new AppSettings(AirsportsDatabase.InMemory()) { TourSeen = true };
