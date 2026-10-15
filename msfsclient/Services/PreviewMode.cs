@@ -147,7 +147,11 @@ namespace msfsclient.Services
                 ConnectionStatusChanged?.Invoke(this, true);
             }
 
-            public void Disconnect() => IsConnected = false;
+            public void Disconnect()
+            {
+                IsConnected = false;
+                ConnectionStatusChanged?.Invoke(this, false); // as SimConnectService does
+            }
 
             public bool MoveAircraft(double latitude, double longitude, double altitudeFt, double headingDegrees, bool onGround, uint airspeedKnots)
             {

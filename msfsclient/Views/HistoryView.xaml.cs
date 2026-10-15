@@ -66,7 +66,9 @@ namespace msfsclient.Views
             if (await Dialogs.ConfirmAsync(XamlRoot, "Delete this track?", $"{TimeFormat.FormatLocal(Gpx.Time(s.StartedAtMillis))}, {s.PointCount} positions. This cannot be undone.",
                     "Delete", "Keep", danger: true))
             {
-                Vm.TrackLog.Delete(s.Id);
+                // async void: a database error here would otherwise end the app.
+                try { Vm.TrackLog.Delete(s.Id); }
+                catch (Exception ex) { _ = Dialogs.InfoAsync(XamlRoot, "Not deleted", $"The track could not be deleted: {ex.Message}"); }
                 Reload();
             }
         }
@@ -76,7 +78,8 @@ namespace msfsclient.Views
             if (await Dialogs.ConfirmAsync(XamlRoot, "Delete the whole history?",
                     "All recorded tracks on this PC are deleted. This cannot be undone. A track being recorded now is kept.", "Delete all", "Keep", danger: true))
             {
-                Vm.TrackLog.DeleteAllFinished();
+                try { Vm.TrackLog.DeleteAllFinished(); }
+                catch (Exception ex) { _ = Dialogs.InfoAsync(XamlRoot, "Not deleted", $"The history could not be deleted: {ex.Message}"); }
                 Reload();
             }
         }

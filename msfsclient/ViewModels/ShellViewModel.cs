@@ -192,14 +192,20 @@ namespace msfsclient.ViewModels
             if (resume) _session?.Stop();
             var moved = _simConnect.MoveAircraft(start.Latitude, start.Longitude, start.AltitudeFt ?? 0, start.Heading ?? 0,
                 onGround: !inTheAir, airspeedKnots: inTheAir ? 100u : 0u);
-            if (resume) _ = ResumeTrackingAfterMoveAsync();
+            if (resume) _ = ResumeTrackingAfterMoveAsync(++_trackingChanges);
             return moved ? null : "The simulator did not move the aircraft. Choose the start in the world map instead.";
         }
 
-        private async Task ResumeTrackingAfterMoveAsync()
+        /// <summary>
+        /// Counts the pilot's own tracking changes (start, stop, sign-out). The resume after moving the aircraft only happens
+        /// when nothing changed in between: a pilot who stops tracking, or signs out, during the pause keeps it that way.
+        /// </summary>
+        private int _trackingChanges;
+
+        private async Task ResumeTrackingAfterMoveAsync(int changes)
         {
             await Task.Delay(TimeSpan.FromSeconds(3)); // continues on the UI thread
-            if (!_tracking.Running && CanStartTracking) StartTracking();
+            if (changes == _trackingChanges && !_tracking.Running && CanStartTracking) StartTracking();
         }
 
         /// <summary>The pilot clicked a notification: the window should come to the front.</summary>
@@ -325,6 +331,7 @@ namespace msfsclient.ViewModels
 
         public void StartTracking()
         {
+            _trackingChanges++;
             EnsureSession();
             if (_session == null) return;
             _autoStopHandled = false;
@@ -336,6 +343,7 @@ namespace msfsclient.ViewModels
         /// <summary>The pilot confirmed Stop: stop, offer the flight just recorded, and leave the now pointless timer.</summary>
         public void StopTracking()
         {
+            _trackingChanges++;
             _session?.Stop();
             _ = _controller.TrackingStoppedAsync();
             if (_state.Screen == Screen.Timer) _controller.CloseTimer();
@@ -344,12 +352,14 @@ namespace msfsclient.ViewModels
         /// <summary>Signing out or deleting the account stops tracking first.</summary>
         public void SignOut()
         {
+            _trackingChanges++;
             _session?.Stop();
             _controller.SignOut();
         }
 
         public async Task DeleteAccountAsync()
         {
+            _trackingChanges++;
             _session?.Stop();
             await _controller.DeleteAccountAsync();
         }

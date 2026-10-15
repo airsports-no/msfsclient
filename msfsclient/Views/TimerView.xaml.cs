@@ -116,10 +116,11 @@ namespace msfsclient.Views
         private void ClockSettings_Click(object sender, RoutedEventArgs e) => Vm.Platform.OpenClockSettings();
 
         private void BufferHelp_Click(object sender, RoutedEventArgs e) => _ = Dialogs.InfoAsync(XamlRoot, "Timer countdown buffer",
-            "Press Start when you begin your start procedure. The timer counts from the nearest whole minute, the same minute the system uses as your start time. " +
-            "Without a buffer the timer starts right at that minute, so you may have only seconds before it is zero.\n\n" +
-            "A buffer gives you a lead-in. With 2 minutes, the timer starts at -2:00 and counts down to 0:00, which is still your real start minute. " +
-            "Your start time is not changed, only when the timer begins.\n\n" +
-            "Because the start is rounded to the nearest whole minute, the first value can be a few seconds away from the full buffer. 0 means no buffer.");
+            "Press Start when you begin your start procedure. The timer counts from a whole minute, rounded the same way the system rounds " +
+            "your start time. Without a buffer that is the nearest whole minute, so you may have only seconds before the timer reaches zero.\n\n" +
+            "A buffer moves that minute later to give you a lead-in. With 2 minutes, pressing Start at 12:00 makes 12:02 your start minute: " +
+            "the timer starts at -2:00 and reaches 0:00 at 12:02. Plan to cross the starting line then. With an adaptive start your scored " +
+            "start is still the minute you actually cross the line.\n\n" +
+            "Because of the rounding, the first value can be a few seconds away from the full buffer. 0 means no buffer.");
     }
 }
