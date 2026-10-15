@@ -69,7 +69,7 @@ public sealed class DesktopSignIn(HttpClient http, Func<string> siteBase, Action
             using var stream = client.GetStream();
             var target = await ReadRequestTargetAsync(stream, cancellation);
             var query = ParseQuery(target);
-            if (target == null || !target.StartsWith("/callback", StringComparison.Ordinal))
+            if (target?.Split('?', 2)[0] != "/callback")
             {
                 await RespondAsync(stream, "404 Not Found", null, "Not found.", cancellation); // e.g. the browser asking for a favicon
                 continue;

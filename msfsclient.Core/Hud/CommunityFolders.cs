@@ -76,7 +76,7 @@ public static class PanelInstaller
         try
         {
             using var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(manifest));
-            return doc.RootElement.TryGetProperty("package_version", out var v) ? v.GetString() : "";
+            return doc.RootElement.TryGetProperty("package_version", out var v) && v.ValueKind == System.Text.Json.JsonValueKind.String ? v.GetString() ?? "" : "";
         }
         catch (Exception)
         {
@@ -86,7 +86,8 @@ public static class PanelInstaller
 
     /// <summary>
     /// Installs <paramref name="packageFolder"/> (the assembled package) as Community\airsports-flight-display. The copy is
-    /// made beside it first and swapped in at the end, so a failed copy never leaves a half package for the simulator.
+    /// made beside it first and swapped in at the end, so a failed copy never leaves a half package for the simulator, and a
+    /// failed swap puts the earlier version back.
     /// </summary>
     public static void Install(string packageFolder, string communityFolder)
     {
@@ -97,8 +98,19 @@ public static class PanelInstaller
         if (Directory.Exists(staging)) Directory.Delete(staging, true);
         CopyDirectory(packageFolder, staging);
         if (Directory.Exists(old)) Directory.Delete(old, true);
-        if (Directory.Exists(target)) Directory.Move(target, old);
-        Directory.Move(staging, target);
+        var hadTarget = Directory.Exists(target);
+        if (hadTarget) Directory.Move(target, old);
+        try
+        {
+            Directory.Move(staging, target);
+        }
+        catch
+        {
+            // E.g. a file held by a virus scan: keep the panel that was there, and no half-finished folders.
+            if (hadTarget && !Directory.Exists(target) && Directory.Exists(old)) Directory.Move(old, target);
+            if (Directory.Exists(staging)) Directory.Delete(staging, true);
+            throw;
+        }
         if (Directory.Exists(old)) Directory.Delete(old, true);
     }
 

@@ -38,7 +38,8 @@ public static partial class Urls
     /// </summary>
     public static string? WebPath(string link)
     {
-        if (link.StartsWith('/')) return link;
+        // "//host/x" and "/\host/x" are links to another site, not paths on ours.
+        if (link.StartsWith('/')) return link.StartsWith("//", StringComparison.Ordinal) || link.StartsWith("/\\", StringComparison.Ordinal) ? null : link;
         var match = AbsoluteLink().Match(link);
         if (!match.Success) return null;
         var host = match.Groups[1].Value.Split(':')[0].ToLowerInvariant();
