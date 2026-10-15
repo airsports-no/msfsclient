@@ -1,0 +1,86 @@
+name: Release for flightsim.to
+
+# Run by hand (Actions > Release for flightsim.to > Run workflow). Builds the zip for flightsim.to: the portable client
+# and the MSFS toolbar panel with installation notes (release/make-flightsim-zip.ps1), and the panel-only zip. Upload them
+# to flightsim.to by hand. Use the same build number as the Microsoft Store release of the same version.
+#
+# Signing (optional): with these secrets in the "release" environment the client's .exe and .dll files are signed with
+# Azure Trusted Signing, so Windows names the publisher instead of "unknown publisher":
+#   AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET, TRUSTED_SIGNING_ENDPOINT, TRUSTED_SIGNING_ACCOUNT,
+#   TRUSTED_SIGNING_PROFILE
+# Without them the zip is unsigned and Windows shows "Windows protected your PC" on the first start (the notes explain it).
+on:
+  workflow_dispatch:
+    inputs:
+      build_number:
+        description: "Build number (the client shows \"Airsports 2.0.0 (<build>)\")"
+        required: true
+        type: number
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - run: dotnet test msfsclient.Core.Tests/msfsclient.Core.Tests.csproj --configuration Release
+
+  release:
+    runs-on: windows-latest
+    needs: test
+    environment: release
+    env:
+      SIGNING_ACCOUNT: ${{ secrets.TRUSTED_SIGNING_ACCOUNT }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Check the toolbar panel can be built
+        shell: pwsh
+        run: |
+          if (-not (Test-Path msfs-panel/prebuilt/InGamePanels/InGamePanel_Airsports.spb)) {
+            throw "No compiled panel definition: build it once with ./msfs-panel/build-panel.ps1 -Sdk and commit msfs-panel/prebuilt."
+          }
+
+      - name: Build the client and the panel
+        shell: pwsh
+        run: |
+          ./release/make-flightsim-zip.ps1 -Build ${{ inputs.build_number }} -Out dist
+          # Signed below and zipped again.
+          if ($env:SIGNING_ACCOUNT) { Remove-Item dist/Airsports-MSFS-*.zip }
+
+      - name: Sign the client
+        if: env.SIGNING_ACCOUNT != ''
+        uses: azure/trusted-signing-action@v0
+        with:
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          endpoint: ${{ secrets.TRUSTED_SIGNING_ENDPOINT }}
+          trusted-signing-account-name: ${{ secrets.TRUSTED_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ secrets.TRUSTED_SIGNING_PROFILE }}
+          files-folder: ${{ github.workspace }}\dist\Airsports-MSFS-2.0.0-${{ inputs.build_number }}\Airsports client
+          files-folder-filter: exe,dll
+          files-folder-recurse: true
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+
+      - name: Zip the signed client
+        if: env.SIGNING_ACCOUNT != ''
+        shell: pwsh
+        run: |
+          $bundle = "dist/Airsports-MSFS-2.0.0-${{ inputs.build_number }}"
+          Compress-Archive -Path "$bundle/*" -DestinationPath "$bundle.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flightsim-to-${{ inputs.build_number }}
+          path: |
+            dist/*.zip
+            msfs-panel/dist/*.zip
+            release/flightsim-listing.md

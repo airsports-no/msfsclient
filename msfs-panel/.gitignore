@@ -1,0 +1,10 @@
+# SDK build output and the assembled package
+Packages/
+_PackageInt/
+_PublishingGroupInt/
+PackagesMetadata/
+dist/
+# Copied in from msfsclient.Core/Hud by build-panel.ps1
+PackageSources/html_ui/InGamePanels/AirsportsPanel/hud.js
+PackageSources/html_ui/InGamePanels/AirsportsPanel/hud.css
+PackageSources/html_ui/InGamePanels/AirsportsPanel/fonts/
