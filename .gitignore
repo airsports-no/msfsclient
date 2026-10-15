@@ -45,3 +45,6 @@ Generated Files/
 *.bak
 *.swp
 *~
+
+## Release bundles (release/make-flightsim-zip.ps1)
+/dist/

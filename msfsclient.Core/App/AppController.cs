@@ -1,0 +1,1087 @@
+using System.Collections.Immutable;
+using msfsclient.Core.Api;
+using msfsclient.Core.Auth;
+using msfsclient.Core.Observations;
+using msfsclient.Core.Tracking;
+
+namespace msfsclient.Core.App;
+
+public enum Screen { Loading, UpdateRequired, Login, VerifyEmail, Onboarding, Home, Flights, Map, Timer, Profile, Observations, Preflight, History, Tour, Debug }
+
+/// <summary>Everything the screens show. Immutable: every change makes a new one and raises <see cref="AppController.StateChanged"/>.</summary>
+public sealed record UiState
+{
+    public Screen Screen { get; init; } = Screen.Loading;
+    public ObservationsUi Observations { get; init; } = new();
+    public Person? Person { get; init; }
+    /// <summary>The flights open now (the "Now" endpoint for the simulator tracking id).</summary>
+    public IReadOnlyList<CurrentTask> Tasks { get; init; } = [];
+    public string Email { get; init; } = "";
+    /// <summary>Store page shown on the UpdateRequired screen.</summary>
+    public string? UpdateUrl { get; init; }
+    public bool Busy { get; init; }
+    /// <summary>"Google" or "Apple" while that sign-in is waiting for the pilot in the browser; null otherwise.</summary>
+    public string? SigningInWith { get; init; }
+    public string? Notice { get; init; }
+    public string? Error { get; init; }
+    public IReadOnlyList<MyFlight> Flights { get; init; } = [];
+    public bool FlightsLoading { get; init; }
+    /// <summary>The flight being cancelled right now, and a one-off confirmation on the flights list.</summary>
+    public int? CancellingFlightId { get; init; }
+    public string? FlightsNotice { get; init; }
+    public bool ShowPastFlights { get; init; }
+    /// <summary>Epoch millis of the whole minute the adaptive-start timer counts from; null until Start is pressed.</summary>
+    public long? TimerOriginMillis { get; init; }
+    /// <summary>Network time minus PC clock from the last NTP check (positive: PC behind); null until measured.</summary>
+    public long? NetworkClockOffsetMillis { get; init; }
+    /// <summary>Error bar of that measurement (half the round trip).</summary>
+    public long NetworkClockUncertaintyMillis { get; init; }
+    /// <summary>The pilot's next scheduled flights (soonest first), shown when nothing is open right now.</summary>
+    public IReadOnlyList<MyFlight> Upcoming { get; init; } = [];
+    /// <summary>Contests (name, images, tasks, venue) by id, for the flights open now and the upcoming ones.</summary>
+    public IReadOnlyDictionary<int, ContestSummary> Contests { get; init; } = new Dictionary<int, ContestSummary>();
+    public bool ProfileSaving { get; init; }
+    public string? ProfileNotice { get; init; }
+    /// <summary>One-off confirmation shown at the top of Home (e.g. after registering a flight).</summary>
+    public string? HomeNotice { get; init; }
+    /// <summary>Training mode: live feedback on every gate passed. Off at every start so a competition flight never has it by accident.</summary>
+    public bool TrainingMode { get; init; }
+    /// <summary>Whole minutes of countdown buffer before the start minute on the timer (0 = none).</summary>
+    public int TimerBufferMinutes { get; init; }
+    /// <summary>The first load of the pilot's flights has finished (Home shows a quiet "checking" line until then).</summary>
+    public bool HomeLoaded { get; init; }
+    /// <summary>The latest end of a tracking window seen while tracking, to warn when tracking stays on after it closed.</summary>
+    public long? LastWindowEndMillis { get; init; }
+    /// <summary>Announcements from the organizers that the pilot has not dismissed.</summary>
+    public IReadOnlyList<Announcement> Announcements { get; init; } = [];
+    /// <summary>Set when tracking was stopped after a flight that was matched to a navigation task; shown once.</summary>
+    public FinishedFlight? FinishedFlight { get; init; }
+    /// <summary>The practice flight offered to new simulator pilots (null: none, or not loaded yet).</summary>
+    public Quickstart? Quickstart { get; init; }
+    /// <summary>Practice flights the pilot said "Not now" to.</summary>
+    public IReadOnlySet<int> DismissedQuickstarts { get; init; } = new HashSet<int>();
+    /// <summary>"Go flying" was pressed and the registration is on its way.</summary>
+    public bool QuickstartRegistering { get; init; }
+    /// <summary>Why the one-press registration failed (the server's reason), shown on the practice flight card.</summary>
+    public string? QuickstartError { get; init; }
+    /// <summary>The flight (id) whose flight order the app opens as soon as the server has made it; null when not waiting.</summary>
+    public int? AwaitingFlightOrderFor { get; init; }
+    /// <summary>When the wait began (epoch millis), to give up after <see cref="AppController.FlightOrderWaitMillis"/>.</summary>
+    public long? AwaitingFlightOrderSinceMillis { get; init; }
+    /// <summary>The flight order took too long to appear; the app stopped waiting (it is e-mailed too).</summary>
+    public bool FlightOrderSlow { get; init; }
+    /// <summary>Where Close on the Map screen returns to.</summary>
+    public Screen MapReturn { get; init; } = Screen.Home;
+    /// <summary>Path (on app.airsports.no) that the Map screen opens.</summary>
+    public string MapPath { get; init; } = "/";
+
+    /// <summary>
+    /// The practice flight Home offers: to a pilot without a flight (once the flights are known), or, once registered for it, to
+    /// help them get to the start. Not after the pilot said "Not now".
+    /// </summary>
+    public Quickstart? QuickstartOffer => Quickstart is { } q && !DismissedQuickstarts.Contains(q.Id)
+        && (q.RegisteredFlight != null || (HomeLoaded && Tasks.Count == 0 && Upcoming.Count == 0))
+        ? q
+        : null;
+
+    /// <summary>Sign-in and set-up screens: the pilot is not "inside" the app yet.</summary>
+    public bool IsOutside => Screen is Screen.Loading or Screen.UpdateRequired or Screen.Login or Screen.VerifyEmail or Screen.Onboarding;
+
+    public IReadOnlyList<ActiveContestant> ActiveContestants => Tasks.SelectMany(t => t.ActiveContestants).ToList();
+}
+
+/// <summary>A flight that tracking has just ended for, with whether the pilot may look at it on the live map right away.</summary>
+/// <param name="Viewable">False: the pilot has no permission yet and must wait for the results. Null: unknown (older backend).</param>
+/// <param name="Score">The pilot's score so far, when the results are theirs to see; null otherwise.</param>
+public sealed record FinishedFlight(string? ContestName, string TaskName, string? MapPath, bool? Viewable, double? Score = null);
+
+/// <summary>
+/// The app state machine (port of app/AppController.kt): Login -> VerifyEmail -> Onboarding -> Home -> the rest. UI-agnostic:
+/// methods run on any thread and return a task that completes when the change is done (the UI may ignore it).
+/// </summary>
+public sealed class AppController
+{
+    private readonly AirsportsApi _api;
+    private readonly IAuthService _auth;
+    private readonly DeviceInfo _device;
+    private readonly INetworkClock? _networkClock;
+    private readonly ObservationQueue? _observationQueue;
+    private readonly ObservationSender? _observationSender;
+    private readonly ICurrentLocation? _location;
+    private readonly AppSettings? _settings;
+    private readonly Func<long> _now;
+    private readonly SemaphoreSlim _observationFlush = new(1, 1);
+    private readonly object _lock = new();
+    private UiState _state = new();
+
+    /// <summary>A page from outside the app waiting for the pilot to be signed in and on Home.</summary>
+    private string? _pendingLink;
+
+    public AppController(
+        AirsportsApi api, IAuthService auth, DeviceInfo device, INetworkClock? networkClock = null, ObservationQueue? observationQueue = null,
+        ICurrentLocation? location = null, AppSettings? settings = null, Func<long>? now = null)
+    {
+        _api = api;
+        _auth = auth;
+        _device = device;
+        _networkClock = networkClock;
+        _observationQueue = observationQueue;
+        _observationSender = observationQueue != null ? new ObservationSender(api, observationQueue) : null;
+        _location = location;
+        _settings = settings;
+        _now = now ?? (() => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+        if (settings != null)
+        {
+            // A pilot who was signed in last time sees Home at once, from the saved profile; the fresh data replaces it a moment later.
+            Person? cached = null;
+            if (auth.IsSignedIn() && auth.IsEmailVerified() && settings.CachedProfileJson is { } json)
+            {
+                try { cached = AirsportsJson.Deserialize<Person>(json); } catch (Exception) { }
+            }
+            _state = _state with { TimerBufferMinutes = settings.TimerBufferMinutes, DismissedQuickstarts = settings.DismissedQuickstartIds, Person = cached, Screen = cached != null ? Screen.Home : _state.Screen };
+        }
+    }
+
+    public UiState State { get { lock (_lock) return _state; } }
+
+    /// <summary>
+    /// A clean state after sign-out or account deletion that keeps what is saved on this PC (the timer buffer, the practice
+    /// flights said "Not now" to), as at start-up.
+    /// </summary>
+    private UiState FreshState(Screen screen, string? notice = null) => new()
+    {
+        Screen = screen,
+        Notice = notice,
+        TimerBufferMinutes = _settings?.TimerBufferMinutes ?? 0,
+        DismissedQuickstarts = _settings?.DismissedQuickstartIds ?? new HashSet<int>(),
+    };
+
+    /// <summary>Raised on any thread after every change of <see cref="State"/>.</summary>
+    public event Action<UiState>? StateChanged;
+
+    /// <summary>The app version for the screens that show it ("2.0.0 (30)").</summary>
+    public string AppVersionLabel => _device.VersionLabel;
+
+    /// <summary>Loads everything for the first time. Call once after the UI subscribed to <see cref="StateChanged"/>.</summary>
+    public Task Start() => RefreshAsync();
+
+    private void Update(Func<UiState, UiState> change)
+    {
+        UiState next;
+        lock (_lock) next = _state = change(_state);
+        StateChanged?.Invoke(next);
+    }
+
+    private IReadOnlyList<Announcement> Undismissed(IEnumerable<Announcement> all)
+    {
+        var dismissed = _settings?.DismissedAnnouncementIds ?? new HashSet<int>();
+        return all.Where(a => !dismissed.Contains(a.Id)).ToList();
+    }
+
+    /// <summary>Fetches the organizers' announcements again (the window came to the front).</summary>
+    public async Task RefreshAnnouncementsAsync()
+    {
+        IReadOnlyList<Announcement> list;
+        try { list = await _api.AnnouncementsAsync(); }
+        catch (Exception) { return; }
+        var shown = Undismissed(list);
+        Update(s => s with { Announcements = shown });
+        NotifyNew(shown);
+    }
+
+    /// <summary>Announcements already seen in this run (shown at start or notified), so each one is notified at most once.</summary>
+    private readonly HashSet<int> _knownAnnouncements = [];
+    private bool _announcementsLoaded;
+
+    /// <summary>
+    /// Raised (on any thread) for announcements that arrived while the app runs; the desktop has no push, so the app shows a
+    /// Windows notification instead. The ones there at start are on Home already and never raised.
+    /// </summary>
+    public event Action<Announcement>? NewAnnouncement;
+
+    /// <summary>The next pilot to sign in is not told about what was already there.</summary>
+    private void ForgetAnnouncements()
+    {
+        lock (_knownAnnouncements)
+        {
+            _knownAnnouncements.Clear();
+            _announcementsLoaded = false;
+        }
+        // The flight notifications too: the next account starts from its own newest one.
+        if (_settings != null) _settings.LastClientNotificationId = null;
+    }
+
+    // ---- Flight notifications (what the phones get by push) -------------------------------------------------------
+
+    /// <summary>
+    /// A flight notification older than this is not shown when it is first seen: they are about now (a window opening, no
+    /// positions arriving), so one that arrived while the client was closed is stale.
+    /// </summary>
+    public const long FlightNotificationMaxAgeMillis = 15 * 60_000;
+
+    /// <summary>
+    /// Raised (on any thread) for each new flight notification, oldest first. The desktop has no push: the app polls
+    /// (<see cref="PollFlightNotificationsAsync"/>) and shows them as Windows notifications and in the simulator.
+    /// </summary>
+    public event Action<ClientNotification>? FlightNotification;
+
+    private readonly SemaphoreSlim _flightNotificationPoll = new(1, 1);
+
+    /// <summary>
+    /// Fetches the flight notifications newer than the last one seen and raises <see cref="FlightNotification"/> for the recent
+    /// ones. The first check (no newest id remembered yet) only notes where the list stands, so a new account or install is not
+    /// shown old ones.
+    /// </summary>
+    public async Task PollFlightNotificationsAsync()
+    {
+        if (_settings == null || !await _flightNotificationPoll.WaitAsync(0)) return;
+        try
+        {
+            var after = _settings.LastClientNotificationId;
+            IReadOnlyList<ClientNotification> list;
+            try { list = await _api.ClientNotificationsAsync(after); }
+            catch (Exception) { return; }
+            _settings.LastClientNotificationId = list.Select(n => n.Id).Append(after ?? 0).Max();
+            if (after == null) return;
+            var now = _now();
+            foreach (var n in list.Where(n => n.Id > after).OrderBy(n => n.Id))
+            {
+                if (IsoTime.EpochMillisOrNull(n.CreatedAt) is { } created && now - created <= FlightNotificationMaxAgeMillis) FlightNotification?.Invoke(n);
+            }
+        }
+        finally
+        {
+            _flightNotificationPoll.Release();
+        }
+    }
+
+    private void NotifyNew(IEnumerable<Announcement> shown)
+    {
+        List<Announcement> fresh;
+        lock (_knownAnnouncements)
+        {
+            fresh = shown.Where(a => _knownAnnouncements.Add(a.Id)).ToList();
+            if (!_announcementsLoaded)
+            {
+                _announcementsLoaded = true;
+                return;
+            }
+        }
+        foreach (var a in fresh) NewAnnouncement?.Invoke(a);
+    }
+
+    /// <summary>Hides an announcement for good on this PC.</summary>
+    public void DismissAnnouncement(int id)
+    {
+        if (_settings != null) _settings.DismissedAnnouncementIds = _settings.DismissedAnnouncementIds.Append(id).ToHashSet();
+        Update(s => s with { Announcements = s.Announcements.Where(a => a.Id != id).ToList() });
+    }
+
+    /// <summary>"Not now": the practice flight is not offered on Home again (kept on this PC).</summary>
+    public void DismissQuickstart()
+    {
+        if (State.Quickstart is not { } q) return;
+        var dismissed = State.DismissedQuickstarts.Append(q.Id).ToHashSet();
+        if (_settings != null) _settings.DismissedQuickstartIds = dismissed;
+        Update(s => s with { DismissedQuickstarts = dismissed });
+    }
+
+    /// <summary>Opens the practice flight's registration page; registering there brings the pilot back to Home (AppEvent).</summary>
+    public void OpenQuickstartRegistration()
+    {
+        if (State.Quickstart is { RegistrationPath.Length: > 0 } q) OpenPath(q.RegistrationPath);
+    }
+
+    /// <summary>How long the app waits for a new flight order before it gives up opening it by itself.</summary>
+    public const long FlightOrderWaitMillis = 10 * 60_000;
+
+    /// <summary>
+    /// Raised (on any thread) once with the full URL of the flight order of a flight just registered for, as soon as the server
+    /// has made it; the app opens it in the browser.
+    /// </summary>
+    public event Action<string>? FlightOrderReady;
+
+    /// <summary>Raised (on any thread) when tracking should start without the pilot pressing play: after "Go flying".</summary>
+    public event Action? StartTrackingRequested;
+
+    /// <summary>
+    /// "Go flying": registers the pilot for the practice flight in one go with the server's defaults (speed, aircraft and club,
+    /// no wind, an adaptive start open now), asks for tracking to start at once and waits for the flight order to open it. A
+    /// server without one-press registration gets the registration page instead.
+    /// </summary>
+    public async Task RegisterQuickstartAsync()
+    {
+        if (State.Quickstart == null || State.QuickstartRegistering) return;
+        Update(s => s with { QuickstartRegistering = true, QuickstartError = null });
+        Quickstart? registered;
+        try
+        {
+            registered = await _api.RegisterQuickstartAsync();
+        }
+        catch (Exception e)
+        {
+            Update(s => s with { QuickstartRegistering = false, QuickstartError = $"Could not register: {ErrorText(e)}" });
+            return;
+        }
+        if (registered?.RegisteredFlight == null)
+        {
+            Update(s => s with { QuickstartRegistering = false });
+            OpenQuickstartRegistration();
+            return;
+        }
+        Update(s => s with { Quickstart = registered, QuickstartRegistering = false, HomeNotice = null });
+        AwaitFlightOrder(registered.RegisteredFlight);
+        // Immediate tracking: the window is open already, so nothing is left for the pilot to press.
+        StartTrackingRequested?.Invoke();
+        // The flight is open now (adaptive start): show it on the flight strip straight away.
+        await RefreshTasksAsync();
+        await LoadHomeExtrasAsync(State.Tasks);
+    }
+
+    private void AwaitFlightOrder(QuickstartFlight flight)
+    {
+        Update(s => s with { AwaitingFlightOrderFor = flight.Id, AwaitingFlightOrderSinceMillis = _now(), FlightOrderSlow = false });
+        FlightOrderFound(flight);
+    }
+
+    /// <summary>Called every few seconds while <see cref="UiState.AwaitingFlightOrderFor"/> is set: looks for the flight order.</summary>
+    public async Task PollFlightOrderAsync()
+    {
+        var s0 = State;
+        if (s0.AwaitingFlightOrderFor == null) return;
+        if (_now() - (s0.AwaitingFlightOrderSinceMillis ?? _now()) > FlightOrderWaitMillis)
+        {
+            Update(s => s with { AwaitingFlightOrderFor = null, FlightOrderSlow = true });
+            return;
+        }
+        Quickstart? q;
+        try { q = await _api.QuickstartAsync(); }
+        catch (Exception) { return; }
+        if (q == null) return;
+        Update(s => s with { Quickstart = q });
+        if (q.RegisteredFlight is { } flight) FlightOrderFound(flight);
+    }
+
+    /// <summary>Opens the flight order once, when it is there for the flight being waited for.</summary>
+    private void FlightOrderFound(QuickstartFlight flight)
+    {
+        if (string.IsNullOrEmpty(flight.FlightOrderPath)) return;
+        var open = false;
+        Update(s =>
+        {
+            if (s.AwaitingFlightOrderFor != flight.Id) return s;
+            open = true;
+            return s with { AwaitingFlightOrderFor = null };
+        });
+        if (open) FlightOrderReady?.Invoke(Urls.SiteUrl(flight.FlightOrderPath));
+    }
+
+    private static long? MaxOfNotNull(long? a, long? b) => a == null ? b : b == null ? a : Math.Max(a.Value, b.Value);
+
+    private sealed record Account(Person Person, IReadOnlyList<CurrentTask> Tasks, IReadOnlyList<Flight> Flights, IReadOnlyList<Announcement> Announcements, Quickstart? Quickstart);
+
+    private static async Task<T> OrDefault<T>(Func<Task<T>> call, T fallback)
+    {
+        try { return await call(); }
+        catch (Exception) { return fallback; }
+    }
+
+    private async Task<IReadOnlyList<Flight>> NextFlightsAsync() =>
+        (await _api.MyFutureFlightsAsync()).OrderBy(f => f.TakeoffTime, StringComparer.Ordinal).Take(3).ToList();
+
+    /// <summary>Everything Home needs from the server, fetched at the same time (not one request after the other).</summary>
+    private async Task<Account> FetchAccountAsync()
+    {
+        var person = _api.ProfileAsync();
+        var tasks = OrDefault(_api.CurrentTasksAsync, []);
+        var flights = OrDefault(NextFlightsAsync, []);
+        var announcements = OrDefault(_api.AnnouncementsAsync, []);
+        var quickstart = OrDefault<Quickstart?>(_api.QuickstartAsync, null);
+        await Task.WhenAll(tasks, flights, announcements, quickstart);
+        return new Account(await person, await tasks, await flights, await announcements, await quickstart);
+    }
+
+    public async Task RefreshAsync()
+    {
+        // The version check, the profile, the current tasks and the next flights all go out together.
+        var configLoad = OrDefault<MobileConfig?>(async () => await _api.MobileConfigAsync(), null);
+        var signedIn = _auth.IsSignedIn();
+        var accountLoad = signedIn && _auth.IsEmailVerified() ? FetchAccountAsync() : null;
+        // Offline or a failing config endpoint must never lock a pilot out, so errors are ignored here.
+        var config = (await configLoad)?.ForPlatform(_device.Platform);
+        if (config != null && _device.AppVersion < config.MinVersion)
+        {
+            _ = accountLoad?.ContinueWith(t => t.Exception, TaskContinuationOptions.OnlyOnFaulted);
+            Update(s => s with { Screen = Screen.UpdateRequired, UpdateUrl = config.StoreUrl });
+            return;
+        }
+        Update(s => s with { Email = _auth.Email() ?? "" });
+        if (!signedIn)
+        {
+            if (_settings != null) _settings.CachedProfileJson = null;
+            Update(s => s with { Screen = Screen.Login, Person = null });
+            return;
+        }
+        if (accountLoad == null)
+        {
+            Update(s => s with { Screen = Screen.VerifyEmail, Error = null });
+            return;
+        }
+        Account account;
+        try
+        {
+            account = await accountLoad;
+        }
+        catch (Exception e)
+        {
+            Update(s => s with { Screen = s.Person == null ? Screen.Home : s.Screen, Error = $"Could not reach Airsports: {e.Message}", HomeLoaded = true });
+            return;
+        }
+        var person = account.Person;
+        if (!person.Validated)
+        {
+            Update(s => s with { Screen = Screen.Onboarding, Person = person, Error = null });
+            return;
+        }
+        if (_settings != null) _settings.CachedProfileJson = AirsportsJson.Serialize(person);
+        Update(s => s with
+        {
+            // A refresh while the pilot is elsewhere in the app (Refresh on Home, a cancelled flight) leaves them there.
+            Screen = s.IsOutside ? Screen.Home : s.Screen,
+            Person = person, Tasks = account.Tasks, Error = null, HomeLoaded = true,
+            LastWindowEndMillis = MaxOfNotNull(s.LastWindowEndMillis, WindowClosed.LatestWindowEnd(account.Tasks)),
+            Announcements = Undismissed(account.Announcements),
+            Quickstart = account.Quickstart,
+        });
+        NotifyNew(Undismissed(account.Announcements));
+        var link = _pendingLink;
+        if (link != null)
+        {
+            _pendingLink = null;
+            OpenPath(link); // a page asked for before sign-in first: the tour waits for the next start
+        }
+        else if (_settings is { TourSeen: false } && State.Screen == Screen.Home)
+        {
+            Update(s => s with { Screen = Screen.Tour });
+        }
+        await LoadHomeExtrasAsync(account.Tasks, account.Flights);
+    }
+
+    private async Task RunAsync(Func<Task> block)
+    {
+        Update(s => s with { Busy = true, Error = null, Notice = null });
+        try
+        {
+            await block();
+            Update(s => s with { Busy = false });
+        }
+        catch (Exception e)
+        {
+            Update(s => s with { Busy = false, Error = _auth.DescribeError(e) });
+        }
+    }
+
+    public Task SignInWithPasswordAsync(string email, string password) => RunAsync(async () =>
+    {
+        await _auth.SignInWithPasswordAsync(email, password);
+        await RefreshAsync();
+    });
+
+    /// <summary>Google / Apple sign-in through the website (null: not offered, e.g. in tests that do not need it).</summary>
+    public DesktopSignIn? DesktopSignIn { get; set; }
+
+    private CancellationTokenSource? _providerSignIn;
+    private bool _providerSignInCancelled;
+
+    /// <summary>
+    /// "Continue with Google / Apple": the sign-in happens in the browser (<see cref="Auth.DesktopSignIn"/>); while it runs
+    /// <see cref="UiState.SigningInWith"/> names the provider so the screen can say so and offer to cancel.
+    /// </summary>
+    public async Task SignInWithProviderAsync(string provider)
+    {
+        if (DesktopSignIn is not { } signIn) return;
+        var cancellation = new CancellationTokenSource();
+        Interlocked.Exchange(ref _providerSignIn, cancellation)?.Cancel();
+        _providerSignInCancelled = false;
+        var name = provider == "apple" ? "Apple" : "Google";
+        Update(s => s with { Busy = true, Error = null, Notice = null, SigningInWith = name });
+        try
+        {
+            await signIn.SignInAsync(provider, cancellation.Token);
+            Update(s => s with { Busy = false, SigningInWith = null });
+            await RefreshAsync();
+        }
+        catch (OperationCanceledException)
+        {
+            if (!ReferenceEquals(_providerSignIn, cancellation)) return; // another sign-in took over
+            var error = _providerSignInCancelled ? null : $"The sign-in with {name} took too long. Try again.";
+            Update(s => s with { Busy = false, SigningInWith = null, Error = error });
+        }
+        catch (Exception e)
+        {
+            Update(s => s with { Busy = false, SigningInWith = null, Error = _auth.DescribeError(e) });
+        }
+    }
+
+    /// <summary>The pilot gave up on the sign-in in the browser.</summary>
+    public void CancelProviderSignIn()
+    {
+        _providerSignInCancelled = true;
+        _providerSignIn?.Cancel();
+    }
+
+    public Task CreateAccountAsync(string email, string password) => RunAsync(async () =>
+    {
+        await _auth.CreateAccountAsync(email, password);
+        await RefreshAsync();
+    });
+
+    public Task ResetPasswordAsync(string email) => RunAsync(async () =>
+    {
+        await _auth.SendPasswordResetAsync(email);
+        Update(s => s with { Notice = $"Password reset email sent to {email}." });
+    });
+
+    public Task ResendVerificationAsync() => RunAsync(async () =>
+    {
+        await _auth.ResendVerificationAsync();
+        Update(s => s with { Notice = "Verification email sent again." });
+    });
+
+    public Task CheckVerifiedAsync() => RunAsync(async () =>
+    {
+        if (await _auth.CheckVerifiedAsync()) await RefreshAsync();
+        else Update(s => s with { Error = "Your email is not verified yet. Open the link in the email, then try again." });
+    });
+
+    /// <summary>First-start profile completion: saves, then reloads (which leads on to Home once the profile is validated).</summary>
+    public async Task SaveProfileAsync(PersonUpdate update)
+    {
+        Update(s => s with { Busy = true, Error = null });
+        try
+        {
+            await _api.UpdateProfileAsync(update);
+            Update(s => s with { Busy = false });
+            await RefreshAsync();
+        }
+        catch (Exception e)
+        {
+            Update(s => s with { Busy = false, Error = e.Message });
+        }
+    }
+
+    /// <summary>
+    /// Opens a live-map/results link in the web view. <paramref name="link"/> may be a relative path or an airsports.no URL; a
+    /// link to anywhere else is ignored rather than silently showing the dashboard. Null opens the dashboard.
+    /// </summary>
+    public void OpenMap(string? link)
+    {
+        var path = link == null ? "/" : Urls.WebPath(link);
+        if (path != null) OpenPath(path);
+    }
+
+    /// <summary>
+    /// A web page asked something of the app. After registering a flight the pilot is returned to Home (not the website's
+    /// live map) and the upcoming flights and the flight strip are refreshed to include the registration.
+    /// </summary>
+    public async Task OnAppEventAsync(AppEvent appEvent)
+    {
+        if (appEvent is not AppEvent.FlightRegistered registered) return;
+        Update(s => s with { Screen = Screen.Home, Flights = [], HomeNotice = null });
+        await RefreshAsync();
+        // The note is redundant when the registered flight is already the one Home shows (open now, or the next flight).
+        Update(s => s.Screen == Screen.Home && !IsShownOnHome(s, registered.NavigationTaskId)
+            ? s with { HomeNotice = "Flight registered. It is listed under your next flights." }
+            : s);
+        // Registered for the practice flight on its page: open its flight order once it is made, as "Go flying" does.
+        if (State.Quickstart is { RegisteredFlight: { } flight } q && registered.NavigationTaskId == q.NavigationTaskId)
+            AwaitFlightOrder(flight);
+    }
+
+    /// <summary>Home's flight strip shows the flights open now, or else the soonest upcoming one. Unknown task: not known to be shown.</summary>
+    private static bool IsShownOnHome(UiState state, int? navigationTaskId)
+    {
+        if (navigationTaskId == null) return false;
+        if (state.Tasks.Count > 0) return state.Tasks.Any(t => t.NavigationTask.Id == navigationTaskId);
+        var next = state.Upcoming.FirstOrDefault();
+        if (next == null) return false;
+        return (next.Flight?.NavigationTask ?? next.Task?.Pk) == navigationTaskId;
+    }
+
+    /// <summary>Tracking stopped itself after the longest allowed time: tell the pilot, then do what a manual stop does.</summary>
+    public Task TrackingAutoStoppedAsync()
+    {
+        Update(s => s with
+        {
+            HomeNotice = "Tracking was stopped automatically after 12 hours. Start it again if you are still flying.",
+            Screen = s.Screen is Screen.Timer or Screen.Observations ? Screen.Home : s.Screen,
+        });
+        return TrackingStoppedAsync();
+    }
+
+    public void DismissHomeNotice() => Update(s => s with { HomeNotice = null });
+
+    /// <summary>Opens the tasks open for registration today, nearest the simulator aircraft first when its position is known.</summary>
+    public void OpenToday()
+    {
+        Coordinates? here = null;
+        try { here = _location?.Current(); } catch (Exception) { }
+        OpenPath(OpenTodayPage.Path(here));
+    }
+
+    /// <summary>
+    /// Opens <paramref name="path"/> (a page on the site) in the web view. Before sign-in it is kept and opened as soon as the
+    /// pilot reaches Home.
+    /// </summary>
+    public void OpenLink(string path)
+    {
+        var s = State;
+        if (s.Person != null && !s.IsOutside) OpenPath(path);
+        else _pendingLink = path;
+    }
+
+    public void OpenPath(string path) =>
+        Update(s => s with { Screen = Screen.Map, MapPath = path, MapReturn = s.Screen == Screen.Flights ? Screen.Flights : Screen.Home });
+
+    public void CloseMap() => Update(s => s with { Screen = s.MapReturn });
+
+    public Task OpenFlightsAsync()
+    {
+        Update(s => s with { Screen = Screen.Flights, ShowPastFlights = false });
+        return LoadFlightsAsync(past: false);
+    }
+
+    public Task ShowPastFlightsAsync(bool past)
+    {
+        Update(s => s with { ShowPastFlights = past, FlightsNotice = null });
+        return LoadFlightsAsync(past);
+    }
+
+    /// <summary>The start timer exists only for adaptive-start tasks; it is ignored (not an error) for any other task.</summary>
+    public Task OpenTimerAsync()
+    {
+        if (!State.Tasks.Any(t => t.ActiveContestants.Any(c => c.AdaptiveStart))) return Task.CompletedTask;
+        Update(s => s with { Screen = Screen.Timer });
+        return MeasureNetworkClockAsync();
+    }
+
+    /// <summary>Compares the PC clock with network time so the timer and pre-flight can warn about a wrong clock. Never blocks the UI.</summary>
+    public async Task MeasureNetworkClockAsync()
+    {
+        if (_networkClock == null) return;
+        NtpMeasurement? m;
+        try { m = await _networkClock.MeasureAsync(); }
+        catch (Exception) { return; }
+        if (m == null) return;
+        Update(s => s with { NetworkClockOffsetMillis = m.OffsetMillis, NetworkClockUncertaintyMillis = m.DelayMillis / 2 });
+    }
+
+    /// <summary>Start pressed at <paramref name="nowMillis"/>: the timer counts from the nearest whole minute, before or after.</summary>
+    public void StartTimer(long nowMillis) => Update(s => s with { TimerOriginMillis = AdaptiveStartTimer.OriginFor(nowMillis, s.TimerBufferMinutes) });
+
+    /// <summary>Ends the first-start tour (finished or skipped) and goes to Home; it is not shown again by itself.</summary>
+    public void FinishTour()
+    {
+        if (_settings != null) _settings.TourSeen = true;
+        Update(s => s with { Screen = Screen.Home });
+    }
+
+    /// <summary>Shows the tour again (from the profile).</summary>
+    public void OpenTour() => Update(s => s with { Screen = Screen.Tour });
+
+    public void SetTimerBufferMinutes(int minutes)
+    {
+        var value = Math.Clamp(minutes, 0, AppSettings.MaxTimerBufferMinutes);
+        if (_settings != null) _settings.TimerBufferMinutes = value;
+        Update(s => s with { TimerBufferMinutes = value });
+    }
+
+    public void ResetTimer() => Update(s => s with { TimerOriginMillis = null });
+
+    public void CloseTimer() => Update(s => s with { Screen = Screen.Home });
+
+    /// <summary>Cancels one of the pilot's own flights, then reloads the list and Home's flight strip.</summary>
+    public async Task CancelFlightAsync(MyFlight flight)
+    {
+        var f = flight.Flight;
+        if (f == null) return;
+        Update(s => s with { CancellingFlightId = flight.Id, FlightsNotice = null, Error = null });
+        try
+        {
+            await _api.CancelFlightAsync(f.ContestId, f.NavigationTask, f.Id);
+            // From My flights the note shows there; from the Home strip it shows on Home.
+            Update(s => s with { CancellingFlightId = null, FlightsNotice = "Flight cancelled.", HomeNotice = s.Screen == Screen.Home ? "Flight cancelled." : s.HomeNotice });
+            if (State.Screen == Screen.Flights) await LoadFlightsAsync(past: false);
+            // A cancelled flight in progress is over: the strip moves on to the next task, the next-flight strip too.
+            await RefreshTasksAsync();
+            await LoadHomeExtrasAsync(State.Tasks);
+        }
+        catch (ApiException e)
+        {
+            Update(s => s with { CancellingFlightId = null, Error = $"Could not cancel the flight: {e.Detail}" });
+        }
+        catch (Exception e)
+        {
+            Update(s => s with { CancellingFlightId = null, Error = $"Could not cancel the flight: {e.Message}" });
+        }
+    }
+
+    public void CloseFlights() => Update(s => s with { Screen = Screen.Home, Flights = [] });
+
+    private async Task LoadFlightsAsync(bool past)
+    {
+        Update(s => s with { FlightsLoading = true, Error = null, Flights = [] });
+        try
+        {
+            var flights = past ? await _api.MyPreviousFlightsAsync() : await _api.MyFutureFlightsAsync();
+            var contests = await _api.ContestsByIdsAsync(flights.Select(f => f.ContestId).Distinct().ToList());
+            var rows = Urls.JoinFlights(flights, contests);
+            var sorted = past
+                ? rows.OrderByDescending(r => r.TakeoffTime, StringComparer.Ordinal).ToList()
+                : rows.OrderBy(r => r.TakeoffTime, StringComparer.Ordinal).ToList();
+            // Ignore a slow response for the tab the pilot has already left.
+            Update(s => s.ShowPastFlights == past ? s with { Flights = sorted, FlightsLoading = false } : s);
+        }
+        catch (Exception e)
+        {
+            Update(s => s with { FlightsLoading = false, Error = $"Could not load flights: {e.Message}" });
+        }
+    }
+
+    // ---- Photo observations -------------------------------------------------------------------------------------
+
+    /// <summary>The active flight whose task lets the crew mark photos in the app, if any.</summary>
+    private static ActiveContestant? ObservationContestant(IEnumerable<CurrentTask> tasks) =>
+        tasks.SelectMany(t => t.ActiveContestants).FirstOrDefault(c => c.ObservationRegistration == true);
+
+    public Task OpenObservationsAsync()
+    {
+        var contestant = ObservationContestant(State.Tasks);
+        if (contestant == null) return Task.CompletedTask;
+        Update(s => s with
+        {
+            Screen = Screen.Observations,
+            Observations = new ObservationsUi { ContestantId = contestant.Id, Loading = true, Thumbnails = s.Observations.Thumbnails },
+        });
+        return LoadObservationsAsync();
+    }
+
+    public void CloseObservations() => Update(s => s with { Screen = Screen.Home });
+
+    /// <summary>
+    /// Loads the photos of the current flight without opening the Photos page, for the in-sim display (it lists and marks
+    /// them while the client shows something else). Does nothing when they are loaded for this flight already.
+    /// </summary>
+    public Task EnsureObservationsAsync()
+    {
+        var contestant = ObservationContestant(State.Tasks);
+        if (contestant == null || State.Observations.ContestantId == contestant.Id) return Task.CompletedTask;
+        Update(s => s with { Observations = new ObservationsUi { ContestantId = contestant.Id, Loading = true, Thumbnails = s.Observations.Thumbnails } });
+        return LoadObservationsAsync();
+    }
+
+    public void ShowObservationThumbnails(bool thumbnails) => Update(s => s with { Observations = s.Observations with { Thumbnails = thumbnails } });
+
+    public async Task LoadObservationsAsync()
+    {
+        var id = State.Observations.ContestantId;
+        if (id == null) return;
+        Update(s => s with { Observations = s.Observations with { Loading = true, Error = null } });
+        try
+        {
+            var data = await _api.ObservationPhotosAsync(id.Value);
+            Update(s => s with
+            {
+                Observations = s.Observations with
+                {
+                    Loading = false, Enabled = data.Enabled, MayRegister = data.MayRegister, Photos = data.Photos,
+                    RegistrationClosesAt = data.RegistrationClosesAt, GraceMinutes = data.RegistrationGraceMinutes ?? 5,
+                    Registered = data.Observations.GroupBy(o => o.Photo).ToImmutableDictionaryLast(), Pending = PendingPhotoIds(id.Value),
+                },
+            });
+        }
+        catch (Exception e)
+        {
+            Update(s => s with { Observations = s.Observations with { Loading = false, Error = $"Could not load the photos: {ErrorText(e)}" } });
+        }
+        await FlushObservationsAsync();
+    }
+
+    /// <summary>The crew marks <paramref name="photo"/> now: it is stamped with the latest simulator position, kept on this PC and sent as soon as possible.</summary>
+    public Task MarkObservationAsync(ObservationPhoto photo, ObservationFix fix)
+    {
+        var id = State.Observations.ContestantId;
+        if (id == null || _observationQueue == null) return Task.CompletedTask;
+        _observationQueue.Add(id.Value, photo.Id, IsoTime.Format(fix.TimeMillis), fix.Latitude, fix.Longitude);
+        Update(s => s with { Observations = s.Observations with { Pending = PendingPhotoIds(id.Value), Error = null } });
+        return FlushObservationsAsync();
+    }
+
+    /// <summary>
+    /// Cancels the mark of <paramref name="photo"/>: a mark still waiting on this PC is just forgotten; one the server has
+    /// stored is removed there too (needs a connection).
+    /// </summary>
+    public async Task CancelObservationAsync(ObservationPhoto photo)
+    {
+        if (State.Observations.ContestantId is not { } id) return;
+        await _observationFlush.WaitAsync();
+        PhotoObservation? stored;
+        try
+        {
+            _observationQueue?.RemoveForPhoto(id, photo.Id);
+            // Looked up only now: a send that was under way when the pilot pressed cancel has stored its mark by now.
+            stored = State.Observations.Registered.GetValueOrDefault(photo.Id);
+        }
+        finally { _observationFlush.Release(); }
+        if (stored != null)
+        {
+            try
+            {
+                await _api.CancelObservationAsync(id, stored.Id);
+            }
+            catch (Exception e)
+            {
+                Update(s => s with { Observations = s.Observations with { Pending = PendingPhotoIds(id), Error = $"Could not cancel {photo.Name}: {ErrorText(e)}" } });
+                return;
+            }
+        }
+        Update(s => s with { Observations = s.Observations with { Registered = s.Observations.Registered.Remove(photo.Id), Pending = PendingPhotoIds(id), Error = null } });
+    }
+
+    /// <summary>
+    /// The crew gives the time they saw <paramref name="photo"/>; the server finds where they were from the position reports
+    /// of that time, so this needs a connection. It replaces the earlier mark, also when the new time is earlier.
+    /// </summary>
+    public async Task MarkObservationAtTimeAsync(ObservationPhoto photo, long timeMillis)
+    {
+        if (State.Observations.ContestantId is not { } id) return;
+        Update(s => s with { Observations = s.Observations with { Error = null } });
+        try
+        {
+            var stored = await _api.RegisterObservationAsync(id, new PhotoObservationRequest { Photo = photo.Id, Time = IsoTime.Format(timeMillis), Replace = true });
+            await _observationFlush.WaitAsync();
+            try { _observationQueue?.RemoveForPhoto(id, photo.Id); }
+            finally { _observationFlush.Release(); }
+            Update(s => s with { Observations = s.Observations with { Registered = s.Observations.Registered.SetItem(photo.Id, stored), Pending = PendingPhotoIds(id) } });
+        }
+        catch (Exception e)
+        {
+            Update(s => s with { Observations = s.Observations with { Error = $"{photo.Name}: {ErrorText(e)}" } });
+        }
+    }
+
+    private static string ErrorText(Exception e) => e is ApiException { Detail: var d } && !string.IsNullOrWhiteSpace(d) ? d : e.Message;
+
+    /// <summary>Sends what is waiting. Also called while tracking, so marks made while offline go out once there is a connection.</summary>
+    public async Task FlushObservationsAsync()
+    {
+        if (_observationSender == null || _observationQueue == null) return;
+        await _observationFlush.WaitAsync();
+        try
+        {
+            if (_observationQueue.All().Count == 0) return;
+            var result = await _observationSender.FlushAsync();
+            Update(st =>
+            {
+                var ui = st.Observations;
+                var names = ui.Photos.ToDictionary(p => p.Id, p => p.Name);
+                var problem = result.Rejected.Count > 0
+                    ? $"{names.GetValueOrDefault(result.Rejected[0].PhotoId) ?? $"Photo {result.Rejected[0].PhotoId}"} was not registered: {result.Rejected[0].Reason}"
+                    : null;
+                var registered = ui.Registered;
+                foreach (var o in result.Sent) registered = registered.SetItem(o.Photo, o);
+                return st with
+                {
+                    Observations = ui with
+                    {
+                        Registered = registered,
+                        Pending = ui.ContestantId is { } id ? PendingPhotoIds(id) : ui.Pending,
+                        Error = problem ?? ui.Error,
+                    },
+                };
+            });
+        }
+        finally
+        {
+            _observationFlush.Release();
+        }
+    }
+
+    private System.Collections.Immutable.ImmutableHashSet<int> PendingPhotoIds(int contestantId) =>
+        (_observationQueue?.All() ?? []).Where(o => o.ContestantId == contestantId).Select(o => (int)o.PhotoId).ToImmutableHashSet();
+
+    /// <summary>Lightweight refresh of just the flight strip (used while tracking to show whether the server receives positions).</summary>
+    public async Task RefreshTasksAsync()
+    {
+        _ = FlushObservationsAsync();
+        IReadOnlyList<CurrentTask> tasks;
+        try { tasks = await _api.CurrentTasksAsync(); }
+        catch (Exception) { return; }
+        Update(s =>
+        {
+            var stillAdaptive = tasks.Any(t => t.ActiveContestants.Any(c => c.AdaptiveStart));
+            return s with
+            {
+                Tasks = tasks,
+                LastWindowEndMillis = MaxOfNotNull(s.LastWindowEndMillis, WindowClosed.LatestWindowEnd(tasks)),
+                TimerOriginMillis = stillAdaptive ? s.TimerOriginMillis : null,
+                Screen = s.Screen == Screen.Timer && !stillAdaptive ? Screen.Home : s.Screen,
+            };
+        });
+    }
+
+    /// <summary>Deletes the account on the server, then signs out locally. The server's text is shown if it refuses.</summary>
+    public async Task DeleteAccountAsync()
+    {
+        var email = _auth.Email();
+        if (email == null)
+        {
+            Update(s => s with { Error = "Not signed in." });
+            return;
+        }
+        Update(s => s with { Busy = true, Error = null });
+        try
+        {
+            await _api.DeleteAccountAsync(email);
+            if (_settings != null) _settings.CachedProfileJson = null;
+            _auth.SignOut();
+            ForgetAnnouncements();
+            Update(_ => FreshState(Screen.Login, "Your account has been deleted."));
+        }
+        catch (ApiException e)
+        {
+            Update(s => s with { Busy = false, Error = e.Detail });
+        }
+        catch (Exception e)
+        {
+            Update(s => s with { Busy = false, Error = $"Could not delete the account: {e.Message}" });
+        }
+    }
+
+    /// <summary>Best effort: the next flights and the contest details for Home's flight strip.</summary>
+    private async Task LoadHomeExtrasAsync(IReadOnlyList<CurrentTask> tasks, IReadOnlyList<Flight>? knownFlights = null)
+    {
+        var flights = knownFlights ?? await OrDefault(NextFlightsAsync, []);
+        var ids = tasks.SelectMany(t => t.ActiveContestants.Select(c => c.ContestId)).Where(i => i != null).Select(i => i!.Value)
+            .Concat(flights.Select(f => f.ContestId)).Distinct().ToList();
+        var contests = await OrDefault(() => _api.ContestsByIdsAsync(ids), []);
+        var byId = new Dictionary<int, ContestSummary>();
+        foreach (var c in contests) byId.TryAdd(c.Id, c);
+        Update(s => s with { Upcoming = Urls.JoinFlights(flights, contests), Contests = byId });
+    }
+
+    public void OpenProfile() => Update(s => s with { Screen = Screen.Profile, ProfileNotice = null, Error = null });
+
+    /// <summary>
+    /// Called when the pilot has stopped tracking. If the positions were matched to a navigation task (the server has
+    /// received positions, or its calculator ran), remember that flight so the app can offer to show it.
+    /// </summary>
+    public async Task TrackingStoppedAsync()
+    {
+        // The start timer runs for as long as tracking does, so ending tracking ends it too.
+        Update(s => s with { TimerOriginMillis = null, LastWindowEndMillis = null });
+        var fresh = await OrDefault<IReadOnlyList<CurrentTask>?>(async () => await _api.CurrentTasksAsync(), null);
+        var tasks = fresh is { Count: > 0 } ? fresh : State.Tasks;
+        var match = tasks.SelectMany(t => t.ActiveContestants.Select(c => (Task: t, Contestant: c)))
+            .FirstOrDefault(p => p.Contestant.LastPositionTime != null || p.Contestant.LastReceivedTime != null
+                || p.Contestant.CalculatorRunning == true || p.Contestant.CalculatorFinished == true);
+        if (match.Task == null) return;
+        var (task, contestant) = match;
+        var contest = contestant.ContestId is { } cid ? State.Contests.GetValueOrDefault(cid) : null;
+        Update(s => s with
+        {
+            FinishedFlight = new FinishedFlight(
+                ContestName: Urls.NotBlank(contest?.Name),
+                TaskName: task.NavigationTask.Name ?? $"Task {task.NavigationTask.Id}",
+                MapPath: contestant.MapPath ?? (task.NavigationTask.TrackingLink is { } l ? Urls.WebPath(l) : null),
+                Viewable: contestant.MapViewable,
+                Score: contestant.Score),
+        });
+    }
+
+    public Task OpenPreflightAsync()
+    {
+        Update(s => s with { Screen = Screen.Preflight });
+        return MeasureNetworkClockAsync();
+    }
+
+    public void OpenHistory() => Update(s => s with { Screen = Screen.History });
+
+    /// <summary>The hidden debug view (opened by clicking the app version seven times).</summary>
+    public void OpenDebug() => Update(s => s with { Screen = Screen.Debug });
+
+    public void CloseDebug() => Update(s => s with { Screen = Screen.Home });
+
+    public void CloseHistory() => Update(s => s with { Screen = Screen.Home });
+
+    public void ClosePreflight() => Update(s => s with { Screen = Screen.Home });
+
+    public void SetTrainingMode(bool on) => Update(s => s with { TrainingMode = on });
+
+    public void DismissFinishedFlight() => Update(s => s with { FinishedFlight = null });
+
+    public void ViewFinishedFlight()
+    {
+        var path = State.FinishedFlight?.MapPath;
+        DismissFinishedFlight();
+        if (path != null) OpenPath(path);
+    }
+
+    public void CloseProfile() => Update(s => s with { Screen = Screen.Home, ProfileNotice = null });
+
+    /// <summary>Saves name and biography and stays on the profile screen.</summary>
+    public async Task UpdateProfileAsync(PersonUpdate update)
+    {
+        Update(s => s with { ProfileSaving = true, Error = null, ProfileNotice = null });
+        try
+        {
+            var person = await _api.UpdateProfileAsync(update);
+            Update(s => s with { ProfileSaving = false, Person = person, ProfileNotice = "Profile saved." });
+        }
+        catch (Exception e)
+        {
+            Update(s => s with { ProfileSaving = false, Error = $"Could not save the profile: {e.Message}" });
+        }
+    }
+
+    /// <summary>Uploads a new profile photo (<paramref name="jpeg"/> bytes, already resized) and shows it.</summary>
+    public async Task UploadPhotoAsync(byte[] jpeg)
+    {
+        Update(s => s with { ProfileSaving = true, Error = null, ProfileNotice = null });
+        try
+        {
+            var person = await _api.UploadProfilePictureAsync(jpeg);
+            Update(s => s with { ProfileSaving = false, Person = person, ProfileNotice = "Photo updated." });
+        }
+        catch (Exception e)
+        {
+            Update(s => s with { ProfileSaving = false, Error = $"Could not upload the photo: {e.Message}" });
+        }
+    }
+
+    /// <summary>Signs out at once (the UI never waits on the network).</summary>
+    public void SignOut()
+    {
+        if (_settings != null) _settings.CachedProfileJson = null;
+        _auth.SignOut();
+        ForgetAnnouncements();
+        Update(_ => FreshState(Screen.Login));
+    }
+
+    /// <summary>The token the web view sends (in a header, never in the URL) to sign the pilot in on the website.</summary>
+    public async Task<string?> IdTokenForWebAsync()
+    {
+        try { return await _auth.Tokens.IdTokenAsync(forceRefresh: false); }
+        catch (Exception) { return null; }
+    }
+
+    /// <summary>The time "now" on the controller's clock (tests replace it).</summary>
+    public long NowMillis() => _now();
+}
+
+internal static class CollectionExtensions
+{
+    /// <summary>Photo id -> its observation; the last one wins when the server lists a photo twice.</summary>
+    public static System.Collections.Immutable.ImmutableDictionary<int, PhotoObservation> ToImmutableDictionaryLast(this IEnumerable<IGrouping<int, PhotoObservation>> groups) =>
+        System.Collections.Immutable.ImmutableDictionary.CreateRange(groups.Select(g => KeyValuePair.Create(g.Key, g.Last())));
+}
