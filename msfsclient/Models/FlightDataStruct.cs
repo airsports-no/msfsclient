@@ -10,7 +10,14 @@ namespace msfsclient.Models
 
     public enum SimConnectDefinitions
     {
-        FlightData = 1
+        FlightData = 1,
+        InitPosition = 2
+    }
+
+    /// <summary>Event ids for SimConnect text (the simulator reports back on them; the client does not need the replies).</summary>
+    public enum SimConnectEvents
+    {
+        Text = 1
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]

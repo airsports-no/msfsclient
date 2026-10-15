@@ -3,36 +3,13 @@
     x:Class="msfsclient.App"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:local="using:msfsclient"
-    xmlns:conv="using:msfsclient.Helpers.Converters"
-    RequestedTheme="Dark">
+    xmlns:local="using:msfsclient">
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
+                <ResourceDictionary Source="Themes/Theme.xaml" />
             </ResourceDictionary.MergedDictionaries>
-
-            <conv:StringVisibilityConverter x:Key="StringVisibilityConverter" />
-            <conv:NotNullToVisibilityConverter x:Key="NotNullToVisibilityConverter" />
-            <conv:NullToVisibilityConverter x:Key="NullToVisibilityConverter" />
-            <conv:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
-            <conv:NegatedBoolToVisibilityConverter x:Key="NegatedBoolToVisibilityConverter" />
-            <conv:InverseBoolConverter x:Key="InverseBoolConverter" />
-            <conv:UrlToImageSourceConverter x:Key="UrlToImageSourceConverter" />
-            <conv:ConnectionStatusToColorConverter x:Key="ConnectionStatusToColorConverter" />
-            <conv:ConnectionStatusToTextConverter x:Key="ConnectionStatusToTextConverter" />
-            <conv:DoubleFormatConverter x:Key="DoubleFormatConverter" />
-            <conv:TrackingToIconConverter x:Key="TrackingToIconConverter" />
-            <conv:TrackingToTextConverter x:Key="TrackingToTextConverter" />
-            <conv:StringFormatConverter x:Key="StringFormatConverter" />
-            <conv:BoolToOpacityConverter x:Key="BoolToOpacityConverter" />
-            <conv:CollectionEmptyToVisibilityConverter x:Key="CollectionEmptyToVisibilityConverter" />
-
-            <Style TargetType="TextBlock" x:Key="CaptionTextBlockStyle">
-                <Setter Property="FontSize" Value="12"/>
-                <Setter Property="Opacity" Value="0.6"/>
-            </Style>
         </ResourceDictionary>
     </Application.Resources>
 </Application>
-
