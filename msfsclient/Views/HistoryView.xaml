@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Every tracking session recorded on this PC: download its GPX file, delete one, or delete them all (port of HistoryScreen). -->
+<local:ShellPart
+    x:Class="msfsclient.Views.HistoryView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:msfsclient.Views"
+    xmlns:helpers="using:msfsclient.Helpers"
+    FontFamily="{StaticResource BarlowRegular}">
+    <ScrollViewer>
+        <StackPanel Padding="16" Spacing="12">
+            <TextBlock Text="Track history" Style="{StaticResource PageTitle}" AutomationProperties.HeadingLevel="Level1" />
+            <TextBlock Text="Every tracking session is recorded on this PC, second by second. Download a session as a GPX file to open it in other tools."
+                       Style="{StaticResource MutedText}" />
+            <TextBlock Text="No tracks recorded yet. They appear here after you have tracked a flight." Style="{StaticResource BodyText}" FontSize="16"
+                       Visibility="{x:Bind IsEmpty, Mode=OneWay}" />
+            <TextBlock x:Name="Notice" Style="{StaticResource NoticeText}" Visibility="Collapsed" AutomationProperties.LiveSetting="Polite" />
+            <ItemsControl ItemsSource="{x:Bind Sessions, Mode=OneWay}" IsTabStop="False">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="local:HistoryItem">
+                        <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="{x:Bind Started}" Style="{StaticResource CondensedTitle}" />
+                                <TextBlock Text="{x:Bind Summary}" Style="{StaticResource MutedText}" />
+                                <StackPanel Orientation="Horizontal" Spacing="8" Visibility="{x:Bind Finished}">
+                                    <Button Content="Download GPX" Style="{StaticResource PrimaryButton}" IsEnabled="{x:Bind HasPoints}" Tag="{x:Bind}" Click="Gpx_Click" />
+                                    <HyperlinkButton Content="Delete" Style="{StaticResource DangerTextButton}" Tag="{x:Bind}" Click="Delete_Click" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Button Content="Delete the whole history" Style="{StaticResource OutlinedButton}" HorizontalAlignment="Stretch" Click="DeleteAll_Click"
+                    Visibility="{x:Bind HasFinished, Mode=OneWay}" />
+        </StackPanel>
+    </ScrollViewer>
+</local:ShellPart>

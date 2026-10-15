@@ -28,6 +28,20 @@
     <Content Include="Assets\Square44x44Logo.targetsize-24_altform-unplated.png" />
     <Content Include="Assets\Wide310x150Logo.scale-200.png" />
     <Content Include="Assets\airsports_live_tracking_white.png" />
+    <Content Include="Assets\airsports_logo_white.png" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Barlow and Barlow Condensed (SIL Open Font License), the same files as the mobile app. -->
+    <Content Include="Assets\Fonts\*.ttf" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\msfsclient.Core\msfsclient.Core.csproj" />
+  </ItemGroup>
+
+  <!-- The MSFS toolbar panel, installed into the simulator's Community folder from the profile. Included when it has been
+       assembled (msfs-panel/build-panel.ps1); without it the profile points to the download instead. -->
+  <ItemGroup Condition="Exists('..\msfs-panel\dist\airsports-flight-display\layout.json')">
+    <Content Include="..\msfs-panel\dist\airsports-flight-display\**\*" CopyToOutputDirectory="PreserveNewest"
+             Link="MsfsPanel\airsports-flight-display\%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
 
   <ItemGroup>
@@ -41,9 +55,9 @@
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageReference Include="FirebaseAuthentication.net" Version="4.1.0" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.7" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.1721" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.260416003" />
+    <PackageReference Include="Sentry" Version="6.12.0" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<local:ShellPart
+    x:Class="msfsclient.Views.UpdateRequiredView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:msfsclient.Views"
+    xmlns:helpers="using:msfsclient.Helpers"
+    FontFamily="{StaticResource BarlowRegular}">
+    <StackPanel Padding="24" Spacing="12" VerticalAlignment="Center">
+        <TextBlock Text="Update required" Style="{StaticResource PageTitle}" />
+        <TextBlock Text="This version of Airsports is too old to work with the service. Please update the app to continue." Style="{StaticResource BodyText}" />
+        <Button Content="Open the store" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Stretch" Click="Store_Click"
+                Visibility="{x:Bind helpers:Ui.ShowText(Vm.State.UpdateUrl), Mode=OneWay, FallbackValue=Collapsed}" />
+        <local:VersionText />
+    </StackPanel>
+</local:ShellPart>
