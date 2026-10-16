@@ -103,12 +103,31 @@ namespace msfsclient.Views
         public bool HasPoints => Session.PointCount > 0;
     }
 
-    public sealed record PhotoItem(ObservationPhoto Photo, string State, bool Done, bool Pending, bool CanMark)
+    /// <summary>
+    /// A photo on the Photos screen. One item per photo for as long as the screen shows the same photos; a change (marked,
+    /// sent, marking closed) updates it in place. Replacing the items made the list reuse its card elements, and some cards
+    /// kept their old state (a mark not shown, or a Mark button still there after marking closed).
+    /// </summary>
+    public sealed class PhotoItem(ObservationPhoto photo) : System.ComponentModel.INotifyPropertyChanged
     {
+        public ObservationPhoto Photo { get; } = photo;
         public string Name => Photo.Name;
         public string? File => Photo.File;
+        public string State { get; private set; } = "";
+        public bool Done { get; private set; }
+        public bool Pending { get; private set; }
+        public bool CanMark { get; private set; }
         public bool Marked => Done || Pending;
         public string MarkText => Marked ? "Mark again" : "Mark";
+
+        public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
+
+        public void Set(string state, bool done, bool pending, bool canMark)
+        {
+            if (state == State && done == Done && pending == Pending && canMark == CanMark) return;
+            (State, Done, Pending, CanMark) = (state, done, pending, canMark);
+            PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(string.Empty));
+        }
     }
 
     public sealed record DebugRow(string Label, string Value);

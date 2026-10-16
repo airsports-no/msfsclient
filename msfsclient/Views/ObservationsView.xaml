@@ -30,12 +30,12 @@
                         <Border Background="{ThemeResource OutlineBrush}" Height="180" CornerRadius="4"><Image Source="{x:Bind helpers:Ui.Image(File), FallbackValue={x:Null}}" Stretch="UniformToFill" /></Border>
                     </Button>
                     <TextBlock Text="{x:Bind Name}" Style="{StaticResource StrongText}" />
-                    <TextBlock Text="{x:Bind State}" Style="{StaticResource SmallText}" />
-                    <Button Content="{x:Bind MarkText}" Style="{StaticResource MarkButton}" HorizontalAlignment="Stretch" IsEnabled="{x:Bind CanMark}"
+                    <TextBlock Text="{x:Bind State, Mode=OneWay}" Style="{StaticResource SmallText}" />
+                    <Button Content="{x:Bind MarkText, Mode=OneWay}" Style="{StaticResource MarkButton}" HorizontalAlignment="Stretch" IsEnabled="{x:Bind CanMark, Mode=OneWay}"
                             Tag="{x:Bind}" Click="Mark_Click" />
                     <Grid>
                         <HyperlinkButton Content="Set time" Style="{StaticResource TextButton}" Tag="{x:Bind}" Click="SetTime_Click" />
-                        <HyperlinkButton Content="Cancel" HorizontalAlignment="Right" Style="{StaticResource DangerTextButton}" Visibility="{x:Bind Marked}"
+                        <HyperlinkButton Content="Cancel" HorizontalAlignment="Right" Style="{StaticResource DangerTextButton}" Visibility="{x:Bind Marked, Mode=OneWay}"
                                          Tag="{x:Bind}" Click="Cancel_Click" />
                     </Grid>
                 </StackPanel>
@@ -53,15 +53,15 @@
                             HorizontalContentAlignment="Left" VerticalAlignment="Center">
                         <StackPanel>
                             <TextBlock Text="{x:Bind Name}" Style="{StaticResource StrongText}" />
-                            <TextBlock Text="{x:Bind State}" Style="{StaticResource SmallText}" />
+                            <TextBlock Text="{x:Bind State, Mode=OneWay}" Style="{StaticResource SmallText}" />
                         </StackPanel>
                     </Button>
                     <StackPanel Grid.Column="1" HorizontalAlignment="Right">
-                        <Button Content="{x:Bind MarkText}" Style="{StaticResource MarkButton}" IsEnabled="{x:Bind CanMark}" Tag="{x:Bind}" Click="Mark_Click"
+                        <Button Content="{x:Bind MarkText, Mode=OneWay}" Style="{StaticResource MarkButton}" IsEnabled="{x:Bind CanMark, Mode=OneWay}" Tag="{x:Bind}" Click="Mark_Click"
                                 HorizontalAlignment="Right" />
                         <StackPanel Orientation="Horizontal">
                             <HyperlinkButton Content="Set time" Style="{StaticResource TextButton}" Tag="{x:Bind}" Click="SetTime_Click" />
-                            <HyperlinkButton Content="Cancel" Style="{StaticResource DangerTextButton}" Visibility="{x:Bind Marked}" Tag="{x:Bind}" Click="Cancel_Click" />
+                            <HyperlinkButton Content="Cancel" Style="{StaticResource DangerTextButton}" Visibility="{x:Bind Marked, Mode=OneWay}" Tag="{x:Bind}" Click="Cancel_Click" />
                         </StackPanel>
                     </StackPanel>
                 </Grid>
