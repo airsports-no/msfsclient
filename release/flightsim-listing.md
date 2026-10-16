@@ -1,8 +1,9 @@
 # flightsim.to listing
 
-Text for the Airsports page on flightsim.to, ready to paste. Upload the zip from the "Release for flightsim.to" workflow
-or `release/make-flightsim-zip.ps1` (`Airsports-MSFS-<version>-<build>.zip`). The screenshots are in
-`release/screenshots/`, taken with `--preview` (sample data).
+Text for the Airsports page on flightsim.to, ready to paste. Upload `Airsports-MSFS-<version>-<build>.zip` from the
+"Release" workflow (its artifact or its draft GitHub release). The screenshots are in `release/screenshots/`, taken with
+`msfsclient.exe --preview [screen]` (sample data); `--preview quickstart` and `--preview login` show the practice flight
+and the Google / Apple sign-in.
 
 ---
 
@@ -20,11 +21,11 @@ and a toolbar panel. Free.
 
 ## Description
 
-**Turn your VFR flying into a competition.** Air Sports Live Tracking (airsports.no) is a free competition platform
-built for real-world air sports: air navigation races, precision flying and other navigation tasks, with live maps and
-automatic scoring. With this download you fly the same tasks in Microsoft Flight Simulator, on the same live map, scored
-by the same rules. Fly the practice flight on your own today, join a contest, or organize one for your friends, club or
-virtual airline.
+**Turn your VFR flying into a competition.** [Air Sports Live Tracking](https://airsports.no) is a free competition
+platform built for real-world air sports: air navigation races, precision flying and other navigation tasks, with live
+maps and automatic scoring. Real pilots in real aircraft fly its competitions with the Air Sports app on their phones.
+With this download you fly the same tasks in Microsoft Flight Simulator, on the same live map, scored by the same rules.
+Fly the practice flight on your own today, join a contest, or organize one for your friends, club or virtual airline.
 
 ### What is an Air Navigation Race?
 In an Air Navigation Race (ANR) the route is drawn on the map as a narrow corridor. You fly it at the speed you planned,
@@ -35,8 +36,8 @@ points, and so does leaving the corridor. It is fast, it is hard, and on the liv
 Precision flying is navigation by map, clock and compass. You plan a route of turning points from the flight order and
 fly it at a fixed speed. You are timed at every turning point, and at secret checkpoints along the route that you do not
 know about in advance. Along the way you look out for ground features shown on photographs and mark them when you see
-them. The best pilots are within a second or two at every
-gate. Real competitions add precision landings; the simulator tasks cover the navigation.
+them. The best pilots are within a second or two at every gate. Real competitions add precision landings; the
+simulator tasks cover the navigation.
 
 ### What you get
 - **The Airsports client for Windows:** sign in, see the flight you are booked for, press play and fly. Your aircraft's
@@ -78,6 +79,22 @@ Tracking does the rest: flight orders, live tracking, automatic scoring and resu
 
 Set one up, share the link and see who is the best navigator in your group.
 
+### Fly the real thing
+Air Sports Live Tracking was built for real pilots in real aircraft, and the simulator joins that same platform.
+Everything you practise in MSFS works the same way in the air.
+- **Watch real competitions live** on [airsports.no](https://airsports.no): the live maps show every pilot's track,
+  timing and score as they fly, and the results are there afterwards.
+- **Train for a real event in the simulator:** fly its route in MSFS first, with the same flight order and the same
+  scoring, so the real flight holds no surprises.
+- **Take part yourself:** with a licence and an aircraft, the Air Sports app tracks you on your phone
+  ([Android](https://play.google.com/store/apps/details?id=no.airsports.android.livetracking),
+  [iOS](https://apps.apple.com/us/app/air-sports-live-tracking/id1559193686)). The account you use in the simulator works
+  there too.
+- **Organizers:** a club can run its real competitions and a simulator league on the same site, with the same tools.
+
+Visit [airsports.no](https://airsports.no) for contests open for registration, live maps, results, the route editor and
+everything about the platform.
+
 ## Installation
 1. Unzip anywhere, for example to Documents\Airsports, and start `Airsports client\msfsclient.exe`. There is nothing
    else to install. The first time, Windows may say "Windows protected your PC": click "More info", then "Run anyway".
@@ -94,13 +111,19 @@ The README in the zip covers installation, setup, the first flight, regular cont
 - An internet connection while flying
 - A Google or Apple account, or a free Air Sports Live Tracking account (create it in the client)
 
-## Also available
-The client is also in the Microsoft Store, with automatic updates. It installs the toolbar panel from its profile page.
+## Links
+- Air Sports Live Tracking: [airsports.no](https://airsports.no): contests, live maps, results and organizing your own
+- The Air Sports app for real flights: [Android](https://play.google.com/store/apps/details?id=no.airsports.android.livetracking),
+  [iOS](https://apps.apple.com/us/app/air-sports-live-tracking/id1559193686)
+- Source code: [github.com/airsports-no/msfsclient](https://github.com/airsports-no/msfsclient) (open source, AGPL-3.0);
+  every version is also on its Releases page
 
 ## Changelog
-**2.0.0**
+**2.0.0 (build 40)**
 - New client with the features and look of the Air Sports mobile app: flight strip, start timer, training mode, photo
   observations, pre-flight check, track history with GPX export and announcements.
 - Practice flight for new pilots: one press on "Go flying" registers you, opens the flight order and starts tracking.
+- Sign in with Google or Apple, with the same account as on airsports.no and in the Air Sports app.
 - MSFS toolbar panel, messages in the simulator, and a flight display for a second screen.
 - Flight notifications as Windows notifications and in the simulator: tracking opens soon, no positions, flight scored.
+- Open source under AGPL-3.0, with its own program icon.

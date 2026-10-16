@@ -25,7 +25,7 @@ namespace msfsclient
             // The ink header is the title bar; the window's own buttons stay on the right.
             ExtendsContentIntoTitleBar = true;
             SetTitleBar(TitleBar);
-            AppWindow.SetIcon("Assets/Square44x44Logo.targetsize-24_altform-unplated.png");
+            AppWindow.SetIcon("Assets/AppIcon.ico"); // all sizes, so the title bar and the taskbar both look sharp
 
             // A phone-shaped window by default: the layout is one column, and it fits beside the simulator.
             AppWindow.Resize(new Windows.Graphics.SizeInt32(520, 900));
