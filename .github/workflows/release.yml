@@ -6,7 +6,8 @@ name: Release
 # - Microsoft Store (optional): the Store package, uploaded to Partner Center with msstore (store.yml). "Upload as draft"
 #   leaves the submission in Partner Center to check and submit there; "Upload and submit" sends it for certification.
 # Both use the same build number, so the client shows the same "Airsports 2.0.0 (<build>)" wherever it was installed from.
-# The Store needs a build number higher than its last one.
+# Leave the build number empty and it counts on by itself (see BUILD_NUMBER_OFFSET); a number entered by hand is used as
+# it is. The Store needs a build number higher than its last one.
 #
 # Each part can still be run on its own: "Release for flightsim.to" and "Deploy to Microsoft Store". The secrets are in
 # the "release" (signing) and "store" (Partner Center) environments, as described in those workflows.
@@ -14,9 +15,10 @@ on:
   workflow_dispatch:
     inputs:
       build_number:
-        description: "Build number (the client shows \"Airsports 2.0.0 (<build>)\"; for the Store higher than the last one)"
-        required: true
-        type: number
+        description: "Build number; leave empty to count on automatically (the client shows \"Airsports 2.0.0 (<build>)\")"
+        required: false
+        type: string
+        default: ""
       flightsim:
         description: "Build the flightsim.to package"
         required: false
@@ -35,36 +37,76 @@ on:
 permissions:
   contents: read
 
+env:
+  # Automatic build numbers are this workflow's run number plus this offset: run 1 was build 37, entered by hand after the
+  # test builds 32-36, so the next automatic one is 38 and they keep rising. The Store only needs each build to be higher
+  # than the last, so a failed run that uses up a number does no harm. Raise the offset if a number was ever entered by
+  # hand that is above the automatic ones.
+  BUILD_NUMBER_OFFSET: 36
+
 jobs:
+  # The build number both parts use: the one entered, or the next automatic one.
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      build_number: ${{ steps.number.outputs.build_number }}
+    steps:
+      - id: number
+        shell: bash
+        env:
+          ENTERED: ${{ inputs.build_number }}
+          RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          entered="${ENTERED// /}"
+          if [ -z "$entered" ]; then
+            build=$((RUN_NUMBER + BUILD_NUMBER_OFFSET))
+            how="automatic: run $RUN_NUMBER + $BUILD_NUMBER_OFFSET"
+          elif [[ "$entered" =~ ^[0-9]+$ ]] && [ "$entered" -ge 1 ] && [ "$entered" -le 65535 ]; then
+            build=$entered
+            how="entered by hand"
+          else
+            echo "::error::The build number must be a whole number from 1 to 65535, or empty for the next automatic one."
+            exit 1
+          fi
+          echo "build_number=$build" >> "$GITHUB_OUTPUT"
+          echo "Build number $build ($how)"
+
   flightsim:
+    needs: version
     if: inputs.flightsim
     uses: ./.github/workflows/flightsim.yml
     with:
-      build_number: ${{ inputs.build_number }}
+      build_number: ${{ fromJSON(needs.version.outputs.build_number) }}
     secrets: inherit
 
   store:
+    needs: version
     if: inputs.store != 'Do not upload'
     uses: ./.github/workflows/store.yml
     with:
-      build_number: ${{ inputs.build_number }}
+      build_number: ${{ fromJSON(needs.version.outputs.build_number) }}
       submit: ${{ inputs.store == 'Upload and submit' }}
     secrets: inherit
 
   summary:
-    needs: [flightsim, store]
+    needs: [version, flightsim, store]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: What was released
         shell: bash
         env:
-          BUILD_NUMBER: ${{ inputs.build_number }}
+          BUILD_NUMBER: ${{ needs.version.outputs.build_number }}
+          VERSION: ${{ needs.version.result }}
           FLIGHTSIM: ${{ needs.flightsim.result }}
           STORE: ${{ needs.store.result }}
           STORE_CHOICE: ${{ inputs.store }}
         run: |
           describe() { case "$1" in success) echo "done";; skipped) echo "not asked for";; *) echo "**$1**";; esac; }
+          if [ "$VERSION" != success ]; then
+            echo "## Release not started: the build number was not valid" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
           {
             echo "## Release, build $BUILD_NUMBER"
             echo ""
