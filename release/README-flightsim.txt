@@ -153,3 +153,5 @@ The Air Sports app: https://play.google.com/store/apps/details?id=no.airsports.a
                     https://apps.apple.com/us/app/air-sports-live-tracking/id1559193686 (iOS)
 Source code: https://github.com/airsports-no/msfsclient (open source, AGPL-3.0; every version is on its Releases page)
 Terms and privacy: https://airsports.no/terms_and_conditions/
+Crash reports: if the client crashes, it sends a technical report (the error, the client and Windows version and your
+Air Sports user id; never your name, e-mail or position) to Sentry, so we can fix it.

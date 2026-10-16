@@ -119,7 +119,11 @@ The README in the zip covers installation, setup, the first flight, regular cont
   every version is also on its Releases page
 
 ## Changelog
-**2.0.0 (build 40)**
+**2.0.0 (build 43)**
+- Home tells you when your flight is not being recorded, and why: for example a flight booked for a real aircraft, or a
+  task that does not accept simulator flights.
+- Crash reports: if the client crashes, a technical report goes to us so we can fix it. It carries your Air Sports user
+  id, never your name, e-mail or position. See the privacy terms on airsports.no.
 - New client with the features and look of the Air Sports mobile app: flight strip, start timer, training mode, photo
   observations, pre-flight check, track history with GPX export and announcements.
 - Practice flight for new pilots: one press on "Go flying" registers you, opens the flight order and starts tracking.
