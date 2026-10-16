@@ -122,6 +122,17 @@ so a club night, a league or a cross-over event with real pilots are all possibl
 website" in the client to get started.
 
 
+7. Fly the real thing
+---------------------
+Air Sports Live Tracking was built for real pilots in real aircraft; the simulator joins the same platform, so what you
+practise in MSFS works the same way in the air.
+- Watch real competitions live on https://airsports.no: every pilot's track, timing and score as they fly, and the
+  results afterwards.
+- Train for a real event: fly its route in MSFS first, with the same flight order and the same scoring.
+- Take part yourself: with a licence and an aircraft, the Air Sports app tracks you on your phone (Google Play and the
+  App Store, "Air Sports Live Tracking"). Your simulator account works there too.
+
+
 Troubleshooting
 ---------------
 - The client does not connect to MSFS: start MSFS and load a flight. The client tries again every 10 seconds. Run the
@@ -137,5 +148,8 @@ Troubleshooting
 
 Help and terms
 --------------
-Air Sports Live Tracking: https://airsports.no
+Air Sports Live Tracking: https://airsports.no (contests, live maps, results, organizing your own)
+The Air Sports app: https://play.google.com/store/apps/details?id=no.airsports.android.livetracking (Android)
+                    https://apps.apple.com/us/app/air-sports-live-tracking/id1559193686 (iOS)
+Source code: https://github.com/airsports-no/msfsclient (open source, AGPL-3.0; every version is on its Releases page)
 Terms and privacy: https://airsports.no/terms_and_conditions/
