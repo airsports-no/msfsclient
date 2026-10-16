@@ -44,8 +44,11 @@ public sealed record UiState
     public string? ProfileNotice { get; init; }
     /// <summary>One-off confirmation shown at the top of Home (e.g. after registering a flight).</summary>
     public string? HomeNotice { get; init; }
-    /// <summary>Training mode: live feedback on every gate passed. Off at every start so a competition flight never has it by accident.</summary>
-    public bool TrainingMode { get; init; }
+    /// <summary>
+    /// Training mode: live feedback on every gate passed. On at every start; it only shows on a flight whose organizer allows
+    /// it (the server says so per flight), so a competition flight without training gets none.
+    /// </summary>
+    public bool TrainingMode { get; init; } = true;
     /// <summary>Whole minutes of countdown buffer before the start minute on the timer (0 = none).</summary>
     public int TimerBufferMinutes { get; init; }
     /// <summary>The first load of the pilot's flights has finished (Home shows a quiet "checking" line until then).</summary>

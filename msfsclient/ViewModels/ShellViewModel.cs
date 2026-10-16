@@ -295,8 +295,9 @@ namespace msfsclient.ViewModels
                 _lastAnnouncementCheckMillis = _nowMillis;
                 _ = _controller.RefreshAnnouncementsAsync();
             }
-            // While tracking, poll the server so the pilot sees whether positions arrive: every 10 s, 5 s in training mode.
-            var interval = _state.TrainingMode ? 5_000 : 10_000;
+            // While tracking, poll the server so the pilot sees whether positions arrive: every 10 s, 5 s in training mode on a
+            // flight that offers it (the gate feedback comes with the poll).
+            var interval = _state.TrainingMode && GateFeedback.TrainingAvailable(_state.Tasks) ? 5_000 : 10_000;
             if (_tracking.Running && _state.Screen is Screen.Home or Screen.Timer or Screen.Observations && _nowMillis - _lastPollMillis >= interval)
             {
                 _lastPollMillis = _nowMillis;
