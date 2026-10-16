@@ -20,8 +20,7 @@ dotnet publish $project `
     -p:Unpackaged=true `
     -p:EnableMsixTooling=false `
     -p:PublishSingleFile=false `
-    -p:DebugType=None `
-    -p:DebugSymbols=false `
+    -p:DebugType=portable `
     @extra
 if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed" }
 
@@ -40,5 +39,7 @@ Get-ChildItem $build -Recurse -File -Include *.pri, *.xbf |
         New-Item -ItemType Directory -Force (Split-Path $target) | Out-Null
         Copy-Item $_.FullName $target -Force
     }
+# The symbols are built for crash reports (uploaded to Sentry from the build when it is configured), not shipped.
+Get-ChildItem $publish -Recurse -File -Filter *.pdb | Remove-Item
 if (-not (Test-Path (Join-Path $publish "msfsclient.pri"))) { throw "msfsclient.pri is missing from $publish" }
 Write-Host "Portable client: $publish"
