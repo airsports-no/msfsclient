@@ -14,6 +14,14 @@ This repository contains files that are not covered by this project's license (G
 - Copyright 2017 The Barlow Project Authors (https://github.com/jpt/barlow).
 - License: SIL Open Font License, Version 1.1 (https://openfontlicense.org).
 
+## Sample photos for the preview mode
+- Files: `msfsclient/Assets/Preview/*.jpg`, cropped and scaled down. Only `--preview` shows them, as sample photo
+  observations.
+- From Wikimedia Commons, released into the public domain (CC0 1.0) by their authors:
+  - `church.jpg`: "San Agustin Church Aerial View, Paoay, Ilocos Norte.jpg"
+  - `lake.jpg`: "Aerial photograph of Lake Cachuma, CA.jpg"
+  - `bridge.jpg`: "Aerial view of Bridge over Nooksack River 2019.jpg"
+
 ## NuGet packages
 The client uses NuGet packages, for example the Windows App SDK, CommunityToolkit.Mvvm, Microsoft.Data.Sqlite,
 FirebaseAuthentication.net and Sentry. They are downloaded at build time, are not part of this repository, and come
