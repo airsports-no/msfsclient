@@ -258,6 +258,18 @@ public class HudHostTest
     }
 
     [Fact]
+    public async Task TrainingModeIsOnAtEveryStartAndAfterSignOut()
+    {
+        var h = new Harness();
+        Assert.True(h.C.State.TrainingMode);
+        await h.C.Start();
+        Assert.True(h.C.State.TrainingMode);
+        h.C.SetTrainingMode(false);
+        h.C.SignOut();
+        Assert.True(h.C.State.TrainingMode);
+    }
+
+    [Fact]
     public async Task TrainingModeIsRefusedWhereTheServerDoesNotOfferIt()
     {
         var h = new Harness();

@@ -108,8 +108,8 @@ On the day:
    you begin your start procedure. It counts from the nearest whole minute, the way your start is scored.
 5. Photo observations: if the task has photos to find, open "Photos" and mark each photo when you pass it. You can also
    mark them in the toolbar panel.
-6. Training mode (on Home) shows how early or late you were at each gate, where the organizer allows it. It is off at
-   every start, so a competition flight never has it by accident.
+6. Training mode (on Home) shows how early or late you were at each gate, where the organizer allows it. It is on at
+   every start; switch it off on Home to fly without the feedback.
 7. After landing, press stop. "Live map" shows your flight. "Share live link" lets friends follow you live.
 
 
