@@ -38,21 +38,6 @@
     <Content Include="Assets\Fonts\*.ttf" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
-  <!-- Crash reporting (Sentry). The release workflows set AIRSPORTS_SENTRY_DSN (the repository variable SENTRY_DSN) and the
-       client reads it from this attribute; without it the client reports nothing. With SENTRY_AUTH_TOKEN, SENTRY_ORG and
-       SENTRY_PROJECT set as well, a Release build uploads its symbols, so the reports show file names and line numbers. -->
-  <ItemGroup Condition="'$(AIRSPORTS_SENTRY_DSN)' != ''">
-    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
-      <_Parameter1>SentryDsn</_Parameter1>
-      <_Parameter2>$(AIRSPORTS_SENTRY_DSN)</_Parameter2>
-    </AssemblyAttribute>
-  </ItemGroup>
-  <PropertyGroup Condition="'$(Configuration)' == 'Release' and '$(SENTRY_AUTH_TOKEN)' != '' and '$(SENTRY_ORG)' != '' and '$(SENTRY_PROJECT)' != ''">
-    <SentryUploadSymbols>true</SentryUploadSymbols>
-    <SentryOrg>$(SENTRY_ORG)</SentryOrg>
-    <SentryProject>$(SENTRY_PROJECT)</SentryProject>
-  </PropertyGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\msfsclient.Core\msfsclient.Core.csproj" />
   </ItemGroup>

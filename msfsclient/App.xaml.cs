@@ -76,7 +76,6 @@ namespace msfsclient
             ISimConnectService simConnect = preview != null ? new PreviewMode.Simulator() : new SimConnectService();
             var sim = new SimPositionSource(simConnect);
             var controller = new AppController(api, auth, device, new NtpClient(), observationQueue, sim, settings);
-            if (preview == null) TagCrashReports(controller);
             var uploader = new TraccarUploader(traccarHttp, queue, config.TraccarBaseUrl);
 
             MainWindow? window = null;
@@ -127,10 +126,7 @@ namespace msfsclient
             }
         }
 
-        /// <summary>
-        /// Crash reports go to Sentry in release builds, and only when a DSN is configured: built into the release
-        /// (AIRSPORTS_SENTRY_DSN at build time) or set in the environment. Only unhandled exceptions are reported.
-        /// </summary>
+        /// <summary>Crash reports go to Sentry in release builds, and only when a DSN is configured (AIRSPORTS_SENTRY_DSN).</summary>
         private static void StartCrashReporting(IAppConfigService config)
         {
 #if !DEBUG
@@ -139,28 +135,12 @@ namespace msfsclient
                 Sentry.SentrySdk.Init(o =>
                 {
                     o.Dsn = dsn;
-                    // As pilots know it and as the zip is named: 2.0.0 (40) is msfsclient@2.0.0+40.
-                    o.Release = $"msfsclient@{DeviceInfo.SharedVersionName}+{config.BuildNumber}";
-                    o.Environment = config.IsTestMode ? "test" : "production";
+                    o.Release = $"msfsclient@{config.AppVersion}";
                     o.IsGlobalModeEnabled = true;
                     o.SendDefaultPii = false;
-                    o.AutoSessionTracking = true;
                 });
             }
 #endif
-        }
-
-        /// <summary>Reports carry the pilot's Airsports user id (never the name or email), so they can be matched to a support request.</summary>
-        private static void TagCrashReports(AppController controller)
-        {
-            int? tagged = null;
-            controller.StateChanged += state =>
-            {
-                var id = state.Person?.Id;
-                if (id == tagged) return;
-                tagged = id;
-                Sentry.SentrySdk.ConfigureScope(s => s.User = id is { } i ? new Sentry.SentryUser { Id = i.ToString(System.Globalization.CultureInfo.InvariantCulture) } : new Sentry.SentryUser());
-            };
         }
     }
 }
