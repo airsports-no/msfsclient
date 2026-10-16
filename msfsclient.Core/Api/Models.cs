@@ -99,6 +99,10 @@ public sealed record ActiveContestant
     public double? Score { get; init; }
     /// <summary>Page that downloads the newest generated flight order, a path on the site; null when none exists.</summary>
     public string? FlightOrderPath { get; init; }
+    /// <summary>False when the task's simulator policy or the flight mode the pilot declared means this device's positions are ignored. Null from an older backend: used.</summary>
+    public bool? PositionsAccepted { get; init; }
+    /// <summary>Why the positions are ignored, in words for the pilot.</summary>
+    public string? PositionsIgnoredReason { get; init; }
 }
 
 /// <summary>The last gate the live calculator passed and how far from its required time, in seconds (positive: late).</summary>

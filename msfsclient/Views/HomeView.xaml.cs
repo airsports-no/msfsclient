@@ -3,6 +3,7 @@ using System.Linq;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using msfsclient.Core.Api;
+using msfsclient.Core.Warnings;
 using msfsclient.Core.App;
 using msfsclient.Core.Tracking;
 using msfsclient.Helpers;
@@ -15,6 +16,7 @@ namespace msfsclient.Views
         private bool _stripsRunning;
         private int? _stripsCancelling;
         private IReadOnlyList<Announcement>? _announcementsFor;
+        private object? _ignoredFor;
 
         public HomeView()
         {
@@ -24,6 +26,9 @@ namespace msfsclient.Views
         public IReadOnlyList<StripItem> Strips { get; private set; } = [];
 
         public IReadOnlyList<AnnouncementItem> Announcements { get; private set; } = [];
+
+        /// <summary>Why the server ignores the simulator's positions for a current flight (nothing is recorded), one line each.</summary>
+        public IReadOnlyList<string> IgnoredNotices { get; private set; } = [];
 
         public string PreflightName => $"Pre-flight: {Vm.PreflightSummary}";
 
@@ -45,6 +50,11 @@ namespace msfsclient.Views
             {
                 _announcementsFor = state.Announcements;
                 Announcements = state.Announcements.Select(AnnouncementItem.From).ToList();
+            }
+            if (!ReferenceEquals(state.Tasks, _ignoredFor))
+            {
+                _ignoredFor = state.Tasks;
+                IgnoredNotices = IgnoredPositions.Notices(state.Tasks);
             }
             if (TrainingSwitch.IsOn != state.TrainingMode) TrainingSwitch.IsOn = state.TrainingMode;
             RefreshQuickstartSteps();
