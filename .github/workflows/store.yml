@@ -1,0 +1,135 @@
+name: Deploy to Microsoft Store
+
+# Run by hand (Actions > Deploy to Microsoft Store > Run workflow). It tests, builds the Store package with the given build
+# number and creates a Store submission for the app. By default the submission is left as a draft in Partner Center, to be
+# checked and submitted there; tick "submit" to send it for certification straight away.
+#
+# Needs, in the repository's "store" environment (Settings > Environments; add required reviewers there to approve each run):
+#   secrets   AZURE_AD_TENANT_ID, AZURE_AD_CLIENT_ID, AZURE_AD_CLIENT_SECRET
+#             An Azure AD (Entra ID) app added to Partner Center as a user with the Manager role
+#             (Partner Center > Account settings > User management > Azure AD applications).
+#   secret    SELLER_ID  (Partner Center > Account settings > Legal info > Developer > Seller ID)
+on:
+  workflow_dispatch:
+    inputs:
+      build_number:
+        description: "Build number: the third part of the package version (1.0.<build>.0). Must be higher than the last one in the Store."
+        required: true
+        type: number
+      submit:
+        description: "Submit for certification now (unticked: leave the submission as a draft in Partner Center)"
+        required: false
+        type: boolean
+        default: false
+
+env:
+  # The app's Store ID (Package.StoreAssociation.xml).
+  STORE_PRODUCT_ID: 9N4MZBKPDS5X
+
+# Read-only token; the Partner Center secrets are the only credentials the deploy needs.
+permissions:
+  contents: read
+
+# Third-party actions are pinned to a commit (the version tag it had when pinned is in the comment): this workflow holds
+# the Partner Center secrets, and a tag can be moved. Inputs and secrets reach scripts through env, never as script text.
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          dotnet-version: 8.0.x
+      - run: dotnet test msfsclient.Core.Tests/msfsclient.Core.Tests.csproj --configuration Release
+
+  deploy:
+    runs-on: windows-latest
+    needs: test
+    environment: store
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          dotnet-version: 8.0.x
+      - uses: microsoft/setup-msbuild@6fb02220983dee41ce7ae257b6f4d8f9bf5ed4ce # v2.0.0
+
+      # The Store wants a version higher than the last one and a revision of 0. The build number is also what the app shows
+      # ("Airsports 2.0.0 (<build>)") and what the server's minimum version for the simulator client is compared with.
+      - name: Set the package version
+        shell: pwsh
+        env:
+          BUILD_NUMBER: ${{ inputs.build_number }}
+        run: |
+          $build = [int]$env:BUILD_NUMBER
+          if ($build -le 0 -or $build -gt 65535) { throw "The build number must be between 1 and 65535" }
+          $path = "msfsclient/Package.appxmanifest"
+          $text = [IO.File]::ReadAllText($path)
+          $pattern = '(<Identity\b[^>]*?\bVersion=")(\d+)\.(\d+)\.(\d+)\.(\d+)(")'
+          $m = [regex]::Match($text, $pattern)
+          if (-not $m.Success) { throw "No Identity version in $path" }
+          if ($build -le [int]$m.Groups[4].Value) { throw "Build $build is not higher than the build in the manifest ($($m.Groups[4].Value))" }
+          $version = "$($m.Groups[2].Value).$($m.Groups[3].Value).$build.0"
+          $text = [regex]::Replace($text, $pattern, { param($x) $x.Groups[1].Value + $version + $x.Groups[6].Value }, 'None', [TimeSpan]::FromSeconds(1))
+          [IO.File]::WriteAllText($path, $text, [Text.UTF8Encoding]::new($true))
+          "Package version: $version"
+
+      # Shipped inside the app (Profile > Toolbar panel in MSFS), and the same zip goes to flightsim.to.
+      - name: MSFS toolbar panel
+        shell: pwsh
+        env:
+          BUILD_NUMBER: ${{ inputs.build_number }}
+        run: |
+          if (-not (Test-Path msfs-panel/prebuilt/InGamePanels/InGamePanel_Airsports.spb)) {
+            throw "No compiled panel definition: build it once with ./msfs-panel/build-panel.ps1 -Sdk and commit msfs-panel/prebuilt."
+          }
+          ./msfs-panel/build-panel.ps1 -Version "1.0.$($env:BUILD_NUMBER)"
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: msfs-toolbar-panel-${{ inputs.build_number }}
+          path: msfs-panel/dist/*.zip
+
+      - name: Build the Store package
+        run: >
+          msbuild msfsclient/msfsclient.csproj -restore -nologo -v:minimal
+          -p:Configuration=Release -p:Platform=x64 -p:RuntimeIdentifier=win-x64
+          -p:GenerateAppxPackageOnBuild=true -p:UapAppxPackageBuildMode=StoreUpload -p:AppxBundle=Never
+          -p:AppxPackageSigningEnabled=false -p:AppxAutoIncrementPackageRevision=false
+          -p:AppxPackageDir=${{ github.workspace }}\packages\
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: msfsclient-store-package-${{ inputs.build_number }}
+          path: packages/*.msixupload
+
+      # Formerly microsoft/setup-msstore-cli (renamed by Microsoft).
+      - uses: microsoft/microsoft-store-apppublisher@3b2ec9136230357ce9abc02b9d056626fb248d3f # v1
+
+      - name: Sign in to Partner Center
+        shell: pwsh
+        env:
+          TENANT_ID: ${{ secrets.AZURE_AD_TENANT_ID }}
+          SELLER_ID: ${{ secrets.SELLER_ID }}
+          CLIENT_ID: ${{ secrets.AZURE_AD_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.AZURE_AD_CLIENT_SECRET }}
+        run: >
+          msstore reconfigure
+          --tenantId $env:TENANT_ID
+          --sellerId $env:SELLER_ID
+          --clientId $env:CLIENT_ID
+          --clientSecret $env:CLIENT_SECRET
+
+      - name: Create the Store submission
+        shell: pwsh
+        env:
+          SUBMIT: ${{ inputs.submit }}
+        run: |
+          $package = Get-ChildItem packages -Filter *.msixupload | Select-Object -First 1
+          if (-not $package) { throw "No .msixupload was built" }
+          $publishArgs = @($package.FullName, "-id", $env:STORE_PRODUCT_ID)
+          if ($env:SUBMIT -ne "true") { $publishArgs += "--noCommit" }
+          msstore publish @publishArgs

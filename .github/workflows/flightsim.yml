@@ -1,0 +1,98 @@
+name: Release for flightsim.to
+
+# Run by hand (Actions > Release for flightsim.to > Run workflow). Builds the zip for flightsim.to: the portable client
+# and the MSFS toolbar panel with installation notes (release/make-flightsim-zip.ps1), and the panel-only zip. Upload them
+# to flightsim.to by hand. Use the same build number as the Microsoft Store release of the same version.
+#
+# Signing (optional): with these secrets in the "release" environment the client's .exe and .dll files are signed with
+# Azure Trusted Signing, so Windows names the publisher instead of "unknown publisher":
+#   AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET, TRUSTED_SIGNING_ENDPOINT, TRUSTED_SIGNING_ACCOUNT,
+#   TRUSTED_SIGNING_PROFILE
+# Without them the zip is unsigned and Windows shows "Windows protected your PC" on the first start (the notes explain it).
+on:
+  workflow_dispatch:
+    inputs:
+      build_number:
+        description: "Build number (the client shows \"Airsports 2.0.0 (<build>)\")"
+        required: true
+        type: number
+
+# Read-only token; the signing secrets are the only credentials the release needs.
+permissions:
+  contents: read
+
+# Third-party actions are pinned to a commit (the version tag it had when pinned is in the comment): this workflow holds
+# the signing secrets, and a tag can be moved. Inputs reach scripts through env, never as script text.
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          dotnet-version: 8.0.x
+      - run: dotnet test msfsclient.Core.Tests/msfsclient.Core.Tests.csproj --configuration Release
+
+  release:
+    runs-on: windows-latest
+    needs: test
+    environment: release
+    env:
+      SIGNING_ACCOUNT: ${{ secrets.TRUSTED_SIGNING_ACCOUNT }}
+      BUILD_NUMBER: ${{ inputs.build_number }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Check the toolbar panel can be built
+        shell: pwsh
+        run: |
+          if (-not (Test-Path msfs-panel/prebuilt/InGamePanels/InGamePanel_Airsports.spb)) {
+            throw "No compiled panel definition: build it once with ./msfs-panel/build-panel.ps1 -Sdk and commit msfs-panel/prebuilt."
+          }
+
+      - name: Build the client and the panel
+        shell: pwsh
+        run: |
+          ./release/make-flightsim-zip.ps1 -Build ([int]$env:BUILD_NUMBER) -Out dist
+          # Signed below and zipped again.
+          if ($env:SIGNING_ACCOUNT) { Remove-Item dist/Airsports-MSFS-*.zip }
+
+      - name: Sign the client
+        if: env.SIGNING_ACCOUNT != ''
+        # Formerly azure/trusted-signing-action (renamed by Microsoft).
+        uses: Azure/artifact-signing-action@1d365fec12862c4aa68fcac418143d73f0cea293 # v0.5.11
+        with:
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          endpoint: ${{ secrets.TRUSTED_SIGNING_ENDPOINT }}
+          trusted-signing-account-name: ${{ secrets.TRUSTED_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ secrets.TRUSTED_SIGNING_PROFILE }}
+          files-folder: ${{ github.workspace }}\dist\Airsports-MSFS-2.0.0-${{ inputs.build_number }}\Airsports client
+          files-folder-filter: exe,dll
+          files-folder-recurse: true
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+
+      - name: Zip the signed client
+        if: env.SIGNING_ACCOUNT != ''
+        shell: pwsh
+        run: |
+          $bundle = "dist/Airsports-MSFS-2.0.0-$([int]$env:BUILD_NUMBER)"
+          Compress-Archive -Path "$bundle/*" -DestinationPath "$bundle.zip"
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: flightsim-to-${{ inputs.build_number }}
+          path: |
+            dist/*.zip
+            msfs-panel/dist/*.zip
+            release/flightsim-listing.md

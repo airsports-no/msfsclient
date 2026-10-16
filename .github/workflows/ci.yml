@@ -1,0 +1,83 @@
+name: Build and test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# Read-only token. Actions are pinned to a commit (the version tag it had when pinned is in the comment).
+permissions:
+  contents: read
+
+jobs:
+  # The logic (API client, tracking, queues, rules) builds and tests anywhere: run it on Linux, where it is cheap.
+  core-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          dotnet-version: 8.0.x
+      - run: dotnet test msfsclient.Core.Tests/msfsclient.Core.Tests.csproj --configuration Release --logger "trx;LogFileName=results.trx"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: test-results
+          path: msfsclient.Core.Tests/TestResults/
+
+  # The WinUI app needs Windows. The Store package is built here too (unsigned, not uploaded), so a packaging problem
+  # shows up on the pull request instead of on release day.
+  windows-build:
+    runs-on: windows-latest
+    needs: core-tests
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          dotnet-version: 8.0.x
+      - uses: microsoft/setup-msbuild@6fb02220983dee41ce7ae257b6f4d8f9bf5ed4ce # v2.0.0
+
+      # Assembled before the app is built, so the client ships with it (Profile > Toolbar panel in MSFS).
+      - name: MSFS toolbar panel
+        shell: pwsh
+        run: |
+          if (Test-Path msfs-panel/prebuilt/InGamePanels/InGamePanel_Airsports.spb) {
+            ./msfs-panel/build-panel.ps1 -Version "1.0.${{ github.run_number }}"
+          } else {
+            Write-Host "::notice::No compiled panel definition yet: build it once with ./msfs-panel/build-panel.ps1 -Sdk and commit msfs-panel/prebuilt."
+          }
+
+      - name: Store package (msixupload)
+        run: >
+          msbuild msfsclient/msfsclient.csproj -restore -nologo -v:minimal
+          -p:Configuration=Release -p:Platform=x64 -p:RuntimeIdentifier=win-x64
+          -p:GenerateAppxPackageOnBuild=true -p:UapAppxPackageBuildMode=StoreUpload -p:AppxBundle=Never
+          -p:AppxPackageSigningEnabled=false -p:AppxAutoIncrementPackageRevision=false
+          -p:AppxPackageDir=${{ github.workspace }}\packages\
+
+      - name: Portable release (publish_portable.ps1)
+        shell: pwsh
+        run: ./publish_portable.ps1
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: msfsclient-store-package
+          path: packages/*.msixupload
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: msfs-toolbar-panel
+          path: msfs-panel/dist/*.zip
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: msfsclient-portable-win-x64
+          path: msfsclient/bin/x64/Release/net8.0-windows10.0.19041.0/win-x64/publish/

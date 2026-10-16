@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The toolbar entry and window of the Airsports flight display. Sizes and positions are in percent of the screen.
+    Changing anything here needs a rebuild of the .spb with the MSFS SDK (build-panel.ps1 -Sdk); the page itself does not.
+-->
+<SimBase.Document Type="InGamePanels" version="1.0">
+    <Filename>InGamePanel_Airsports.spb</Filename>
+    <InGamePanels.InGamePanelDefinition
+        id="PANEL_AIRSPORTS"
+        Name="Airsports"
+        url="html_ui/InGamePanels/AirsportsPanel/AirsportsPanel.html"
+        resizeDirections="Both"
+        minWidth="12"
+        minHeight="12"
+        defaultWidth="22"
+        defaultHeight="60"
+        defaultTop="15"
+        defaultRight="2"
+        icon="ICON_TOOLBAR_AIRSPORTS"
+        buttonVisible="true"
+    >
+    </InGamePanels.InGamePanelDefinition>
+</SimBase.Document>

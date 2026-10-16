@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Toolbar icon: a flight strip with the live tab, in white like the simulator's own toolbar icons. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <rect x="8" y="16" width="48" height="32" rx="2" fill="none" stroke="#ffffff" stroke-width="4"/>
+  <rect x="8" y="16" width="9" height="32" fill="#ffffff"/>
+  <rect x="23" y="24" width="25" height="5" fill="#ffffff"/>
+  <rect x="23" y="35" width="17" height="5" fill="#ffffff"/>
+</svg>
