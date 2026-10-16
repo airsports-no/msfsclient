@@ -60,6 +60,30 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
 
+            <!-- The server ignores the simulator's positions for the current flight (simulators not accepted, or booked as a real flight). -->
+            <ItemsControl ItemsSource="{x:Bind IgnoredNotices, Mode=OneWay}" IsTabStop="False">
+                <ItemsControl.ItemContainerTransitions>
+                    <TransitionCollection />
+                </ItemsControl.ItemContainerTransitions>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="x:String">
+                        <Border Background="{ThemeResource CardBrush}" BorderBrush="{ThemeResource OutlineBrush}" BorderThickness="1" CornerRadius="10" Margin="0,0,0,8">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="6" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Border Background="{ThemeResource AmberBrush}" CornerRadius="10,0,0,10" />
+                                <StackPanel Grid.Column="1" Padding="12,10,12,10">
+                                    <TextBlock Text="Your flight is not being recorded" Style="{StaticResource LabelText}" />
+                                    <TextBlock Text="{x:Bind}" Style="{StaticResource BodyText}" FontSize="16" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
             <TextBlock Text="{x:Bind Vm.Greeting, Mode=OneWay}" Style="{StaticResource Greeting}" AutomationProperties.HeadingLevel="Level1" />
 
             <!-- The practice flight for new simulator pilots (MSFS quickstart): register, then get to the start. -->
