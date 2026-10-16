@@ -104,6 +104,12 @@ jobs:
           path: msfs-panel/dist/*.zip
 
       - name: Build the Store package
+        env:
+          # Crash reporting: the DSN is built into the client; with the token, the symbols go to Sentry (both optional).
+          AIRSPORTS_SENTRY_DSN: ${{ vars.SENTRY_DSN }}
+          SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
         run: >
           msbuild msfsclient/msfsclient.csproj -restore -nologo -v:minimal
           -p:Configuration=Release -p:Platform=x64 -p:RuntimeIdentifier=win-x64

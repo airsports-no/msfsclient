@@ -21,7 +21,14 @@ namespace msfsclient.Services
         {
             (AppVersion, BuildNumber) = GetAppVersion();
             LocalFolder = GetLocalFolder();
+            // A developer's environment variable wins; a release build has the DSN built in (AIRSPORTS_SENTRY_DSN at build time).
             var dsn = Environment.GetEnvironmentVariable("AIRSPORTS_SENTRY_DSN");
+            if (string.IsNullOrWhiteSpace(dsn))
+            {
+                dsn = typeof(AppConfigService).Assembly.GetCustomAttributes(typeof(System.Reflection.AssemblyMetadataAttribute), false)
+                    .OfType<System.Reflection.AssemblyMetadataAttribute>()
+                    .FirstOrDefault(a => a.Key == "SentryDsn")?.Value;
+            }
             CrashReportingDsn = string.IsNullOrWhiteSpace(dsn) ? null : dsn;
 
             var args = Environment.GetCommandLineArgs();

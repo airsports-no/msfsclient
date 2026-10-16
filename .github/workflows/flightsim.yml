@@ -65,6 +65,12 @@ jobs:
 
       - name: Build the client and the panel
         shell: pwsh
+        env:
+          # Crash reporting: the DSN is built into the client; with the token, the symbols go to Sentry (both optional).
+          AIRSPORTS_SENTRY_DSN: ${{ vars.SENTRY_DSN }}
+          SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
         run: |
           ./release/make-flightsim-zip.ps1 -Build ([int]$env:BUILD_NUMBER) -Out dist
           # Signed below and zipped again.
