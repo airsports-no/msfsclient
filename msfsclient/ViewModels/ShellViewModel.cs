@@ -68,7 +68,9 @@ namespace msfsclient.ViewModels
             _state = controller.State;
             _tracking = new TrackingState { Backlog = queue.Size() };
 
-            controller.StateChanged += s => _dispatcher.TryEnqueue(() => { _state = s; EnsureSession(); Changed(); });
+            // The newest state, read on the UI thread: changes made at the same time on different threads can reach the UI
+            // thread out of order, and an older one arriving last would stay on screen (a photo mark not shown, for example).
+            controller.StateChanged += carried => _dispatcher.TryEnqueue(() => { _state = controller.State; EnsureSession(); Changed(); });
             simConnect.ConnectionStatusChanged += (_, _) => _dispatcher.TryEnqueue(Changed);
             // An announcement that arrives while the pilot is in another window (MSFS) gets a Windows notification; in front, Home shows it.
             controller.NewAnnouncement += a => _dispatcher.TryEnqueue(() => { if (!WindowActive) _notifications.ShowAnnouncement(a); });
@@ -256,9 +258,11 @@ namespace msfsclient.ViewModels
             if (string.IsNullOrWhiteSpace(deviceId) || _session?.DeviceId == deviceId) return;
             _session?.Stop();
             var session = new TrackingSession(_sim, _queue, _uploader, deviceId, trackLog: _trackLog);
-            session.StateChanged += s => _dispatcher.TryEnqueue(() =>
+            session.StateChanged += carried => _dispatcher.TryEnqueue(() =>
             {
                 if (!ReferenceEquals(session, _session)) return;
+                // The newest state, not the one this change carried (see the controller's StateChanged above).
+                var s = session.State;
                 _tracking = s;
                 if (s.AutoStopped && !_autoStopHandled)
                 {
