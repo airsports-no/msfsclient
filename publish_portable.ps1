@@ -29,8 +29,12 @@ if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed" }
 # window cannot load ("XAML parsing failed"). The build output next to it has them: copy them over.
 $build = Join-Path $PSScriptRoot "msfsclient\bin\x64\Release\net8.0-windows10.0.19041.0\win-x64"
 $publish = if ($Out) { $Out } else { Join-Path $build "publish" }
+# Absolute (a relative -Out is relative to the current location, as for dotnet publish), so the files already in the
+# publish folder are recognised and skipped even when it lies inside the build folder.
+$publish = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($publish)
+$publishPrefix = $publish.TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar
 Get-ChildItem $build -Recurse -File -Include *.pri, *.xbf |
-    Where-Object { $_.FullName -notlike "$publish*" } |
+    Where-Object { -not $_.FullName.StartsWith($publishPrefix, [StringComparison]::OrdinalIgnoreCase) } |
     ForEach-Object {
         $target = Join-Path $publish $_.FullName.Substring($build.Length + 1)
         New-Item -ItemType Directory -Force (Split-Path $target) | Out-Null
