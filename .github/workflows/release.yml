@@ -24,6 +24,11 @@ on:
         required: false
         type: boolean
         default: true
+      github_release:
+        description: "Create a draft GitHub release with the flightsim.to package (publish it on the Releases page)"
+        required: false
+        type: boolean
+        default: true
       store:
         description: "Microsoft Store"
         required: false
@@ -88,8 +93,57 @@ jobs:
       submit: ${{ inputs.store == 'Upload and submit' }}
     secrets: inherit
 
+  # A draft GitHub release v2.0.0-<build> with the flightsim.to zip and the panel-only zip attached: a lasting download
+  # link and a record of each version. It stays a draft (the tag is only made when it is published on the Releases
+  # page). Running the same build again replaces the files of its draft.
+  github-release:
+    needs: [version, flightsim]
+    if: inputs.flightsim && inputs.github_release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: flightsim-to-${{ needs.version.outputs.build_number }}
+          path: release-files
+      - name: Draft release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          BUILD_NUMBER: ${{ needs.version.outputs.build_number }}
+          COMMIT: ${{ github.sha }}
+        run: |
+          tag="v2.0.0-$BUILD_NUMBER"
+          bundle="release-files/dist/Airsports-MSFS-2.0.0-$BUILD_NUMBER.zip"
+          panel="release-files/msfs-panel/dist/airsports-flight-display-1.0.$BUILD_NUMBER.zip"
+          for file in "$bundle" "$panel"; do
+            if [ ! -f "$file" ]; then echo "::error::$file is not in the flightsim.to artifact"; exit 1; fi
+          done
+          cat > notes.md <<NOTES
+          Air Sports Live Tracking for Microsoft Flight Simulator, version 2.0.0 (build $BUILD_NUMBER).
+
+          **Downloads**
+          - \`Airsports-MSFS-2.0.0-$BUILD_NUMBER.zip\`: the client and the MSFS toolbar panel. Unzip it anywhere and start
+            \`Airsports client\\msfsclient.exe\`; README.txt covers installation, setup and the first flight. This is the
+            file for flightsim.to.
+          - \`airsports-flight-display-1.0.$BUILD_NUMBER.zip\`: the toolbar panel alone, for the MSFS Community folder.
+
+          Works with MSFS 2020 and 2024 on Windows 10 (1809 or later) or 11, 64-bit.
+          NOTES
+          sed -i 's/^          //' notes.md
+          if gh release view "$tag" > /dev/null 2>&1; then
+            gh release upload "$tag" "$bundle" "$panel" --clobber
+            echo "Updated the files of release $tag"
+          else
+            gh release create "$tag" "$bundle" "$panel" --draft --target "$COMMIT" \
+              --title "Air Sports MSFS client 2.0.0 (build $BUILD_NUMBER)" --notes-file notes.md
+            echo "Created draft release $tag"
+          fi
+
   summary:
-    needs: [version, flightsim, store]
+    needs: [version, flightsim, store, github-release]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -100,6 +154,7 @@ jobs:
           VERSION: ${{ needs.version.result }}
           FLIGHTSIM: ${{ needs.flightsim.result }}
           STORE: ${{ needs.store.result }}
+          GITHUB_RELEASE: ${{ needs.github-release.result }}
           STORE_CHOICE: ${{ inputs.store }}
         run: |
           describe() { case "$1" in success) echo "done";; skipped) echo "not asked for";; *) echo "**$1**";; esac; }
@@ -114,9 +169,13 @@ jobs:
             echo "|---|---|"
             echo "| flightsim.to package | $(describe "$FLIGHTSIM") |"
             echo "| Microsoft Store ($STORE_CHOICE) | $(describe "$STORE") |"
+            echo "| Draft GitHub release | $(describe "$GITHUB_RELEASE") |"
             echo ""
             if [ "$FLIGHTSIM" = success ]; then
               echo "flightsim.to: download the artifact \`flightsim-to-$BUILD_NUMBER\` below (the zip, the panel-only zip and the listing text) and upload the zip to flightsim.to."
+            fi
+            if [ "$GITHUB_RELEASE" = success ]; then
+              echo "GitHub: draft release \`v2.0.0-$BUILD_NUMBER\` with the zips attached. Check it and publish it on the Releases page."
             fi
             if [ "$STORE" = success ]; then
               if [ "$STORE_CHOICE" = "Upload and submit" ]; then
@@ -127,6 +186,6 @@ jobs:
             fi
           } >> "$GITHUB_STEP_SUMMARY"
           # The run fails when a part that was asked for failed.
-          for result in "$FLIGHTSIM" "$STORE"; do
+          for result in "$FLIGHTSIM" "$STORE" "$GITHUB_RELEASE"; do
             if [ "$result" != success ] && [ "$result" != skipped ]; then exit 1; fi
           done

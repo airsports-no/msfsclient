@@ -100,6 +100,8 @@ has the same features and look as the Air Sports mobile app (airsports-mobile, K
   the two workflows below (`workflow_call`), which can still be run on their own; the run summary lists what was released.
   The build number is optional: empty means the next automatic one (the Release run number + `BUILD_NUMBER_OFFSET`, 36).
   The Store only needs it to rise, so gaps from failed runs do no harm.
+  With "Create a draft GitHub release" (on by default) the `github-release` job attaches the flightsim.to zip and the
+  panel-only zip to a draft release `v2.0.0-<build>` (the only job with `contents: write`); publish it on the Releases page.
 - `.github/workflows/store.yml` (run by hand): tests, sets the package version to `1.0.<build>.0`, builds the Store
   package and creates a submission for Store ID 9N4MZBKPDS5X with the Microsoft Store CLI (a draft unless "submit" is ticked).
   Secrets in the `store` environment: `AZURE_AD_TENANT_ID`, `AZURE_AD_CLIENT_ID`, `AZURE_AD_CLIENT_SECRET`, `SELLER_ID`.
