@@ -103,7 +103,7 @@ namespace msfsclient.Services
                 else if (path.Contains("observation_photos"))
                     json = $$"""
                         {"enabled":true,"may_register":true,"registration_closes_at":"{{Iso(now.AddMinutes(65))}}","registration_grace_minutes":5,
-                         "photos":[{"id":1,"name":"Church","file":null},{"id":2,"name":"Lake","file":null},{"id":3,"name":"Bridge","file":null}],
+                         "photos":[{"id":1,"name":"Church","file":"ms-appx:///Assets/Preview/church.jpg"},{"id":2,"name":"Lake","file":"ms-appx:///Assets/Preview/lake.jpg"},{"id":3,"name":"Bridge","file":"ms-appx:///Assets/Preview/bridge.jpg"}],
                          "observations":[{"id":1,"photo":2,"photo_name":"Lake","time":"{{started}}"}]}
                         """;
                 else if (path.Contains("photo_observations"))

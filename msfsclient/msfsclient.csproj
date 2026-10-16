@@ -32,6 +32,8 @@
     <Content Include="Assets\Wide310x150Logo.scale-200.png" />
     <Content Include="Assets\airsports_live_tracking_white.png" />
     <Content Include="Assets\airsports_logo_white.png" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Sample photo observations for the preview mode (CC0, see THIRD-PARTY-NOTICES.md). -->
+    <Content Include="Assets\Preview\*.jpg" CopyToOutputDirectory="PreserveNewest" />
     <!-- Barlow and Barlow Condensed (SIL Open Font License), the same files as the mobile app. -->
     <Content Include="Assets\Fonts\*.ttf" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
