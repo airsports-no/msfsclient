@@ -42,20 +42,23 @@ namespace msfsclient.Views
             ThumbsTab.IsChecked = ui.Thumbnails;
             ListTab.IsChecked = !ui.Thumbnails;
             var canMark = Vm.ObservationBlocker == null;
-            // Rebuilt only when what the rows show changed (not on every 1 s refresh).
-            var key = $"{ui.Thumbnails}|{canMark}|{string.Join(",", ui.Photos.Select(p => p.Id))}|{string.Join(",", ui.Registered.Select(r => $"{r.Key}:{r.Value.Time}"))}|{string.Join(",", ui.Pending)}";
-            if (key == _key) return;
-            _key = key;
-            PhotoList.ItemTemplate = (DataTemplate)Resources[ui.Thumbnails ? "TileTemplate" : "RowTemplate"];
-            // Thumbnails two to a row (more on a wide window), stretched to the width; the list one under the other.
-            PhotoList.Layout = ui.Thumbnails
-                ? new UniformGridLayout { MinItemWidth = 200, MinColumnSpacing = 12, MinRowSpacing = 12, ItemsStretch = UniformGridLayoutItemsStretch.Fill }
-                : new StackLayout { Spacing = 8 };
-            Photos = ui.Photos.Select(p =>
+            // New items and layout only when other photos or the other view are shown; otherwise each item updates in place.
+            var key = $"{ui.Thumbnails}|{string.Join(",", ui.Photos.Select(p => $"{p.Id}:{p.Name}:{p.File}"))}";
+            if (key != _key)
             {
-                var (text, done) = ObservationRules.MarkState(p, ui);
-                return new PhotoItem(p, text, done, ui.Pending.Contains(p.Id), canMark);
-            }).ToList();
+                _key = key;
+                PhotoList.ItemTemplate = (DataTemplate)Resources[ui.Thumbnails ? "TileTemplate" : "RowTemplate"];
+                // Thumbnails two to a row (more on a wide window), stretched to the width; the list one under the other.
+                PhotoList.Layout = ui.Thumbnails
+                    ? new UniformGridLayout { MinItemWidth = 200, MinColumnSpacing = 12, MinRowSpacing = 12, ItemsStretch = UniformGridLayoutItemsStretch.Fill }
+                    : new StackLayout { Spacing = 8 };
+                Photos = ui.Photos.Select(p => new PhotoItem(p)).ToList();
+            }
+            foreach (var item in Photos)
+            {
+                var (text, done) = ObservationRules.MarkState(item.Photo, ui);
+                item.Set(text, done, ui.Pending.Contains(item.Photo.Id), canMark);
+            }
         }
 
         private static ObservationPhoto? Photo(object sender) => ((sender as FrameworkElement)?.Tag as PhotoItem)?.Photo;
