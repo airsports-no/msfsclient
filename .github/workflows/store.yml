@@ -21,6 +21,16 @@ on:
         required: false
         type: boolean
         default: false
+  # Also part of "Release" (release.yml), which builds the flightsim.to package with the same build number.
+  workflow_call:
+    inputs:
+      build_number:
+        required: true
+        type: number
+      submit:
+        required: false
+        type: boolean
+        default: false
 
 env:
   # The app's Store ID (Package.StoreAssociation.xml).
