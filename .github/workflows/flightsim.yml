@@ -16,6 +16,12 @@ on:
         description: "Build number (the client shows \"Airsports 2.0.0 (<build>)\")"
         required: true
         type: number
+  # Also part of "Release" (release.yml), which builds this and, if asked, the Microsoft Store package with one build number.
+  workflow_call:
+    inputs:
+      build_number:
+        required: true
+        type: number
 
 # Read-only token; the signing secrets are the only credentials the release needs.
 permissions:

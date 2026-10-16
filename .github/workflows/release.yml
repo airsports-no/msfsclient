@@ -1,0 +1,90 @@
+name: Release
+
+# Run by hand (Actions > Release > Run workflow): one release with one build number.
+# - flightsim.to: the portable client and the MSFS toolbar panel in one zip, with the installation notes (flightsim.yml).
+#   Signed when the signing secrets are set up. Download it from the run's artifacts and upload it to flightsim.to by hand.
+# - Microsoft Store (optional): the Store package, uploaded to Partner Center with msstore (store.yml). "Upload as draft"
+#   leaves the submission in Partner Center to check and submit there; "Upload and submit" sends it for certification.
+# Both use the same build number, so the client shows the same "Airsports 2.0.0 (<build>)" wherever it was installed from.
+# The Store needs a build number higher than its last one.
+#
+# Each part can still be run on its own: "Release for flightsim.to" and "Deploy to Microsoft Store". The secrets are in
+# the "release" (signing) and "store" (Partner Center) environments, as described in those workflows.
+on:
+  workflow_dispatch:
+    inputs:
+      build_number:
+        description: "Build number (the client shows \"Airsports 2.0.0 (<build>)\"; for the Store higher than the last one)"
+        required: true
+        type: number
+      flightsim:
+        description: "Build the flightsim.to package"
+        required: false
+        type: boolean
+        default: true
+      store:
+        description: "Microsoft Store"
+        required: false
+        type: choice
+        default: "Do not upload"
+        options:
+          - "Do not upload"
+          - "Upload as draft"
+          - "Upload and submit"
+
+permissions:
+  contents: read
+
+jobs:
+  flightsim:
+    if: inputs.flightsim
+    uses: ./.github/workflows/flightsim.yml
+    with:
+      build_number: ${{ inputs.build_number }}
+    secrets: inherit
+
+  store:
+    if: inputs.store != 'Do not upload'
+    uses: ./.github/workflows/store.yml
+    with:
+      build_number: ${{ inputs.build_number }}
+      submit: ${{ inputs.store == 'Upload and submit' }}
+    secrets: inherit
+
+  summary:
+    needs: [flightsim, store]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: What was released
+        shell: bash
+        env:
+          BUILD_NUMBER: ${{ inputs.build_number }}
+          FLIGHTSIM: ${{ needs.flightsim.result }}
+          STORE: ${{ needs.store.result }}
+          STORE_CHOICE: ${{ inputs.store }}
+        run: |
+          describe() { case "$1" in success) echo "done";; skipped) echo "not asked for";; *) echo "**$1**";; esac; }
+          {
+            echo "## Release, build $BUILD_NUMBER"
+            echo ""
+            echo "| Part | Result |"
+            echo "|---|---|"
+            echo "| flightsim.to package | $(describe "$FLIGHTSIM") |"
+            echo "| Microsoft Store ($STORE_CHOICE) | $(describe "$STORE") |"
+            echo ""
+            if [ "$FLIGHTSIM" = success ]; then
+              echo "flightsim.to: download the artifact \`flightsim-to-$BUILD_NUMBER\` below (the zip, the panel-only zip and the listing text) and upload the zip to flightsim.to."
+            fi
+            if [ "$STORE" = success ]; then
+              if [ "$STORE_CHOICE" = "Upload and submit" ]; then
+                echo "Microsoft Store: submitted for certification. Follow it in Partner Center."
+              else
+                echo "Microsoft Store: uploaded as a draft submission. Check and submit it in Partner Center."
+              fi
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          # The run fails when a part that was asked for failed.
+          for result in "$FLIGHTSIM" "$STORE"; do
+            if [ "$result" != success ] && [ "$result" != skipped ]; then exit 1; fi
+          done
