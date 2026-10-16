@@ -491,15 +491,15 @@ public class TrackingTargetsTest
     [Fact]
     public void EmbedFlagIsAddedOnceWhateverThePath()
     {
-        Assert.Equal("/?embed=app", Urls.WithEmbedFlag("/"));
-        Assert.Equal("/open-today?embed=app", Urls.WithEmbedFlag("/open-today"));
-        Assert.Equal("/?tab=upcoming&embed=app", Urls.WithEmbedFlag("/?tab=upcoming"));
+        Assert.Equal("/?embed=app&client=msfs", Urls.WithEmbedFlag("/"));
+        Assert.Equal("/open-today?embed=app&client=msfs", Urls.WithEmbedFlag("/open-today"));
+        Assert.Equal("/?tab=upcoming&embed=app&client=msfs", Urls.WithEmbedFlag("/?tab=upcoming"));
         // The flag goes into the query, before the fragment that carries the position.
-        Assert.Equal("/open-today?embed=app#lat=59.914&lon=10.752", Urls.WithEmbedFlag("/open-today#lat=59.914&lon=10.752"));
-        Assert.Equal("/x?a=1&embed=app#f", Urls.WithEmbedFlag("/x?a=1#f"));
+        Assert.Equal("/open-today?embed=app&client=msfs#lat=59.914&lon=10.752", Urls.WithEmbedFlag("/open-today#lat=59.914&lon=10.752"));
+        Assert.Equal("/x?a=1&embed=app&client=msfs#f", Urls.WithEmbedFlag("/x?a=1#f"));
         Assert.Equal("/x?embed=app", Urls.WithEmbedFlag("/x?embed=app"));
         // And it survives being sent as one query value to /firebase_login/?next=
-        Assert.Equal("%2F%3Ftab%3Dupcoming%26embed%3Dapp", Urls.EncodeQueryComponent(Urls.WithEmbedFlag("/?tab=upcoming")));
+        Assert.Equal("%2F%3Ftab%3Dupcoming%26embed%3Dapp%26client%3Dmsfs", Urls.EncodeQueryComponent(Urls.WithEmbedFlag("/?tab=upcoming")));
     }
 
     [Fact]

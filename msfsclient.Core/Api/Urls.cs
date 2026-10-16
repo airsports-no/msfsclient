@@ -79,14 +79,18 @@ public static partial class Urls
         return sb.ToString();
     }
 
-    /// <summary>Pages opened in the app ask the website to leave out its own navigation bar (the app has its own).</summary>
+    /// <summary>
+    /// Pages opened in the app ask the website to leave out its own navigation bar (the app has its own), and say that this client
+    /// opens them: page loads inside a web view carry no X-App-Platform header, and the server needs to know that a flight booked
+    /// there is a simulator flight (and to list only the tasks that accept simulator flights).
+    /// </summary>
     public static string WithEmbedFlag(string path)
     {
         if (path.Contains("embed=app", StringComparison.Ordinal)) return path;
         // The flag belongs in the query, before any #fragment (which carries data for the page and is not sent to the server).
         var hash = path.IndexOf('#');
         var (beforeFragment, fragment) = hash >= 0 ? (path[..hash], path[hash..]) : (path, "");
-        return beforeFragment + (beforeFragment.Contains('?') ? "&" : "?") + "embed=app" + fragment;
+        return beforeFragment + (beforeFragment.Contains('?') ? "&" : "?") + "embed=app&client=msfs" + fragment;
     }
 
     /// <summary>The address that signs the web view in (token in the Authorization header, never in the URL) and then opens <paramref name="path"/>.</summary>

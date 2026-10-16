@@ -264,7 +264,7 @@ public class EncodeTest
 
     [Fact]
     public void TheWebViewSignsInOnTheAppHostWithTheEmbeddedPage() =>
-        Assert.Equal("https://app.airsports.no/firebase_login/?next=%2Fopen-today%3Fembed%3Dapp", Urls.FirebaseLoginUrl("/open-today"));
+        Assert.Equal("https://app.airsports.no/firebase_login/?next=%2Fopen-today%3Fembed%3Dapp%26client%3Dmsfs", Urls.FirebaseLoginUrl("/open-today"));
 }
 
 public class TimerTest
