@@ -490,7 +490,7 @@ namespace msfsclient.ViewModels
             {
                 var t = Targets;
                 if (t.Now.Count > 0) return _tracking.Running ? "Tracking for" : "You will track";
-                if (t.Next != null) return "Next flight, not active yet";
+                if (t.Next != null) return t.Next.NotActiveNote != null ? "Next flight, not active yet" : "Next flight";
                 return _state.HomeLoaded ? "No flight scheduled" : "Checking your flights…";
             }
         }
