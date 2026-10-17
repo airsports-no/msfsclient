@@ -32,10 +32,13 @@ public sealed record TrackingTarget
     /// <summary>The flight (contestant) this strip is about; Home looks it up among the pilot's flights to offer "Cancel flight".</summary>
     public int? FlightId { get; init; }
     /// <summary>
-    /// For the next flight, whose tracking window has not opened: says so plainly, with when it opens. Until then the server
-    /// has no current flight for the pilot, so positions are not scored and Timer and Photos are not shown.
+    /// For the next flight, whose tracking window opens later: says so plainly, with when it opens. Until then the server
+    /// has no current flight for the pilot, so positions are not scored. Null when the window is already open (the server just
+    /// has no current flight for another reason, e.g. the simulator's positions are ignored) or its start is unknown.
     /// </summary>
     public string? NotActiveNote { get; init; }
+    /// <summary>When the tracking window of the next flight opens, while that is still ahead (with <see cref="NotActiveNote"/>); Home fetches the flights again then.</summary>
+    public long? TrackingOpensAtMillis { get; init; }
 }
 
 public sealed record TrackingTargets(IReadOnlyList<TrackingTarget> Now, TrackingTarget? Next)
@@ -65,7 +68,7 @@ public sealed record TrackingTargets(IReadOnlyList<TrackingTarget> Now, Tracking
     /// </summary>
     public static TrackingTargets Of(
         IReadOnlyList<CurrentTask> tasks, IReadOnlyList<MyFlight> upcoming, IReadOnlyDictionary<int, ContestSummary> contests,
-        Func<string?, string> formatTime, Func<string?, string> formatDateTime)
+        Func<string?, string> formatTime, Func<string?, string> formatDateTime, DateTimeOffset? nowUtc = null)
     {
         var now = tasks.SelectMany(task => task.ActiveContestants.Select(c =>
         {
@@ -109,7 +112,17 @@ public sealed record TrackingTargets(IReadOnlyList<TrackingTarget> Now, Tracking
             var fl = f.Flight;
             var facts = new List<Fact>();
             var opens = fl?.TrackerStartTime;
-            if (opens != null && fl?.FinishedByTime != null) facts.Add(new("Tracking window", $"{formatDateTime(opens)} - {formatTime(fl.FinishedByTime)}"));
+            var opensAtMillis = IsoTime.EpochMillisOrNull(opens);
+            var opensLater = opensAtMillis > (nowUtc ?? DateTimeOffset.UtcNow).ToUnixTimeMilliseconds();
+            if (opens != null && fl?.FinishedByTime is { } closes)
+            {
+                // The end shows its date too when the window runs past midnight. The date part is the date-and-time text without
+                // the time, so this does not depend on how the formatters lay the text out.
+                var opensText = formatDateTime(opens);
+                var closesText = formatDateTime(closes);
+                var sameDay = opensText.Replace(formatTime(opens), "") == closesText.Replace(formatTime(closes), "");
+                facts.Add(new("Tracking window", $"{opensText} - {(sameDay ? formatTime(closes) : closesText)}"));
+            }
             if (fl?.AdaptiveStart == true) facts.Add(new("Start", AdaptiveStartText));
             else facts.Add(new("Take-off", formatDateTime(f.TakeoffTime)));
             if (fl?.AirSpeed is { } air) facts.Add(new("Airspeed", Knots(air)));
@@ -132,8 +145,8 @@ public sealed record TrackingTargets(IReadOnlyList<TrackingTarget> Now, Tracking
                 WebsiteUrl = Urls.NotBlank(f.Contest?.Website),
                 ContestPagePath = fl?.ContestId is { } nextId ? Urls.ContestPagePath(nextId) : null,
                 DirectionsUrl = Directions(f.Contest?.Location),
-                NotActiveNote = (opens != null ? $"Not active yet: tracking for this flight opens at {formatDateTime(opens)}." : "Not active yet: tracking for this flight has not opened.")
-                    + " Until then your positions are not scored, and Timer and Photos appear when it opens.",
+                NotActiveNote = opensLater ? $"Not active yet: tracking for this flight opens at {formatDateTime(opens)}. Until then your positions are not scored." : null,
+                TrackingOpensAtMillis = opensLater ? opensAtMillis : null,
             };
         }
         return new TrackingTargets(now, next);
