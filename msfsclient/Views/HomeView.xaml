@@ -197,6 +197,15 @@
                                                 </ItemsPanelTemplate>
                                             </ItemsControl.ItemsPanel>
                                         </ItemsControl>
+                                        <!-- The next flight's tracking window has not opened: said plainly, so the missing Timer and Photos are not a surprise. -->
+                                        <Grid Visibility="{x:Bind NotActive}" Background="{ThemeResource AmberTintBrush}">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="5" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Border Background="{ThemeResource AmberBrush}" />
+                                            <TextBlock Grid.Column="1" Margin="10" Text="{x:Bind NotActiveNote}" Style="{StaticResource BodyText}" />
+                                        </Grid>
                                         <Grid Visibility="{x:Bind MapPrivate}" Background="{ThemeResource AmberTintBrush}">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="5" />

@@ -435,6 +435,25 @@ public class TrackingTargetsTest
     }
 
     [Fact]
+    public void TheNextFlightSaysItIsNotActiveYetAndWhenTrackingOpens()
+    {
+        var next = Urls.JoinFlights([new Flight
+        {
+            Id = 1, ContestId = 10, NavigationTask = 8, TakeoffTime = "2026-10-17T15:00:00Z", TrackerStartTime = "2026-10-17T14:00:00Z",
+            FinishedByTime = "2026-10-17T16:00:00Z", AdaptiveStart = true,
+        }], [Cup]).Single();
+        var target = TrackingTargets.Of([], [next], Contests, Time, DateTime).Next!;
+        Assert.Equal(new Fact("Tracking window", "on 2026-10-17T14:00:00Z - 2026-10-17T16:00:00Z"), target.Facts[0]);
+        Assert.StartsWith("Not active yet: tracking for this flight opens at on 2026-10-17T14:00:00Z.", target.NotActiveNote);
+        Assert.Contains("Photos appear when it opens", target.NotActiveNote);
+        // Without the window's start the note still says the flight is not active.
+        var bare = Urls.JoinFlights([new Flight { Id = 2, ContestId = 10, NavigationTask = 8, TakeoffTime = "x" }], [Cup]);
+        Assert.StartsWith("Not active yet: tracking for this flight has not opened.", TrackingTargets.Of([], bare, Contests, Time, DateTime).Next!.NotActiveNote);
+        // A flight whose window is open has no note.
+        Assert.Null(TrackingTargets.Of([Task(7, "Day 1", new ActiveContestant { Id = 1, ContestId = 10 })], [], Contests, Time, DateTime).Now.Single().NotActiveNote);
+    }
+
+    [Fact]
     public void AnOpenWindowHidesTheNextFlight()
     {
         var next = Urls.JoinFlights([new Flight { Id = 1, ContestId = 10, NavigationTask = 8, TakeoffTime = "x" }], [Cup]);

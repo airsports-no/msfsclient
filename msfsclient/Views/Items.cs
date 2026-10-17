@@ -40,6 +40,8 @@ namespace msfsclient.Views
         public string? LogoUrl => Target.LogoUrl;
         public bool HasLogo => Target.LogoUrl != null;
         public bool MapPrivate => Target.MapPrivate;
+        public string NotActiveNote => Target.NotActiveNote ?? "";
+        public bool NotActive => Target.NotActiveNote != null;
         public bool HasMap => Target.MapLink != null;
         public bool HasFlightOrders => Target.FlightOrderPath != null;
         public bool HasDirections => Target.DirectionsUrl != null;

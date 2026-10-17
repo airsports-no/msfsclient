@@ -47,7 +47,10 @@ namespace msfsclient.Services
         }
 
         /// <summary>Answers like the server, with times around now.</summary>
-        /// <summary>"--preview quickstart": a pilot without flights (the practice flight is offered); "quickstart-registered": registered for it.</summary>
+        /// <summary>
+        /// "--preview quickstart": a pilot without flights (the practice flight is offered); "quickstart-registered": registered for
+        /// it; "next": booked for a later flight whose tracking window has not opened.
+        /// </summary>
         public static bool NoFlights => Requested() is "quickstart" or "quickstart-registered";
 
         public sealed class Server : HttpMessageHandler
@@ -90,6 +93,13 @@ namespace msfsclient.Services
                 else if (NoFlights && (path.Contains("get_current_sim_navigation_task") || path.Contains("my_future_flights")))
                 {
                     if (path.Contains("my_future_flights")) json = "[]"; else status = HttpStatusCode.NotFound;
+                }
+                else if (Requested() == "next" && (path.Contains("get_current_sim_navigation_task") || path.Contains("my_future_flights")))
+                {
+                    // "--preview next": booked for a later flight whose tracking window has not opened yet.
+                    if (path.Contains("my_future_flights"))
+                        json = $$"""[{"id":2,"contest_id":10,"navigation_task":101,"takeoff_time":"{{later}}","tracker_start_time":"{{later}}","finished_by_time":"{{laterEnd}}","can_cancel":true}]""";
+                    else status = HttpStatusCode.NotFound;
                 }
                 else if (path.Contains("get_current_sim_navigation_task"))
                     json = $$"""
