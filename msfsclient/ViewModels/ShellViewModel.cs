@@ -41,6 +41,10 @@ namespace msfsclient.ViewModels
         private TrackingState _tracking = new();
         private long _nowMillis = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         private long _lastPollMillis;
+        /// <summary>The next flight's tracking window that has opened since Home showed it as "not active yet" (set by <see cref="Targets"/>).</summary>
+        private long? _openedWindow;
+        /// <summary>The opening of the tracking window Home last fetched the flights for (once per window).</summary>
+        private long? _refreshedAtOpening;
         private long _lastFlightOrderPollMillis;
         private long _lastFlightNotificationPollMillis;
         private long _lastConnectAttemptMillis;
@@ -307,6 +311,14 @@ namespace msfsclient.ViewModels
                 _lastPollMillis = _nowMillis;
                 _ = _controller.RefreshTasksAsync();
             }
+            // The next flight's tracking window has just opened: ask the server again (also with tracking off), so Home shows the
+            // flight as current, with Timer and Photos where the task has them, instead of the "not active yet" card.
+            _ = Targets;
+            if (_openedWindow is { } opened && _refreshedAtOpening != opened)
+            {
+                _refreshedAtOpening = opened;
+                _ = _controller.RefreshTasksAsync();
+            }
             // No push on the desktop: look for new flight notifications every minute while signed in.
             if (!_state.IsOutside && _nowMillis - _lastFlightNotificationPollMillis >= 60_000)
             {
@@ -470,14 +482,16 @@ namespace msfsclient.ViewModels
         private UiState? _targetsFor;
         private TrackingTargets? _targets;
 
-        /// <summary>What the flight strips show; worked out once per state.</summary>
+        /// <summary>What the flight strips show; worked out once per state, and again once the next flight's tracking window has opened.</summary>
         public TrackingTargets Targets
         {
             get
             {
-                if (_targets == null || !ReferenceEquals(_targetsFor, _state))
+                if (_targets?.Next?.TrackingOpensAtMillis is { } opens && opens <= _nowMillis) _openedWindow = opens;
+                if (_targets == null || !ReferenceEquals(_targetsFor, _state) || _openedWindow == _targets.Next?.TrackingOpensAtMillis)
                 {
-                    _targets = TrackingTargets.Of(_state.Tasks, _state.Upcoming, _state.Contests, t => TimeFormat.FormatTimeLocal(t), t => TimeFormat.FormatLocal(t));
+                    _targets = TrackingTargets.Of(_state.Tasks, _state.Upcoming, _state.Contests, t => TimeFormat.FormatTimeLocal(t), t => TimeFormat.FormatLocal(t),
+                        DateTimeOffset.FromUnixTimeMilliseconds(_nowMillis));
                     _targetsFor = _state;
                 }
                 return _targets;

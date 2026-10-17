@@ -37,6 +37,8 @@ public sealed record TrackingTarget
     /// has no current flight for another reason, e.g. the simulator's positions are ignored) or its start is unknown.
     /// </summary>
     public string? NotActiveNote { get; init; }
+    /// <summary>When the tracking window of the next flight opens, while that is still ahead (with <see cref="NotActiveNote"/>); Home fetches the flights again then.</summary>
+    public long? TrackingOpensAtMillis { get; init; }
 }
 
 public sealed record TrackingTargets(IReadOnlyList<TrackingTarget> Now, TrackingTarget? Next)
@@ -110,15 +112,15 @@ public sealed record TrackingTargets(IReadOnlyList<TrackingTarget> Now, Tracking
             var fl = f.Flight;
             var facts = new List<Fact>();
             var opens = fl?.TrackerStartTime;
-            var opensLater = opens != null
-                && DateTimeOffset.TryParse(opens, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var opensAt)
-                && opensAt > (nowUtc ?? DateTimeOffset.UtcNow);
+            var opensAtMillis = IsoTime.EpochMillisOrNull(opens);
+            var opensLater = opensAtMillis > (nowUtc ?? DateTimeOffset.UtcNow).ToUnixTimeMilliseconds();
             if (opens != null && fl?.FinishedByTime is { } closes)
             {
-                // The end shows its date too when the window runs past midnight.
+                // The end shows its date too when the window runs past midnight. The date part is the date-and-time text without
+                // the time, so this does not depend on how the formatters lay the text out.
                 var opensText = formatDateTime(opens);
                 var closesText = formatDateTime(closes);
-                var sameDay = opensText.Split(' ')[0] == closesText.Split(' ')[0];
+                var sameDay = opensText.Replace(formatTime(opens), "") == closesText.Replace(formatTime(closes), "");
                 facts.Add(new("Tracking window", $"{opensText} - {(sameDay ? formatTime(closes) : closesText)}"));
             }
             if (fl?.AdaptiveStart == true) facts.Add(new("Start", AdaptiveStartText));
@@ -144,6 +146,7 @@ public sealed record TrackingTargets(IReadOnlyList<TrackingTarget> Now, Tracking
                 ContestPagePath = fl?.ContestId is { } nextId ? Urls.ContestPagePath(nextId) : null,
                 DirectionsUrl = Directions(f.Contest?.Location),
                 NotActiveNote = opensLater ? $"Not active yet: tracking for this flight opens at {formatDateTime(opens)}. Until then your positions are not scored." : null,
+                TrackingOpensAtMillis = opensLater ? opensAtMillis : null,
             };
         }
         return new TrackingTargets(now, next);

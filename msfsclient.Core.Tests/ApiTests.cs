@@ -452,6 +452,8 @@ public class TrackingTargetsTest
         });
         Assert.Equal(new Fact("Tracking window", "2026-10-17 14:00 - 16:00"), target.Facts[0]);
         Assert.Equal("Not active yet: tracking for this flight opens at 2026-10-17 14:00. Until then your positions are not scored.", target.NotActiveNote);
+        // Home fetches the flights again at this moment.
+        Assert.Equal(DateTimeOffset.Parse("2026-10-17T14:00:00Z", System.Globalization.CultureInfo.InvariantCulture).ToUnixTimeMilliseconds(), target.TrackingOpensAtMillis);
         // A flight whose window is open has no note.
         Assert.Null(TrackingTargets.Of([Task(7, "Day 1", new ActiveContestant { Id = 1, ContestId = 10 })], [], Contests, Time, DateTime).Now.Single().NotActiveNote);
     }
@@ -460,11 +462,13 @@ public class TrackingTargetsTest
     public void AWindowThatHasAlreadyOpenedIsNeverCalledNotActive()
     {
         // The server may have no current flight although the window is open (the simulator's positions are ignored, or the request failed).
-        Assert.Null(NextTarget(new Flight
+        var open = NextTarget(new Flight
         {
             Id = 1, ContestId = 10, NavigationTask = 8, TakeoffTime = "2026-10-17T11:00:00Z", TrackerStartTime = "2026-10-17T10:00:00Z",
             FinishedByTime = "2026-10-17T13:00:00Z",
-        }).NotActiveNote);
+        });
+        Assert.Null(open.NotActiveNote);
+        Assert.Null(open.TrackingOpensAtMillis);
         // Without a known start there is nothing to claim either.
         Assert.Null(NextTarget(new Flight { Id = 2, ContestId = 10, NavigationTask = 8, TakeoffTime = "x" }).NotActiveNote);
     }
