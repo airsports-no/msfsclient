@@ -434,23 +434,50 @@ public class TrackingTargetsTest
         Assert.Equal("/mission-dashboard/10", target.ContestPagePath);
     }
 
+    // Realistic text ("2026-10-17 14:00" / "14:00", UTC), unlike the fake formatters above, so the wording and the dates are what a pilot sees.
+    private static string RealDateTime(string? t) => msfsclient.Core.Ui.TimeFormat.FormatLocal(t, TimeZoneInfo.Utc);
+    private static string RealTime(string? t) => msfsclient.Core.Ui.TimeFormat.FormatTimeLocal(t, TimeZoneInfo.Utc);
+    private static readonly DateTimeOffset Oct17At1200 = DateTimeOffset.Parse("2026-10-17T12:00:00Z", System.Globalization.CultureInfo.InvariantCulture);
+
+    private static TrackingTarget NextTarget(Flight flight) =>
+        TrackingTargets.Of([], Urls.JoinFlights([flight], [Cup]), Contests, RealTime, RealDateTime, Oct17At1200).Next!;
+
     [Fact]
     public void TheNextFlightSaysItIsNotActiveYetAndWhenTrackingOpens()
     {
-        var next = Urls.JoinFlights([new Flight
+        var target = NextTarget(new Flight
         {
             Id = 1, ContestId = 10, NavigationTask = 8, TakeoffTime = "2026-10-17T15:00:00Z", TrackerStartTime = "2026-10-17T14:00:00Z",
             FinishedByTime = "2026-10-17T16:00:00Z", AdaptiveStart = true,
-        }], [Cup]).Single();
-        var target = TrackingTargets.Of([], [next], Contests, Time, DateTime).Next!;
-        Assert.Equal(new Fact("Tracking window", "on 2026-10-17T14:00:00Z - 2026-10-17T16:00:00Z"), target.Facts[0]);
-        Assert.StartsWith("Not active yet: tracking for this flight opens at on 2026-10-17T14:00:00Z.", target.NotActiveNote);
-        Assert.Contains("Photos appear when it opens", target.NotActiveNote);
-        // Without the window's start the note still says the flight is not active.
-        var bare = Urls.JoinFlights([new Flight { Id = 2, ContestId = 10, NavigationTask = 8, TakeoffTime = "x" }], [Cup]);
-        Assert.StartsWith("Not active yet: tracking for this flight has not opened.", TrackingTargets.Of([], bare, Contests, Time, DateTime).Next!.NotActiveNote);
+        });
+        Assert.Equal(new Fact("Tracking window", "2026-10-17 14:00 - 16:00"), target.Facts[0]);
+        Assert.Equal("Not active yet: tracking for this flight opens at 2026-10-17 14:00. Until then your positions are not scored.", target.NotActiveNote);
         // A flight whose window is open has no note.
         Assert.Null(TrackingTargets.Of([Task(7, "Day 1", new ActiveContestant { Id = 1, ContestId = 10 })], [], Contests, Time, DateTime).Now.Single().NotActiveNote);
+    }
+
+    [Fact]
+    public void AWindowThatHasAlreadyOpenedIsNeverCalledNotActive()
+    {
+        // The server may have no current flight although the window is open (the simulator's positions are ignored, or the request failed).
+        Assert.Null(NextTarget(new Flight
+        {
+            Id = 1, ContestId = 10, NavigationTask = 8, TakeoffTime = "2026-10-17T11:00:00Z", TrackerStartTime = "2026-10-17T10:00:00Z",
+            FinishedByTime = "2026-10-17T13:00:00Z",
+        }).NotActiveNote);
+        // Without a known start there is nothing to claim either.
+        Assert.Null(NextTarget(new Flight { Id = 2, ContestId = 10, NavigationTask = 8, TakeoffTime = "x" }).NotActiveNote);
+    }
+
+    [Fact]
+    public void ATrackingWindowThatRunsPastMidnightShowsBothDates()
+    {
+        var target = NextTarget(new Flight
+        {
+            Id = 1, ContestId = 10, NavigationTask = 8, TakeoffTime = "2026-10-17T22:30:00Z", TrackerStartTime = "2026-10-17T22:00:00Z",
+            FinishedByTime = "2026-10-18T01:00:00Z",
+        });
+        Assert.Equal(new Fact("Tracking window", "2026-10-17 22:00 - 2026-10-18 01:00"), target.Facts[0]);
     }
 
     [Fact]
