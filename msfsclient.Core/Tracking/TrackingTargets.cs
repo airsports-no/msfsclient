@@ -32,8 +32,9 @@ public sealed record TrackingTarget
     /// <summary>The flight (contestant) this strip is about; Home looks it up among the pilot's flights to offer "Cancel flight".</summary>
     public int? FlightId { get; init; }
     /// <summary>
-    /// For the next flight, whose tracking window has not opened: says so plainly, with when it opens. Until then the server
-    /// has no current flight for the pilot, so positions are not scored and Timer and Photos are not shown.
+    /// For the next flight, whose tracking window opens later: says so plainly, with when it opens. Until then the server
+    /// has no current flight for the pilot, so positions are not scored. Null when the window is already open (the server just
+    /// has no current flight for another reason, e.g. the simulator's positions are ignored) or its start is unknown.
     /// </summary>
     public string? NotActiveNote { get; init; }
 }
@@ -65,7 +66,7 @@ public sealed record TrackingTargets(IReadOnlyList<TrackingTarget> Now, Tracking
     /// </summary>
     public static TrackingTargets Of(
         IReadOnlyList<CurrentTask> tasks, IReadOnlyList<MyFlight> upcoming, IReadOnlyDictionary<int, ContestSummary> contests,
-        Func<string?, string> formatTime, Func<string?, string> formatDateTime)
+        Func<string?, string> formatTime, Func<string?, string> formatDateTime, DateTimeOffset? nowUtc = null)
     {
         var now = tasks.SelectMany(task => task.ActiveContestants.Select(c =>
         {
@@ -109,7 +110,17 @@ public sealed record TrackingTargets(IReadOnlyList<TrackingTarget> Now, Tracking
             var fl = f.Flight;
             var facts = new List<Fact>();
             var opens = fl?.TrackerStartTime;
-            if (opens != null && fl?.FinishedByTime != null) facts.Add(new("Tracking window", $"{formatDateTime(opens)} - {formatTime(fl.FinishedByTime)}"));
+            var opensLater = opens != null
+                && DateTimeOffset.TryParse(opens, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var opensAt)
+                && opensAt > (nowUtc ?? DateTimeOffset.UtcNow);
+            if (opens != null && fl?.FinishedByTime is { } closes)
+            {
+                // The end shows its date too when the window runs past midnight.
+                var opensText = formatDateTime(opens);
+                var closesText = formatDateTime(closes);
+                var sameDay = opensText.Split(' ')[0] == closesText.Split(' ')[0];
+                facts.Add(new("Tracking window", $"{opensText} - {(sameDay ? formatTime(closes) : closesText)}"));
+            }
             if (fl?.AdaptiveStart == true) facts.Add(new("Start", AdaptiveStartText));
             else facts.Add(new("Take-off", formatDateTime(f.TakeoffTime)));
             if (fl?.AirSpeed is { } air) facts.Add(new("Airspeed", Knots(air)));
@@ -132,8 +143,7 @@ public sealed record TrackingTargets(IReadOnlyList<TrackingTarget> Now, Tracking
                 WebsiteUrl = Urls.NotBlank(f.Contest?.Website),
                 ContestPagePath = fl?.ContestId is { } nextId ? Urls.ContestPagePath(nextId) : null,
                 DirectionsUrl = Directions(f.Contest?.Location),
-                NotActiveNote = (opens != null ? $"Not active yet: tracking for this flight opens at {formatDateTime(opens)}." : "Not active yet: tracking for this flight has not opened.")
-                    + " Until then your positions are not scored, and Timer and Photos appear when it opens.",
+                NotActiveNote = opensLater ? $"Not active yet: tracking for this flight opens at {formatDateTime(opens)}. Until then your positions are not scored." : null,
             };
         }
         return new TrackingTargets(now, next);
