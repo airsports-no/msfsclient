@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- My flights, upcoming and past (port of FlightsScreen). -->
+<!-- My flights, upcoming and past: the same flight strips as on Home, under day headings (port of FlightsScreen). -->
 <local:ShellPart
     x:Class="msfsclient.Views.FlightsView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -14,47 +14,49 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
         <StackPanel Spacing="10">
-            <TextBlock Text="My flights" Style="{StaticResource PageTitle}" AutomationProperties.HeadingLevel="Level1" />
-            <StackPanel Orientation="Horizontal" Spacing="8">
-                <ToggleButton x:Name="UpcomingTab" Content="Upcoming" Click="Upcoming_Click" FontFamily="{StaticResource BarlowSemiBold}" />
-                <ToggleButton x:Name="PastTab" Content="Past" Click="Past_Click" FontFamily="{StaticResource BarlowSemiBold}" />
-            </StackPanel>
+            <Grid>
+                <TextBlock Text="My flights" Style="{StaticResource PageTitle}" AutomationProperties.HeadingLevel="Level1" VerticalAlignment="Center" />
+                <HyperlinkButton Content="Refresh" HorizontalAlignment="Right" Style="{StaticResource TextButton}" Click="Refresh_Click" IsEnabled="{x:Bind CanRefresh, Mode=OneWay}" />
+            </Grid>
+            <SelectorBar x:Name="Tabs" SelectionChanged="Tabs_SelectionChanged" HorizontalAlignment="Left">
+                <SelectorBarItem x:Name="UpcomingItem" Text="Upcoming" />
+                <SelectorBarItem x:Name="PastItem" Text="Past" />
+            </SelectorBar>
         </StackPanel>
         <StackPanel Grid.Row="1" Spacing="4">
             <TextBlock Text="{x:Bind helpers:Ui.OrEmpty(Vm.State.Error), Mode=OneWay, FallbackValue=''}" Visibility="{x:Bind helpers:Ui.ShowText(Vm.State.Error), Mode=OneWay, FallbackValue=Collapsed}"
                        Style="{StaticResource ErrorText}" AutomationProperties.LiveSetting="Polite" />
             <TextBlock Text="{x:Bind helpers:Ui.OrEmpty(Vm.State.FlightsNotice), Mode=OneWay, FallbackValue=''}" Visibility="{x:Bind helpers:Ui.ShowText(Vm.State.FlightsNotice), Mode=OneWay, FallbackValue=Collapsed}"
                        Style="{StaticResource NoticeText}" AutomationProperties.LiveSetting="Polite" />
-            <TextBlock Text="{x:Bind EmptyText, Mode=OneWay}" Visibility="{x:Bind helpers:Ui.ShowText(EmptyText), Mode=OneWay, FallbackValue=Collapsed}" Style="{StaticResource BodyText}" />
         </StackPanel>
-        <ScrollViewer Grid.Row="2">
-            <ItemsControl ItemsSource="{x:Bind Flights, Mode=OneWay}" IsTabStop="False">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="local:FlightItem">
-                        <Border Style="{StaticResource Card}" Margin="0,0,0,8" Padding="16">
-                            <StackPanel Spacing="4">
-                                <TextBlock Text="{x:Bind ContestName}" Style="{StaticResource MutedText}" />
-                                <TextBlock Text="{x:Bind TaskName}" Style="{StaticResource BodyText}" FontFamily="{StaticResource CondensedBold}" FontSize="26"
+        <Grid Grid.Row="2">
+            <ScrollViewer Visibility="{x:Bind ShowList, Mode=OneWay}">
+                <ItemsControl ItemsSource="{x:Bind Days, Mode=OneWay}" IsTabStop="False">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="local:DayGroup">
+                            <StackPanel Margin="0,6,0,0" Spacing="8">
+                                <TextBlock Text="{x:Bind Heading}" Style="{StaticResource MutedText}" FontFamily="{StaticResource CondensedMedium}" FontSize="22"
                                            AutomationProperties.HeadingLevel="Level2" />
-                                <TextBlock Text="{x:Bind Takeoff}" Style="{StaticResource BodyText}" />
-                                <Grid Visibility="{x:Bind IsPrivate}" Background="{ThemeResource AmberTintBrush}" Margin="0,4">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="5" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <Border Background="{ThemeResource AmberBrush}" />
-                                    <TextBlock Grid.Column="1" Margin="10" Text="{x:Bind PrivateNote}" Style="{StaticResource BodyText}" />
-                                </Grid>
-                                <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
-                                    <Button Content="{x:Bind OpenText}" Style="{StaticResource OutlinedButton}" Visibility="{x:Bind CanOpen}" Tag="{x:Bind}" Click="Open_Click" />
-                                    <HyperlinkButton Content="{x:Bind CancelText}" Style="{StaticResource DangerTextButton}" Visibility="{x:Bind CanCancel}"
-                                                     IsEnabled="{x:Bind CancelEnabled}" Tag="{x:Bind}" Click="Cancel_Click" />
-                                </StackPanel>
+                                <ItemsControl ItemsSource="{x:Bind Flights}" IsTabStop="False">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="local:StripItem">
+                                            <local:FlightStripCard Item="{x:Bind}" Margin="0,0,0,10" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
                             </StackPanel>
-                        </Border>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-        </ScrollViewer>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+            <ProgressRing IsActive="{x:Bind ShowLoading, Mode=OneWay}" Visibility="{x:Bind ShowLoading, Mode=OneWay}" Width="48" Height="48"
+                          HorizontalAlignment="Center" VerticalAlignment="Center" AutomationProperties.Name="Loading your flights" />
+            <StackPanel Visibility="{x:Bind ShowEmpty, Mode=OneWay}" Spacing="12" MaxWidth="420" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <TextBlock Text="{x:Bind EmptyText, Mode=OneWay}" Style="{StaticResource BodyText}" FontFamily="{StaticResource BarlowSemiBold}" FontSize="20" TextAlignment="Center" TextWrapping="Wrap" />
+                <TextBlock Text="Find an event that is open for registration today, or register on the website." Style="{StaticResource MutedText}" TextAlignment="Center" TextWrapping="Wrap"
+                           Visibility="{x:Bind ShowFindEvent, Mode=OneWay}" />
+                <Button Content="Find an event" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Center" Visibility="{x:Bind ShowFindEvent, Mode=OneWay}" Click="FindEvent_Click" />
+            </StackPanel>
+        </Grid>
     </Grid>
 </local:ShellPart>

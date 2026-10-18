@@ -201,8 +201,6 @@ namespace msfsclient.Views
         private StripItem Strip(TrackingTarget t, bool live) =>
             new(t, live, Vm.Cancellable(t), Vm.State.CancellingFlightId != null && Vm.State.CancellingFlightId == t.FlightId);
 
-        private static StripItem? Item(object sender) => (sender as FrameworkElement)?.Tag as StripItem;
-
         private void DismissNotice_Click(object sender, RoutedEventArgs e) => Vm.Controller.DismissHomeNotice();
 
         private void DismissAnnouncement_Click(object sender, RoutedEventArgs e)
@@ -211,46 +209,6 @@ namespace msfsclient.Views
         }
 
         private void Refresh_Click(object sender, RoutedEventArgs e) => _ = Vm.Controller.RefreshAsync();
-
-        private void Share_Click(object sender, RoutedEventArgs e)
-        {
-            if (Item(sender)?.Target.MapLink is not { } link) return;
-            var text = $"Follow my flight live: {Urls.SiteUrl(link)}";
-            if (!Vm.Platform.ShareText("Follow my flight live", text))
-            {
-                _ = Dialogs.InfoAsync(XamlRoot, "Link copied", "The live link is on the clipboard. Paste it where you want to share it.");
-            }
-        }
-
-        private void LiveMap_Click(object sender, RoutedEventArgs e) => Vm.Controller.OpenMap(Item(sender)?.Target.MapLink);
-
-        /// <summary>Flight orders are a PDF download: the browser handles that better than the embedded page.</summary>
-        private void FlightOrders_Click(object sender, RoutedEventArgs e)
-        {
-            if (Item(sender)?.Target.FlightOrderPath is { } path) Vm.Platform.OpenUri(Urls.SiteUrl(path));
-        }
-
-        /// <summary>The contest's page on the website opens in the browser (the live map stays in the client).</summary>
-        private void ContestPage_Click(object sender, RoutedEventArgs e)
-        {
-            if (Item(sender)?.Target.ContestPagePath is { } path) Vm.Platform.OpenUri(Urls.SiteUrl(path));
-        }
-
-        private void Directions_Click(object sender, RoutedEventArgs e)
-        {
-            if (Item(sender)?.Target.DirectionsUrl is { } url) Vm.Platform.OpenUri(url);
-        }
-
-        private void Website_Click(object sender, RoutedEventArgs e)
-        {
-            if (Item(sender)?.Target.WebsiteUrl is { } url) Vm.Platform.OpenUri(url);
-        }
-
-        private async void Cancel_Click(object sender, RoutedEventArgs e)
-        {
-            if (Item(sender)?.Cancellable is not { } flight) return;
-            if (await FlightDialogs.ConfirmCancelAsync(XamlRoot, flight, Vm.NowMillis)) _ = Vm.Controller.CancelFlightAsync(flight);
-        }
 
         private void Preflight_Click(object sender, RoutedEventArgs e) => _ = Vm.Controller.OpenPreflightAsync();
 

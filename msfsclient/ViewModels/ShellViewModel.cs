@@ -399,7 +399,7 @@ namespace msfsclient.ViewModels
 
         public bool ShowAvatar => _state.Person != null && !_state.IsOutside;
 
-        public bool ShowBack => _state.Screen is Screen.Map or Screen.Flights or Screen.Profile or Screen.Timer or Screen.Observations
+        public bool ShowBack => _state.Screen is Screen.Map or Screen.Flights or Screen.OpenToday or Screen.Profile or Screen.Timer or Screen.Observations
             or Screen.Preflight or Screen.History or Screen.Debug;
 
         /// <summary>Back from wherever the pilot is (the window's Back button, Escape, the mouse back button).</summary>
@@ -409,6 +409,7 @@ namespace msfsclient.ViewModels
             {
                 case Screen.Map: _controller.CloseMap(); break;
                 case Screen.Flights: _controller.CloseFlights(); break;
+                case Screen.OpenToday: _controller.CloseOpenToday(); break;
                 case Screen.Profile: _controller.CloseProfile(); break;
                 case Screen.Timer: _controller.CloseTimer(); break;
                 case Screen.Observations: _controller.CloseObservations(); break;

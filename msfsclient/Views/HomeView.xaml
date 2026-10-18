@@ -9,17 +9,6 @@
     xmlns:tracking="using:msfsclient.Core.Tracking"
     FontFamily="{StaticResource BarlowRegular}">
 
-    <local:ShellPart.Resources>
-        <DataTemplate x:Key="FactTemplate" x:DataType="tracking:Fact">
-            <Border BorderBrush="{ThemeResource OutlineBrush}" BorderThickness="1" CornerRadius="2" Padding="8,5">
-                <StackPanel>
-                    <TextBlock Text="{x:Bind Label}" Style="{StaticResource LabelText}" />
-                    <TextBlock Text="{x:Bind Value}" Style="{StaticResource CondensedValue}" />
-                </StackPanel>
-            </Border>
-        </DataTemplate>
-    </local:ShellPart.Resources>
-
     <ScrollViewer>
         <StackPanel Padding="16,20" Spacing="20">
             <!-- One-off confirmation (a registered or cancelled flight, the automatic stop). -->
@@ -162,72 +151,7 @@
                 <ItemsControl ItemsSource="{x:Bind Strips, Mode=OneWay}" IsTabStop="False">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="local:StripItem">
-                            <Border Background="{ThemeResource CardBrush}" BorderBrush="{ThemeResource StrongOutlineBrush}" BorderThickness="1" CornerRadius="2" Margin="0,0,0,10">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="10" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <!-- Green while the window is open, indigo otherwise. -->
-                                    <Border Background="{ThemeResource LiveGreenBrush}" Visibility="{x:Bind Live}" />
-                                    <Border Background="{ThemeResource IndigoBrush}" Visibility="{x:Bind NotLive}" />
-                                    <StackPanel Grid.Column="1" Padding="12,12,12,8" Spacing="10">
-                                        <Grid ColumnSpacing="12">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
-                                            <StackPanel Spacing="2">
-                                                <TextBlock Text="{x:Bind ContestName}" Visibility="{x:Bind HasContest}" Style="{StaticResource MutedText}"
-                                                           FontFamily="{StaticResource CondensedMedium}" FontSize="20" />
-                                                <TextBlock Text="{x:Bind TaskName}" Style="{StaticResource BodyText}" FontFamily="{StaticResource CondensedBold}" FontSize="32" LineHeight="34"
-                                                           AutomationProperties.HeadingLevel="Level3" />
-                                                <TextBlock Text="{x:Bind TaskType}" Visibility="{x:Bind HasTaskType}" Foreground="{ThemeResource IndigoBrush}"
-                                                           FontFamily="{StaticResource BarlowSemiBold}" FontSize="14" TextWrapping="Wrap" />
-                                            </StackPanel>
-                                            <!-- The whole logo, uncropped: up to 88 px high and 140 px wide, so wide logos stay readable. -->
-                                            <Image Grid.Column="1" MaxHeight="88" MaxWidth="140" Stretch="Uniform" VerticalAlignment="Top" HorizontalAlignment="Right"
-                                                   Visibility="{x:Bind HasLogo}"
-                                                   Source="{x:Bind helpers:Ui.Image(LogoUrl), FallbackValue={x:Null}}" AutomationProperties.Name="Contest logo" />
-                                        </Grid>
-                                        <ItemsControl ItemsSource="{x:Bind Facts}" ItemTemplate="{StaticResource FactTemplate}" IsTabStop="False">
-                                            <ItemsControl.ItemsPanel>
-                                                <ItemsPanelTemplate>
-                                                    <helpers:WrapPanel />
-                                                </ItemsPanelTemplate>
-                                            </ItemsControl.ItemsPanel>
-                                        </ItemsControl>
-                                        <!-- The next flight's tracking window has not opened: said plainly, so the missing Timer and Photos are not a surprise. -->
-                                        <Grid Visibility="{x:Bind NotActive}" Background="{ThemeResource AmberTintBrush}">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="5" />
-                                                <ColumnDefinition Width="*" />
-                                            </Grid.ColumnDefinitions>
-                                            <Border Background="{ThemeResource AmberBrush}" />
-                                            <TextBlock Grid.Column="1" Margin="10" Text="{x:Bind NotActiveNote}" Style="{StaticResource BodyText}" />
-                                        </Grid>
-                                        <Grid Visibility="{x:Bind MapPrivate}" Background="{ThemeResource AmberTintBrush}">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="5" />
-                                                <ColumnDefinition Width="*" />
-                                            </Grid.ColumnDefinitions>
-                                            <Border Background="{ThemeResource AmberBrush}" />
-                                            <TextBlock Grid.Column="1" Margin="10" Text="The live map of this task is private to the organizer." Style="{StaticResource BodyText}" />
-                                        </Grid>
-                                        <helpers:WrapPanel Spacing="4">
-                                            <HyperlinkButton Content="Share live link" Style="{StaticResource TextButton}" Visibility="{x:Bind HasMap}" Tag="{x:Bind}" Click="Share_Click" />
-                                            <Button Content="Live map" Style="{StaticResource OutlinedButton}" Visibility="{x:Bind HasMap}" Tag="{x:Bind}" Click="LiveMap_Click" />
-                                            <HyperlinkButton Content="Contest page" Style="{StaticResource TextButton}" Visibility="{x:Bind HasContestPage}" Tag="{x:Bind}" Click="ContestPage_Click"
-                                                             ToolTipService.ToolTip="The contest on the Air Sports website, in your browser" />
-                                            <HyperlinkButton Content="Flight orders" Style="{StaticResource TextButton}" Visibility="{x:Bind HasFlightOrders}" Tag="{x:Bind}" Click="FlightOrders_Click" />
-                                            <HyperlinkButton Content="Directions" Style="{StaticResource TextButton}" Visibility="{x:Bind HasDirections}" Tag="{x:Bind}" Click="Directions_Click" />
-                                            <HyperlinkButton Content="{x:Bind CancelText}" Style="{StaticResource DangerTextButton}" Visibility="{x:Bind CanCancel}"
-                                                             IsEnabled="{x:Bind CancelEnabled}" Tag="{x:Bind}" Click="Cancel_Click" />
-                                            <HyperlinkButton Content="Website" Style="{StaticResource TextButton}" Visibility="{x:Bind HasWebsite}" Tag="{x:Bind}" Click="Website_Click" />
-                                        </helpers:WrapPanel>
-                                    </StackPanel>
-                                </Grid>
-                            </Border>
+                            <local:FlightStripCard Item="{x:Bind}" Margin="0,0,0,10" />
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>

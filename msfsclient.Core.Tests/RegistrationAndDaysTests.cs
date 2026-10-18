@@ -49,6 +49,27 @@ public class DayHeadingTests
     }
 }
 
+public class RegistrationWindowTests
+{
+    private static readonly TimeZoneInfo Oslo = TimeZoneInfo.FindSystemTimeZoneById("Europe/Oslo");
+    // Saturday 17 October 2026, 14:00 in Oslo
+    private static readonly long Now = DateTimeOffset.Parse("2026-10-17T12:00:00Z").ToUnixTimeMilliseconds();
+
+    private static string Window(string start, string finish) => TimeFormat.RegistrationWindow(start, finish, Now, Oslo);
+
+    [Fact]
+    public void ATodayWindowShowsTheTimesOnly() =>
+        Assert.Equal("09:00 and 17:00", Window("2026-10-17T07:00:00Z", "2026-10-17T15:00:00Z"));
+
+    [Fact]
+    public void AWindowThatIsNotTodayNamesItsDay() =>
+        Assert.Equal("Tomorrow 04:00 and 12:00", Window("2026-10-18T02:00:00Z", "2026-10-18T10:00:00Z"));
+
+    [Fact]
+    public void AWindowThatRunsIntoAnotherDayNamesBothDays() =>
+        Assert.Equal("10:00 and Tomorrow 02:00", Window("2026-10-17T08:00:00Z", "2026-10-18T00:00:00Z"));
+}
+
 public class OpenRegistrationTests
 {
     private static OpenRegistrationTask Task(int contest, int task, double? lat = null, double? lon = null) =>

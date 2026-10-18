@@ -66,6 +66,25 @@ public static class TimeFormat
         };
     }
 
+    /// <summary>
+    /// The window in which flights can be registered, e.g. "07:00 and 15:00", or "Tomorrow 04:00 and 12:00" when it is not today;
+    /// the end carries its own day only when it is a different day from the start.
+    /// </summary>
+    public static string RegistrationWindow(string? startIso, string? finishIso, long nowMillis, TimeZoneInfo? zone = null)
+    {
+        string WithDay(string? iso)
+        {
+            var time = FormatTimeLocal(iso, zone);
+            if (IsoTime.Parse(iso) == null) return time;
+            var day = DayHeading(iso, nowMillis, zone);
+            return day == "Today" ? time : $"{day} {time}";
+        }
+        var start = WithDay(startIso);
+        var sameDay = IsoTime.Parse(startIso) != null && IsoTime.Parse(finishIso) != null
+            && DayHeading(startIso, nowMillis, zone) == DayHeading(finishIso, nowMillis, zone);
+        return $"{start} and {(sameDay ? FormatTimeLocal(finishIso, zone) : WithDay(finishIso))}";
+    }
+
     /// <summary>"1 h 12 min", "7 min 30 s" or "45 s".</summary>
     public static string FormatDuration(long millis)
     {
