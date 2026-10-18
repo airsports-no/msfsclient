@@ -6,7 +6,16 @@ using msfsclient.Core.Tracking;
 
 namespace msfsclient.Core.App;
 
-public enum Screen { Loading, UpdateRequired, Login, VerifyEmail, Onboarding, Home, Flights, Map, Timer, Profile, Observations, Preflight, History, Tour, Debug }
+public enum Screen { Loading, UpdateRequired, Login, VerifyEmail, Onboarding, Home, Flights, OpenToday, Map, Timer, Profile, Observations, Preflight, History, Tour, Debug }
+
+/// <summary>The tasks open for registration today: loaded from the server, sorted by distance when the aircraft's position is known.</summary>
+public sealed record OpenTodayUi
+{
+    public bool Loading { get; init; }
+    public string? Error { get; init; }
+    public IReadOnlyList<OpenRegistrationTask> Tasks { get; init; } = [];
+    public Coordinates? Here { get; init; }
+}
 
 /// <summary>Everything the screens show. Immutable: every change makes a new one and raises <see cref="AppController.StateChanged"/>.</summary>
 public sealed record UiState
@@ -30,6 +39,7 @@ public sealed record UiState
     public int? CancellingFlightId { get; init; }
     public string? FlightsNotice { get; init; }
     public bool ShowPastFlights { get; init; }
+    public OpenTodayUi OpenToday { get; init; } = new();
     /// <summary>Epoch millis of the whole minute the adaptive-start timer counts from; null until Start is pressed.</summary>
     public long? TimerOriginMillis { get; init; }
     /// <summary>Network time minus PC clock from the last NTP check (positive: PC behind); null until measured.</summary>
@@ -624,13 +634,34 @@ public sealed class AppController
 
     public void DismissHomeNotice() => Update(s => s with { HomeNotice = null });
 
-    /// <summary>Opens the tasks open for registration today, nearest the simulator aircraft first when its position is known.</summary>
+    /// <summary>Shows the tasks open for registration today, nearest the simulator aircraft first when its position is known.</summary>
     public void OpenToday()
     {
+        Update(s => s with { Screen = Screen.OpenToday, OpenToday = new OpenTodayUi { Loading = true } });
+        _ = LoadOpenTodayAsync();
+    }
+
+    public void CloseOpenToday() => Update(s => s with { Screen = Screen.Home, OpenToday = new OpenTodayUi() });
+
+    public async Task LoadOpenTodayAsync()
+    {
+        // The aircraft's position is known at once (it is read from the simulator), and stays on the PC: only used for sorting.
         Coordinates? here = null;
         try { here = _location?.Current(); } catch (Exception) { }
-        OpenPath(OpenTodayPage.Path(here));
+        Update(s => s with { OpenToday = s.OpenToday with { Loading = true, Error = null, Here = here } });
+        try
+        {
+            var tasks = await _api.OpenRegistrationTodayAsync(Ui.TimeFormat.ZoneLabel(TimeZoneInfo.Local));
+            Update(s => s with { OpenToday = s.OpenToday with { Loading = false, Tasks = tasks } });
+        }
+        catch (Exception e)
+        {
+            Update(s => s with { OpenToday = s.OpenToday with { Loading = false, Error = $"Could not load the events: {e.Message}" } });
+        }
     }
+
+    /// <summary>The same list on the website, for when the client's own list cannot be loaded.</summary>
+    public void OpenTodayOnTheWeb() => OpenPath(OpenTodayPage.Path(State.OpenToday.Here));
 
     /// <summary>
     /// Opens <paramref name="path"/> (a page on the site) in the web view. Before sign-in it is kept and opened as soon as the
@@ -644,7 +675,7 @@ public sealed class AppController
     }
 
     public void OpenPath(string path) =>
-        Update(s => s with { Screen = Screen.Map, MapPath = path, MapReturn = s.Screen == Screen.Flights ? Screen.Flights : Screen.Home });
+        Update(s => s with { Screen = Screen.Map, MapPath = path, MapReturn = s.Screen switch { Screen.Flights => Screen.Flights, Screen.OpenToday => Screen.OpenToday, _ => Screen.Home } });
 
     public void CloseMap() => Update(s => s with { Screen = s.MapReturn });
 
@@ -653,6 +684,9 @@ public sealed class AppController
         Update(s => s with { Screen = Screen.Flights, ShowPastFlights = false });
         return LoadFlightsAsync(past: false);
     }
+
+    /// <summary>Loads the list of the tab that is showing again.</summary>
+    public Task ReloadFlightsAsync() => LoadFlightsAsync(State.ShowPastFlights);
 
     public Task ShowPastFlightsAsync(bool past)
     {

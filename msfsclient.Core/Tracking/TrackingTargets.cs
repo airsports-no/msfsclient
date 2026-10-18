@@ -105,50 +105,54 @@ public sealed record TrackingTargets(IReadOnlyList<TrackingTarget> Now, Tracking
             };
         })).ToList();
 
-        TrackingTarget? next = null;
-        if (now.Count == 0 && upcoming.Count > 0)
-        {
-            var f = upcoming[0];
-            var fl = f.Flight;
-            var facts = new List<Fact>();
-            var opens = fl?.TrackerStartTime;
-            var opensAtMillis = IsoTime.EpochMillisOrNull(opens);
-            var opensLater = opensAtMillis > (nowUtc ?? DateTimeOffset.UtcNow).ToUnixTimeMilliseconds();
-            if (opens != null && fl?.FinishedByTime is { } closes)
-            {
-                // The end shows its date too when the window runs past midnight. The date part is the date-and-time text without
-                // the time, so this does not depend on how the formatters lay the text out.
-                var opensText = formatDateTime(opens);
-                var closesText = formatDateTime(closes);
-                var sameDay = opensText.Replace(formatTime(opens), "") == closesText.Replace(formatTime(closes), "");
-                facts.Add(new("Tracking window", $"{opensText} - {(sameDay ? formatTime(closes) : closesText)}"));
-            }
-            if (fl?.AdaptiveStart == true) facts.Add(new("Start", AdaptiveStartText));
-            else facts.Add(new("Take-off", formatDateTime(f.TakeoffTime)));
-            if (fl?.AirSpeed is { } air) facts.Add(new("Airspeed", Knots(air)));
-            if (WindText(fl?.WindDirection, fl?.WindSpeed) is { } wind) facts.Add(new("Wind", wind));
-            if (fl?.ContestantNumber is { } n) facts.Add(new("Contestant", $"#{n}"));
-            next = new TrackingTarget
-            {
-                ContestName = f.ContestName,
-                TaskName = f.TaskName,
-                TaskType = TypeOf(f.Task),
-                Facts = facts,
-                FlightOrderPath = fl?.FlightOrderPath,
-                FlightId = f.Id,
-                AdaptiveStart = fl?.AdaptiveStart == true,
-                BannerUrl = Urls.AbsoluteUrl(f.Contest?.HeaderImage),
-                LogoUrl = Urls.AbsoluteUrl(f.Contest?.Logo),
-                Country = Urls.NotBlank(f.Contest?.Country),
-                MapPrivate = fl?.MapViewable == false,
-                MapLink = fl?.MapViewable == false ? null : f.MapLink,
-                WebsiteUrl = Urls.NotBlank(f.Contest?.Website),
-                ContestPagePath = fl?.ContestId is { } nextId ? Urls.ContestPagePath(nextId) : null,
-                DirectionsUrl = Directions(f.Contest?.Location),
-                NotActiveNote = opensLater ? $"Not active yet: tracking for this flight opens at {formatDateTime(opens)}. Until then your positions are not scored." : null,
-                TrackingOpensAtMillis = opensLater ? opensAtMillis : null,
-            };
-        }
+        var next = now.Count == 0 && upcoming.Count > 0 ? FlightTarget(upcoming[0], formatTime, formatDateTime, nowUtc) : null;
         return new TrackingTargets(now, next);
+    }
+
+    /// <summary>
+    /// One of the pilot's own flights as a card: the Home screen's "next flight" and every row of My flights. The "not active
+    /// yet" note is only given for a flight whose tracking window opens after <paramref name="nowUtc"/>.
+    /// </summary>
+    public static TrackingTarget FlightTarget(MyFlight f, Func<string?, string> formatTime, Func<string?, string> formatDateTime, DateTimeOffset? nowUtc = null)
+    {
+        var fl = f.Flight;
+        var facts = new List<Fact>();
+        var opens = fl?.TrackerStartTime;
+        var opensAtMillis = IsoTime.EpochMillisOrNull(opens);
+        var opensLater = opensAtMillis > (nowUtc ?? DateTimeOffset.UtcNow).ToUnixTimeMilliseconds();
+        if (opens != null && fl?.FinishedByTime is { } closes)
+        {
+            // The end shows its date too when the window runs past midnight. The date part is the date-and-time text without
+            // the time, so this does not depend on how the formatters lay the text out.
+            var opensText = formatDateTime(opens);
+            var closesText = formatDateTime(closes);
+            var sameDay = opensText.Replace(formatTime(opens), "") == closesText.Replace(formatTime(closes), "");
+            facts.Add(new("Tracking window", $"{opensText} - {(sameDay ? formatTime(closes) : closesText)}"));
+        }
+        if (fl?.AdaptiveStart == true) facts.Add(new("Start", AdaptiveStartText));
+        else facts.Add(new("Take-off", formatDateTime(f.TakeoffTime)));
+        if (fl?.AirSpeed is { } air) facts.Add(new("Airspeed", Knots(air)));
+        if (WindText(fl?.WindDirection, fl?.WindSpeed) is { } wind) facts.Add(new("Wind", wind));
+        if (fl?.ContestantNumber is { } n) facts.Add(new("Contestant", $"#{n}"));
+        return new TrackingTarget
+        {
+            ContestName = f.ContestName,
+            TaskName = f.TaskName,
+            TaskType = TypeOf(f.Task),
+            Facts = facts,
+            FlightOrderPath = fl?.FlightOrderPath,
+            FlightId = f.Id,
+            AdaptiveStart = fl?.AdaptiveStart == true,
+            BannerUrl = Urls.AbsoluteUrl(f.Contest?.HeaderImage),
+            LogoUrl = Urls.AbsoluteUrl(f.Contest?.Logo),
+            Country = Urls.NotBlank(f.Contest?.Country),
+            MapPrivate = fl?.MapViewable == false,
+            MapLink = fl?.MapViewable == false ? null : f.MapLink,
+            WebsiteUrl = Urls.NotBlank(f.Contest?.Website),
+            ContestPagePath = fl?.ContestId is { } nextId ? Urls.ContestPagePath(nextId) : null,
+            DirectionsUrl = Directions(f.Contest?.Location),
+            NotActiveNote = opensLater ? $"Not active yet: tracking for this flight opens at {formatDateTime(opens)}. Until then your positions are not scored." : null,
+            TrackingOpensAtMillis = opensLater ? opensAtMillis : null,
+        };
     }
 }

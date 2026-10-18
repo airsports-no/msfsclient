@@ -81,6 +81,14 @@ public sealed class AirsportsApi(HttpClient client, IAuthTokenProvider tokens, s
     public async Task<IReadOnlyList<Flight>> MyFutureFlightsAsync() =>
         await BodyAsync<List<Flight>>(await AuthorizedAsync(() => new HttpRequestMessage(HttpMethod.Get, _baseUrl + "userprofile/my_future_flights/")));
 
+    /// <summary>
+    /// The tasks happening today (in <paramref name="timeZoneId"/>) that the pilot can register a flight for. The server only lists
+    /// the tasks that accept this client's kind of flight, and the private ones the pilot may register for.
+    /// </summary>
+    public async Task<IReadOnlyList<OpenRegistrationTask>> OpenRegistrationTodayAsync(string timeZoneId) =>
+        await BodyAsync<List<OpenRegistrationTask>>(await AuthorizedAsync(() =>
+            new HttpRequestMessage(HttpMethod.Get, _baseUrl + "contests/open_registration_today/?timezone=" + Uri.EscapeDataString(timeZoneId))));
+
     public async Task<IReadOnlyList<Flight>> MyPreviousFlightsAsync() =>
         await BodyAsync<List<Flight>>(await AuthorizedAsync(() => new HttpRequestMessage(HttpMethod.Get, _baseUrl + "userprofile/my_previous_flights/")));
 
