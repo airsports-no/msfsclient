@@ -16,8 +16,8 @@ Air Sports Live Tracking - free air navigation races and precision flying compet
   toolbar panel, online, multiplayer, VFR
 
 ## Short description (one line)
-Fly real air sports competitions in MSFS: air navigation races and precision flying, with a live map, automatic scoring
-and a toolbar panel. Free.
+Fly real air sports competitions in MSFS: air navigation races and precision flying by map and clock, with a live map,
+automatic scoring and a toolbar panel. Free. Not a visual add-on: it adds no scenery or objects to the simulator.
 
 ## Description
 
@@ -26,6 +26,15 @@ platform built for real-world air sports: air navigation races, precision flying
 maps and automatic scoring. Real pilots in real aircraft fly its competitions with the Air Sports app on their phones.
 With this download you fly the same tasks in Microsoft Flight Simulator, on the same live map, scored by the same rules.
 Fly the practice flight on your own today, join a contest, or organize one for your friends, club or virtual airline.
+
+### What to expect: paper-map navigation, not stunning visuals
+This is navigation like in a real air sports competition. **Nothing is added to the simulator's world:** no gates, no
+glowing rings, no route line in the sky and no new scenery or aircraft. You get a flight order with a paper-style map of
+the route, and you fly it with the map, the clock and the compass, in the aircraft and the scenery you already have.
+The client runs next to MSFS, sends your position every second and scores you at the gates you cross, and the live map
+on airsports.no shows how you did. In the simulator you only get the toolbar panel and short messages (tracking on, start
+minute, how early or late you were at a gate). If you enjoy planning a flight, holding a heading and a speed and hitting
+a turning point on the second, this is for you. If you are looking for a visual add-on, it is not.
 
 ### What is an Air Navigation Race?
 In an Air Navigation Race (ANR) the route is drawn on the map as a narrow corridor. You fly it at the speed you planned,

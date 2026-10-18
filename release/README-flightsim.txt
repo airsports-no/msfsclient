@@ -7,6 +7,10 @@ with a live map and automatic scoring. The Airsports client sends your aircraft'
 
 It is free to use. Sign in with Google, Apple or a free Air Sports account, which you can create in the client.
 
+What to expect: this is paper-map navigation, as in a real competition. Nothing is added to the simulator's world: no
+gates, rings or route line, no new scenery. You get a flight order with a map and fly the route by map, clock and compass.
+The client scores you from your position, and the live map on airsports.no shows the result.
+
 
 What is in this zip
 -------------------
