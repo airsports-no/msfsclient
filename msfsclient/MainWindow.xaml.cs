@@ -72,6 +72,7 @@ namespace msfsclient
                     Screen.Onboarding => new OnboardingView(),
                     Screen.Home => new HomeView(),
                     Screen.Flights => new FlightsView(),
+                    Screen.OpenToday => new OpenTodayView(),
                     Screen.Map => new WebPageView(),
                     Screen.Timer => new TimerView(),
                     Screen.Profile => new ProfileView(),

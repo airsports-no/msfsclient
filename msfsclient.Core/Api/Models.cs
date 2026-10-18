@@ -183,6 +183,23 @@ public sealed record ContestPage
     public string? Next { get; init; }
 }
 
+/// <summary>A task that allows self-registration and is open today (<c>contests/open_registration_today/</c>), with its contest's venue.</summary>
+public sealed record OpenRegistrationTask
+{
+    public int ContestId { get; init; }
+    public string ContestName { get; init; } = "";
+    public string Country { get; init; } = "";
+    public string? TimeZone { get; init; }
+    public double? Latitude { get; init; }
+    public double? Longitude { get; init; }
+    public int NavigationTaskId { get; init; }
+    public string NavigationTaskName { get; init; } = "";
+    /// <summary>The window in which flights can be registered.</summary>
+    public string? StartTime { get; init; }
+    public string? FinishTime { get; init; }
+    public bool IsOpenNow { get; init; }
+}
+
 /// <summary>A flight joined with its contest and task names, ready to display.</summary>
 public sealed record MyFlight
 {

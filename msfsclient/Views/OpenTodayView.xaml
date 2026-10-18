@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Tasks open for registration today, one card per contest, nearest first (port of OpenTodayScreen). Registering is the website's form. -->
+<local:ShellPart
+    x:Class="msfsclient.Views.OpenTodayView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:msfsclient.Views"
+    xmlns:helpers="using:msfsclient.Helpers"
+    FontFamily="{StaticResource BarlowRegular}">
+    <Grid Padding="16,12" RowSpacing="8">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <StackPanel Spacing="4">
+            <Grid>
+                <TextBlock Text="Register today" Style="{StaticResource PageTitle}" AutomationProperties.HeadingLevel="Level1" VerticalAlignment="Center" />
+                <HyperlinkButton Content="Refresh" HorizontalAlignment="Right" Style="{StaticResource TextButton}" Click="Refresh_Click" IsEnabled="{x:Bind CanRefresh, Mode=OneWay}" />
+            </Grid>
+            <TextBlock Text="Register a flight for yourself. Find the venue, then register before you fly." Style="{StaticResource MutedText}" TextWrapping="Wrap" />
+        </StackPanel>
+        <Grid Grid.Row="1">
+            <ScrollViewer Visibility="{x:Bind ShowList, Mode=OneWay}">
+                <ItemsControl ItemsSource="{x:Bind Venues, Mode=OneWay}" IsTabStop="False">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="local:VenueItem">
+                            <Border Style="{StaticResource Card}" Margin="0,0,0,10" Padding="16">
+                                <StackPanel Spacing="10">
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Text="{x:Bind ContestName}" Style="{StaticResource BodyText}" FontFamily="{StaticResource CondensedBold}" FontSize="26"
+                                                   TextWrapping="Wrap" AutomationProperties.HeadingLevel="Level2" />
+                                        <TextBlock Text="{x:Bind Place}" Style="{StaticResource MutedText}" Visibility="{x:Bind HasPlace}" />
+                                    </StackPanel>
+                                    <Button Content="Directions" Style="{StaticResource OutlinedButton}" HorizontalAlignment="Left" Visibility="{x:Bind HasDirections}" Tag="{x:Bind}" Click="Directions_Click" />
+                                    <ItemsControl ItemsSource="{x:Bind Tasks}" IsTabStop="False">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="local:OpenTaskItem">
+                                                <Border BorderBrush="{ThemeResource OutlineBrush}" BorderThickness="1" CornerRadius="2" Padding="12" Margin="0,0,0,8">
+                                                    <StackPanel Spacing="6">
+                                                        <Grid ColumnSpacing="8">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*" />
+                                                                <ColumnDefinition Width="Auto" />
+                                                            </Grid.ColumnDefinitions>
+                                                            <TextBlock Text="{x:Bind Name}" Style="{StaticResource BodyText}" FontFamily="{StaticResource CondensedBold}" FontSize="22" TextWrapping="Wrap" />
+                                                            <TextBlock Grid.Column="1" Text="Open now" Foreground="{ThemeResource LiveGreenTextBrush}" FontFamily="{StaticResource BarlowSemiBold}"
+                                                                       Visibility="{x:Bind OpenNow}" VerticalAlignment="Center" />
+                                                        </Grid>
+                                                        <TextBlock Text="{x:Bind Window}" Style="{StaticResource MutedText}" TextWrapping="Wrap" />
+                                                        <Button Content="Register a flight" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Left" Tag="{x:Bind}" Click="Register_Click" />
+                                                    </StackPanel>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+            <ProgressRing IsActive="{x:Bind ShowLoading, Mode=OneWay}" Visibility="{x:Bind ShowLoading, Mode=OneWay}" Width="48" Height="48"
+                          HorizontalAlignment="Center" VerticalAlignment="Center" AutomationProperties.Name="Loading the events" />
+            <StackPanel Visibility="{x:Bind ShowError, Mode=OneWay}" Spacing="12" MaxWidth="420" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <TextBlock Text="{x:Bind ErrorText, Mode=OneWay}" Style="{StaticResource ErrorText}" TextAlignment="Center" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+                <Button Content="Try again" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Center" Click="Refresh_Click" />
+                <Button Content="Open the list on the website" Style="{StaticResource OutlinedButton}" HorizontalAlignment="Center" Click="Web_Click" />
+            </StackPanel>
+            <StackPanel Visibility="{x:Bind ShowEmpty, Mode=OneWay}" Spacing="8" MaxWidth="420" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <TextBlock Text="Nothing is open for registration today." Style="{StaticResource BodyText}" FontFamily="{StaticResource BarlowSemiBold}" FontSize="20" TextAlignment="Center" TextWrapping="Wrap" />
+                <TextBlock Text="Organisers open tasks for self-registration on the day. Check again later, or look at your own flights." Style="{StaticResource MutedText}" TextAlignment="Center" TextWrapping="Wrap" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</local:ShellPart>

@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- An air-traffic-control style flight strip (port of FlightStrip): used on Home and in My flights. -->
+<UserControl
+    x:Class="msfsclient.Views.FlightStripCard"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:msfsclient.Views"
+    xmlns:helpers="using:msfsclient.Helpers"
+    xmlns:tracking="using:msfsclient.Core.Tracking"
+    FontFamily="{StaticResource BarlowRegular}"
+    HorizontalContentAlignment="Stretch">
+
+    <UserControl.Resources>
+        <DataTemplate x:Key="FactTemplate" x:DataType="tracking:Fact">
+            <Border BorderBrush="{ThemeResource OutlineBrush}" BorderThickness="1" CornerRadius="2" Padding="8,5">
+                <StackPanel>
+                    <TextBlock Text="{x:Bind Label}" Style="{StaticResource LabelText}" />
+                    <TextBlock Text="{x:Bind Value}" Style="{StaticResource CondensedValue}" />
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+    </UserControl.Resources>
+
+        <Border Background="{ThemeResource CardBrush}" BorderBrush="{ThemeResource StrongOutlineBrush}" BorderThickness="1" CornerRadius="2" >
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="10" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <!-- Green while the window is open, indigo otherwise. -->
+                <Border Background="{ThemeResource LiveGreenBrush}" Visibility="{x:Bind Item.Live}" />
+                <Border Background="{ThemeResource IndigoBrush}" Visibility="{x:Bind Item.NotLive}" />
+                <StackPanel Grid.Column="1" Padding="12,12,12,8" Spacing="10">
+                    <Grid ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="{x:Bind Item.ContestName}" Visibility="{x:Bind Item.HasContest}" Style="{StaticResource MutedText}"
+                                       FontFamily="{StaticResource CondensedMedium}" FontSize="20" />
+                            <TextBlock Text="{x:Bind Item.TaskName}" Style="{StaticResource BodyText}" FontFamily="{StaticResource CondensedBold}" FontSize="32" LineHeight="34"
+                                       AutomationProperties.HeadingLevel="Level3" />
+                            <TextBlock Text="{x:Bind Item.TaskType}" Visibility="{x:Bind Item.HasTaskType}" Foreground="{ThemeResource IndigoBrush}"
+                                       FontFamily="{StaticResource BarlowSemiBold}" FontSize="14" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <!-- The whole logo, uncropped: up to 88 px high and 140 px wide, so wide logos stay readable. -->
+                        <Image Grid.Column="1" MaxHeight="88" MaxWidth="140" Stretch="Uniform" VerticalAlignment="Top" HorizontalAlignment="Right"
+                               Visibility="{x:Bind Item.HasLogo}"
+                               Source="{x:Bind helpers:Ui.Image(Item.LogoUrl), FallbackValue={x:Null}}" AutomationProperties.Name="Contest logo" />
+                    </Grid>
+                    <ItemsControl ItemsSource="{x:Bind Item.Facts}" ItemTemplate="{StaticResource FactTemplate}" IsTabStop="False">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <helpers:WrapPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+                    <!-- The next flight's tracking window has not opened: said plainly, so the missing Timer and Photos are not a surprise. -->
+                    <Grid Visibility="{x:Bind Item.NotActive}" Background="{ThemeResource AmberTintBrush}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="5" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Background="{ThemeResource AmberBrush}" />
+                        <TextBlock Grid.Column="1" Margin="10" Text="{x:Bind Item.NotActiveNote}" Style="{StaticResource BodyText}" />
+                    </Grid>
+                    <Grid Visibility="{x:Bind Item.MapPrivate}" Background="{ThemeResource AmberTintBrush}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="5" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Background="{ThemeResource AmberBrush}" />
+                        <TextBlock Grid.Column="1" Margin="10" Text="{x:Bind Item.PrivateNote}" Style="{StaticResource BodyText}" />
+                    </Grid>
+                    <helpers:WrapPanel Spacing="4">
+                        <HyperlinkButton Content="Share live link" Style="{StaticResource TextButton}" Visibility="{x:Bind Item.CanShare}" Tag="{x:Bind Item}" Click="Share_Click" />
+                        <Button Content="{x:Bind Item.MapText}" Style="{StaticResource OutlinedButton}" Visibility="{x:Bind Item.HasMap}" Tag="{x:Bind Item}" Click="LiveMap_Click" />
+                        <HyperlinkButton Content="Contest page" Style="{StaticResource TextButton}" Visibility="{x:Bind Item.HasContestPage}" Tag="{x:Bind Item}" Click="ContestPage_Click"
+                                         ToolTipService.ToolTip="The contest on the Air Sports website, in your browser" />
+                        <HyperlinkButton Content="Flight orders" Style="{StaticResource TextButton}" Visibility="{x:Bind Item.HasFlightOrders}" Tag="{x:Bind Item}" Click="FlightOrders_Click" />
+                        <HyperlinkButton Content="Directions" Style="{StaticResource TextButton}" Visibility="{x:Bind Item.HasDirections}" Tag="{x:Bind Item}" Click="Directions_Click" />
+                        <HyperlinkButton Content="{x:Bind Item.CancelText}" Style="{StaticResource DangerTextButton}" Visibility="{x:Bind Item.CanCancel}"
+                                         IsEnabled="{x:Bind Item.CancelEnabled}" Tag="{x:Bind Item}" Click="Cancel_Click" />
+                        <HyperlinkButton Content="Website" Style="{StaticResource TextButton}" Visibility="{x:Bind Item.HasWebsite}" Tag="{x:Bind Item}" Click="Website_Click" />
+                    </helpers:WrapPanel>
+                </StackPanel>
+            </Grid>
+        </Border>
+</UserControl>

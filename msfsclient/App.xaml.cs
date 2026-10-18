@@ -117,6 +117,8 @@ namespace msfsclient
             switch (screen)
             {
                 case "flights": await c.OpenFlightsAsync(); break;
+                case "past": await c.OpenFlightsAsync(); await c.ShowPastFlightsAsync(true); break;
+                case "open-today": c.OpenToday(); break;
                 case "timer": await c.OpenTimerAsync(); break;
                 case "photos": await c.OpenObservationsAsync(); break;
                 case "preflight": await c.OpenPreflightAsync(); break;

@@ -21,6 +21,7 @@ public class AppControllerTest
     private string? _configJson;
 
     private static readonly DeviceInfo Device = new("msfs", 30, "2.0.0");
+    private bool _openTodayFails;
 
     private AirsportsApi Server(bool validated, string tasks = "[]") => With(new MockHandler(r =>
     {
@@ -29,6 +30,13 @@ public class AppControllerTest
             return Json($$"""{"email":"pilot@example.com","validated":{{(validated ? "true" : "false")}},"simulator_tracking_id":"sim1"}""");
         if (path.Contains("get_current_sim_navigation_task"))
             return tasks == "[]" ? Status(HttpStatusCode.NotFound) : Json(tasks);
+        if (path.Contains("open_registration_today"))
+        {
+            lock (_cancelRequests) _cancelRequests.Add(r.Method + " " + r.Url.PathAndQuery);
+            return _openTodayFails ? Status(HttpStatusCode.InternalServerError) : Json(
+                """[{"contest_id":1,"contest_name":"Far Cup","country":"NO","time_zone":"Europe/Oslo","latitude":60.39,"longitude":5.32,"navigation_task_id":10,"navigation_task_name":"Day 1","start_time":"2026-10-17T07:00:00Z","finish_time":"2026-10-17T15:00:00Z","is_open_now":true},""" +
+                """{"contest_id":2,"contest_name":"Near Cup","country":"NO","time_zone":"Europe/Oslo","latitude":59.95,"longitude":10.8,"navigation_task_id":20,"navigation_task_name":"Day 1","start_time":"2026-10-17T07:00:00Z","finish_time":"2026-10-17T15:00:00Z","is_open_now":false}]""");
+        }
         if (path.Contains("mobile/config"))
             return _configJson != null ? Json(_configJson) : Status(HttpStatusCode.NotFound);
         if (path.Contains("delete_self_managed_contestant"))
@@ -481,26 +489,72 @@ public class AppControllerTest
         Assert.Equal(Screen.Home, (await Started(Server(true), new FakeAuth(), new DeviceInfo("msfs", 1))).State.Screen);
     }
 
+    private static async Task<AppController> WaitUntil(AppController c, Func<UiState, bool> done)
+    {
+        for (var i = 0; i < 200 && !done(c.State); i++) await Task.Delay(10);
+        Assert.True(done(c.State), "the state never got there");
+        return c;
+    }
+
     [Fact]
-    public async Task TheRegisterTodayListIsOpenedWithTheAircraftsPositionInTheFragment()
+    public async Task TheRegisterTodayListIsShownInTheClientNearestFirstWhenThePositionIsKnown()
     {
         var c = new AppController(Server(true), new FakeAuth(), Device, location: new FixedLocation(new Coordinates(59.91389, 10.75224)));
         await c.Start();
         c.OpenToday();
-        Assert.Equal(Screen.Map, c.State.Screen);
-        Assert.Equal("/open-today#lat=59.914&lon=10.752", c.State.MapPath);
+        Assert.Equal(Screen.OpenToday, c.State.Screen);
+        await WaitUntil(c, s => s.OpenToday.Tasks.Count == 2);
+        Assert.Equal(59.91389, c.State.OpenToday.Here!.Latitude);
+        Assert.Equal([2, 1], OpenRegistration.Group(c.State.OpenToday.Tasks, c.State.OpenToday.Here).Select(e => e.ContestId));
+        // The request carries the time zone and nothing about where the aircraft is.
+        var request = _cancelRequests.Single(x => x.Contains("open_registration_today"));
+        Assert.Contains("timezone=", request);
+        Assert.DoesNotContain("59.9", request);
+        Assert.DoesNotContain("lat", request);
     }
 
     [Fact]
-    public async Task TheRegisterTodayListStillOpensWithoutAPosition()
+    public async Task TheRegisterTodayListStillShowsWithoutAPositionInTheServersOrder()
     {
         foreach (ICurrentLocation? location in new ICurrentLocation?[] { new FixedLocation(null), null })
         {
             var c = new AppController(Server(true), new FakeAuth(), Device, location: location);
             await c.Start();
             c.OpenToday();
-            Assert.Equal("/open-today", c.State.MapPath);
+            await WaitUntil(c, s => s.OpenToday.Tasks.Count == 2);
+            Assert.Null(c.State.OpenToday.Here);
+            Assert.Equal([1, 2], OpenRegistration.Group(c.State.OpenToday.Tasks, null).Select(e => e.ContestId));
         }
+    }
+
+    [Fact]
+    public async Task AFailedRegisterTodayListOffersTheWebsiteListWithThePositionInTheFragment()
+    {
+        _openTodayFails = true;
+        var c = new AppController(Server(true), new FakeAuth(), Device, location: new FixedLocation(new Coordinates(59.91389, 10.75224)));
+        await c.Start();
+        c.OpenToday();
+        await WaitUntil(c, s => s.OpenToday.Error != null);
+        Assert.Empty(c.State.OpenToday.Tasks);
+        c.OpenTodayOnTheWeb();
+        Assert.Equal(Screen.Map, c.State.Screen);
+        Assert.Equal("/open-today#lat=59.914&lon=10.752", c.State.MapPath);
+    }
+
+    [Fact]
+    public async Task RegisteringOpensTheFormAndBackReturnsToTheList()
+    {
+        var c = new AppController(Server(true), new FakeAuth(), Device);
+        await c.Start();
+        c.OpenToday();
+        await WaitUntil(c, s => s.OpenToday.Tasks.Count == 2);
+        c.OpenPath(OpenRegistration.RegisterPath(c.State.OpenToday.Tasks[0]));
+        Assert.Equal("/schedule-flight?contestId=1&navigationTaskId=10", c.State.MapPath);
+        c.CloseMap();
+        Assert.Equal(Screen.OpenToday, c.State.Screen);
+        Assert.Equal(2, c.State.OpenToday.Tasks.Count);
+        c.CloseOpenToday();
+        Assert.Equal(Screen.Home, c.State.Screen);
     }
 
     private sealed class FixedLocation(Coordinates? here) : ICurrentLocation

@@ -1,5 +1,7 @@
 using System.Collections.Generic;
+using System.Linq;
 using msfsclient.Core.Api;
+using msfsclient.Core.App;
 using msfsclient.Core.History;
 using msfsclient.Core.Observations;
 using msfsclient.Core.Preflight;
@@ -29,8 +31,13 @@ namespace msfsclient.Views
     /// An air-traffic-control style flight progress strip: a colour tab at the left (green while the window is open), the
     /// contest and task in condensed type, the facts in boxed cells, then the links.
     /// </summary>
-    public sealed record StripItem(TrackingTarget Target, bool Live, MyFlight? Cancellable, bool Cancelling)
+    public sealed record StripItem(TrackingTarget Target, bool Live, MyFlight? Cancellable, bool Cancelling, bool Past = false)
     {
+        /// <summary>The map button: the live map, or the results of a flight in the past.</summary>
+        public string MapText => Past ? "Results" : "Live map";
+        public string PrivateNote => Past ? "Results are not available to you: this task is private to the organizer." : "The live map of this task is private to the organizer.";
+        /// <summary>Only a flight that can still be followed live is worth sharing.</summary>
+        public bool CanShare => !Past && HasMap;
         public string ContestName => Target.ContestName ?? "";
         public bool HasContest => !string.IsNullOrWhiteSpace(Target.ContestName);
         public string TaskName => Target.TaskName;
@@ -53,19 +60,25 @@ namespace msfsclient.Views
         public bool NotLive => !Live;
     }
 
-    public sealed record FlightItem(MyFlight Flight, bool Past, int? CancellingId)
+    /// <summary>The flights of one day in My flights, under their heading ("Today", "Sat 24 Oct").</summary>
+    public sealed record DayGroup(string Heading, IReadOnlyList<StripItem> Flights);
+
+    /// <summary>A contest with tasks open for registration today.</summary>
+    public sealed record VenueItem(OpenEvent Venue, long NowMillis)
     {
-        public string ContestName => Flight.ContestName;
-        public string TaskName => Flight.TaskName;
-        public string Takeoff => $"Take-off {TimeFormat.FormatLocal(Flight.TakeoffTime)}";
-        /// <summary>Said plainly, so a pilot does not take the missing button for a fault.</summary>
-        public string PrivateNote => Past ? "Results are not available to you: this task is private to the organizer." : "The live map is private to the organizer.";
-        public bool IsPrivate => Flight.MapViewable == false;
-        public bool CanOpen => Flight.MapViewable != false;
-        public string OpenText => Past ? "Open results" : "Open map";
-        public bool CanCancel => !Past && Flight.CanCancel();
-        public string CancelText => CancellingId == Flight.Id ? "Cancelling…" : "Cancel flight";
-        public bool CancelEnabled => CancellingId == null;
+        public string ContestName => Venue.ContestName;
+        public string Place => Venue.Place;
+        public bool HasPlace => Venue.Place.Length > 0;
+        public bool HasDirections => Venue.DirectionsUrl != null;
+        public IReadOnlyList<OpenTaskItem> Tasks { get; } = Venue.Tasks.Select(t => new OpenTaskItem(t, TimeFormat.ZoneOrDevice(Venue.TimeZone), NowMillis)).ToList();
+    }
+
+    /// <summary>One task open for registration: its name, the window and the button that opens the website's form.</summary>
+    public sealed record OpenTaskItem(OpenRegistrationTask Task, System.TimeZoneInfo Zone, long NowMillis)
+    {
+        public string Name => Task.NavigationTaskName;
+        public string Window => $"Flights can be registered between {TimeFormat.RegistrationWindow(Task.StartTime, Task.FinishTime, NowMillis, Zone)}";
+        public bool OpenNow => Task.IsOpenNow;
     }
 
     public sealed record CheckItem(PreflightCheck Check)

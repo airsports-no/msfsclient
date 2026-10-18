@@ -124,14 +124,24 @@ namespace msfsclient.Services
                          {"id":2,"contest_id":10,"navigation_task":101,"takeoff_time":"{{later}}","tracker_start_time":"{{later}}","finished_by_time":"{{laterEnd}}","can_cancel":true}]
                         """;
                 else if (path.Contains("my_previous_flights"))
-                    json = """[{"id":3,"contest_id":10,"navigation_task":99,"takeoff_time":"2026-05-01T09:00:00Z","navigation_task_name":"Warm-up","map_viewable":false}]""";
+                    json = $$"""
+                        [{"id":3,"contest_id":10,"navigation_task":99,"takeoff_time":"{{Iso(now.AddDays(-2))}}","tracker_start_time":"{{Iso(now.AddDays(-2))}}","finished_by_time":"{{Iso(now.AddDays(-2).AddHours(2))}}","can_cancel":false},
+                         {"id":4,"contest_id":10,"navigation_task":98,"takeoff_time":"{{Iso(now.AddDays(-9))}}","tracker_start_time":"{{Iso(now.AddDays(-9))}}","finished_by_time":"{{Iso(now.AddDays(-9).AddHours(2))}}","can_cancel":false,"map_viewable":false}]
+                        """;
+                else if (path.Contains("open_registration_today"))
+                    json = $$"""
+                        [{"contest_id":11,"contest_name":"Fjord Fly-in","country":"NO","time_zone":"Europe/Oslo","latitude":60.39,"longitude":5.32,"navigation_task_id":110,"navigation_task_name":"Poker run","start_time":"{{Iso(now.AddHours(-2))}}","finish_time":"{{Iso(now.AddHours(6))}}","is_open_now":true},
+                         {"contest_id":10,"contest_name":"Spring Cup","country":"NO","time_zone":"Europe/Oslo","latitude":59.9,"longitude":10.7,"navigation_task_id":100,"navigation_task_name":"Day 1 - Precision","start_time":"{{Iso(now.AddHours(-1))}}","finish_time":"{{Iso(now.AddHours(4))}}","is_open_now":true},
+                         {"contest_id":10,"contest_name":"Spring Cup","country":"NO","time_zone":"Europe/Oslo","latitude":59.9,"longitude":10.7,"navigation_task_id":101,"navigation_task_name":"Day 2 - Navigation","start_time":"{{Iso(now.AddHours(20))}}","finish_time":"{{Iso(now.AddHours(28))}}","is_open_now":false}]
+                        """;
                 else if (path.Contains("announcements"))
                     json = """[{"id":1,"contest_name":"Spring Cup","task_name":"Day 1 - Precision","message":"Briefing at 08:30 in the club house."}]""";
                 else if (path.EndsWith("/contests/", StringComparison.Ordinal))
                     json = """
                         {"results":[{"id":10,"name":"Spring Cup","logo":"ms-appx:///Assets/Square150x150Logo.scale-200.png","location":"59.9,10.7","country":"NO","time_zone":"Europe/Oslo","contest_website":"https://airsports.no",
                          "navigationtask_set":[{"pk":100,"name":"Day 1 - Precision","allow_self_management":true,"task_subtype_definition":{"display_name":"Precision flying"}},
-                         {"pk":101,"name":"Day 2 - Navigation","allow_self_management":true}]}],"next":null}
+                         {"pk":101,"name":"Day 2 - Navigation","allow_self_management":true},
+                         {"pk":99,"name":"Training flight","allow_self_management":true},{"pk":98,"name":"Club evening, navigation","allow_self_management":true}]}],"next":null}
                         """;
                 else if (path.Contains("client_notifications")) json = "[]";
                 else if (path.Contains("mobile/config")) status = HttpStatusCode.NotFound;
