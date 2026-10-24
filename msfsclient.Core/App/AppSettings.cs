@@ -20,6 +20,15 @@ public sealed class AppSettings(AirsportsDatabase db)
         set => Put(TimerBuffer, Math.Clamp(value, 0, MaxTimerBufferMinutes).ToString(CultureInfo.InvariantCulture));
     }
 
+    /// <summary>Which timer the Timer page shows large when there are two (start timer and gate countdown). Default the start timer.</summary>
+    public Training.TimerFocus TimerFocus
+    {
+        get => Enum.TryParse<Training.TimerFocus>(Get(TimerFocusKey), out var v) ? v : Training.TimerFocus.Start;
+        set => Put(TimerFocusKey, value.ToString());
+    }
+
+    private const string TimerFocusKey = "timer_focus";
+
     /// <summary>The signed-in pilot's profile as last loaded, so Home can show at once at the next start. Cleared on sign-out.</summary>
     public string? CachedProfileJson
     {

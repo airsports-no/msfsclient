@@ -440,7 +440,7 @@ namespace msfsclient.ViewModels
 
         public bool DockCompact => _state.Screen != Screen.Home;
 
-        public bool ShowTimerTab => _state.ActiveContestants.Any(c => c.AdaptiveStart);
+        public bool ShowTimerTab => GateCountdown.TimerAvailable(_state.Tasks, _state.TrainingMode);
 
         public bool ShowPhotosTab => _state.ActiveContestants.Any(c => c.ObservationRegistration == true);
 

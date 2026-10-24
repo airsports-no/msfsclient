@@ -202,6 +202,45 @@ public class GateFeedbackTest
     }
 }
 
+public class GateCountdownTest
+{
+    [Fact]
+    public void CountsDownToTheRequiredTimeAndThenOnPastIt()
+    {
+        Assert.Equal("1:05", GateCountdown.Format(65_000));
+        Assert.Equal("0:01", GateCountdown.Format(200));
+        Assert.Equal("0:00", GateCountdown.Format(0));
+        Assert.Equal("+0:04", GateCountdown.Format(-4_500));
+        Assert.Equal("1:00:05", GateCountdown.Format(3_605_000));
+    }
+
+    [Fact]
+    public void UsesTheServersNextGateAndIgnoresFlightsWithoutOne()
+    {
+        const string time = "2026-10-24T12:03:30+00:00";
+        var none = new ActiveContestant { Id = 1, TrainingFeedback = new TrainingFeedback { LastGate = "SP", LastGateTimeOffset = 2.0 } };
+        var with = new ActiveContestant { Id = 2, TrainingFeedback = new TrainingFeedback { NextGate = "TP1", NextGateTime = time } };
+        Assert.Null(GateCountdown.Next([none]));
+        var countdown = GateCountdown.Next([none, with])!;
+        Assert.Equal(new GateCountdown("TP1", IsoTime.EpochMillisOrNull(time)!.Value), countdown);
+        Assert.Equal(30_000, countdown.RemainingMillis(countdown.RequiredMillis - 30_000));
+    }
+
+    [Fact]
+    public void TheTimerPageIsThereForAnAdaptiveStartOrInTrainingMode()
+    {
+        static CurrentTask Task(bool adaptive, bool training) => new()
+        {
+            NavigationTask = new NavigationTaskSummary { Id = 1 },
+            ActiveContestants = [new ActiveContestant { Id = 1, AdaptiveStart = adaptive, TrainingAvailable = training }],
+        };
+        Assert.True(GateCountdown.TimerAvailable([Task(adaptive: true, training: false)], trainingMode: false));
+        Assert.True(GateCountdown.TimerAvailable([Task(adaptive: false, training: true)], trainingMode: true));
+        Assert.False(GateCountdown.TimerAvailable([Task(adaptive: false, training: true)], trainingMode: false));
+        Assert.False(GateCountdown.TimerAvailable([Task(adaptive: false, training: false)], trainingMode: true));
+    }
+}
+
 public class PreflightTest
 {
     private static IReadOnlyList<PreflightCheck> Checks(bool flight = true, bool? online = null, ClockStatus? clock = null, SimStatus? sim = null) =>

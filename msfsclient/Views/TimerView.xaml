@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    Adaptive-start timer (port of TimerScreen). The page scrolls on a small window; START stays pinned at the bottom.
+    The Timer page (port of TimerScreen): the adaptive-start timer and, in training mode, the countdown to the next gate's
+    required time. With both, the chosen one is large and the other small above it. The page scrolls on a small window;
+    START stays pinned at the bottom.
 -->
 <local:ShellPart
     x:Class="msfsclient.Views.TimerView"
@@ -26,6 +28,32 @@
                         <HyperlinkButton Content="Open date and time settings" Style="{StaticResource TextButton}" Click="ClockSettings_Click" />
                     </StackPanel>
                 </Border>
+
+                <!-- The other timer, small, as a reference; clicking it makes it the large one. -->
+                <Button x:Name="SmallTimer" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="12,8" Margin="0,8,0,0"
+                        Click="SmallTimer_Click" Visibility="Collapsed" AutomationProperties.Name="Show this timer large">
+                    <Grid ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock x:Name="SmallLabel" Style="{StaticResource StrongText}" />
+                            <TextBlock x:Name="SmallValue" FontFamily="{StaticResource CondensedBold}" FontSize="36" Foreground="{ThemeResource TextBrush}" />
+                        </StackPanel>
+                        <TextBlock Grid.Column="1" Text="Click to show large" Style="{StaticResource MutedText}" VerticalAlignment="Center" />
+                    </Grid>
+                </Button>
+
+                <!-- The countdown to the next gate's required time, large. -->
+                <StackPanel x:Name="GateLarge" Spacing="4" HorizontalAlignment="Center" Margin="0,24,0,0" Visibility="Collapsed">
+                    <TextBlock x:Name="GateName" Style="{StaticResource CondensedTitle}" HorizontalAlignment="Center" />
+                    <TextBlock x:Name="GateRemaining" FontFamily="{StaticResource CondensedBold}" FontSize="128" HorizontalAlignment="Center"
+                               Foreground="{ThemeResource TextBrush}" AutomationProperties.Name="Gate countdown" />
+                    <TextBlock x:Name="GateLabel" Style="{StaticResource StrongText}" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" />
+                    <TextBlock x:Name="GateRequired" Style="{StaticResource CondensedTitle}" HorizontalAlignment="Center" Margin="0,24,0,0" />
+                    <TextBlock x:Name="GateClockLine" Style="{StaticResource MutedText}" FontSize="16" HorizontalAlignment="Center" />
+                </StackPanel>
 
                 <!-- Before Start: the clock to the second and where a press right now would start the timer. -->
                 <StackPanel x:Name="BeforeStart" Spacing="4" HorizontalAlignment="Center" Margin="0,8,0,0">

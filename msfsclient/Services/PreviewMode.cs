@@ -66,6 +66,7 @@ namespace msfsclient.Services
                 var later = Iso(now.AddHours(26));
                 var laterEnd = Iso(now.AddHours(28));
                 var received = Iso(now.AddSeconds(-4));
+                var nextGate = Iso(now.AddSeconds(95));
                 var path = request.RequestUri?.AbsolutePath ?? "";
                 string? json = null;
                 var status = HttpStatusCode.OK;
@@ -107,7 +108,7 @@ namespace msfsclient.Services
                           "active_contestants":[{"id":1,"contest_id":10,"tracker_start_time":"{{started}}","takeoff_time":"{{started}}","finished_by_time":"{{ends}}",
                           "last_received_time":"{{received}}","calculator_finished":false,"calculator_running":true,"adaptive_start":true,"observation_registration":true,
                           "air_speed":80,"wind_speed":12,"wind_direction":270,"contestant_number":4,"score":17,"training_available":true,
-                          "training_feedback":{"last_gate":"TP3","last_gate_time_offset":-3.4},"flight_order_path":"/display/flightorder/1/",
+                          "training_feedback":{"last_gate":"TP3","last_gate_time_offset":-3.4,"next_gate":"TP4","next_gate_time":"{{nextGate}}"},"flight_order_path":"/display/flightorder/1/",
                           "map_path":"/competition-map/10/100?contestantIds=1"}]}]
                         """;
                 else if (path.Contains("observation_photos"))

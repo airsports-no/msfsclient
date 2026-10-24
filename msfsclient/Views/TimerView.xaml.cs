@@ -3,13 +3,17 @@ using System.Linq;
 using Microsoft.UI.Xaml;
 using msfsclient.Core.App;
 using msfsclient.Core.Tracking;
+using msfsclient.Core.Training;
 using msfsclient.Core.Ui;
 using msfsclient.Helpers;
 
 namespace msfsclient.Views
 {
     /// <summary>
-    /// Adaptive-start timer. It shows the PC clock (what this client stamps positions with) to the second, so the pilot can see
+    /// The Timer page: the adaptive-start timer and, in training mode, the countdown to the next gate's required time. With
+    /// both, the one the pilot chose is large and the other small above it; clicking the small one swaps them.
+    ///
+    /// The start timer shows the PC clock (what this client stamps positions with) to the second, so the pilot can see
     /// when to press Start relative to when they plan to cross the starting line; after Start a large m:ss counts down to,
     /// and then up from, the nearest whole minute of the moment Start was pressed (plus the countdown buffer).
     /// </summary>
@@ -33,19 +37,34 @@ namespace msfsclient.Views
             get
             {
                 var s = Vm.State;
-                var contestId = s.ActiveContestants.FirstOrDefault(c => c.AdaptiveStart)?.ContestId;
+                var contestId = (s.ActiveContestants.FirstOrDefault(c => c.AdaptiveStart) ?? s.ActiveContestants.FirstOrDefault())?.ContestId;
                 return TimeFormat.ZoneOrDevice(contestId is { } id && s.Contests.TryGetValue(id, out var contest) ? contest.TimeZone : null);
             }
         }
+
+        /// <summary>The flight has an adaptive start: the start timer is shown.</summary>
+        private bool ShowStartTimer => Vm.State.Tasks.Any(t => t.ActiveContestants.Any(c => c.AdaptiveStart));
+
+        /// <summary>Training mode is on for a flight that supports it: the gate countdown is shown.</summary>
+        private bool ShowGateCountdown => Vm.State.TrainingMode && GateFeedback.TrainingAvailable(Vm.State.Tasks);
+
+        /// <summary>The timer shown large: with only one of the two, that one whatever the setting says.</summary>
+        private TimerFocus Large => !ShowGateCountdown ? TimerFocus.Start : !ShowStartTimer ? TimerFocus.Gate : Vm.State.TimerFocus;
+
+        /// <summary>The timer shown small, or null when there is only one.</summary>
+        private TimerFocus? Small => ShowStartTimer && ShowGateCountdown ? (Large == TimerFocus.Start ? TimerFocus.Gate : TimerFocus.Start) : null;
 
         protected override void Refresh()
         {
             var s = Vm.State;
             var running = s.TimerOriginMillis != null;
-            ResetButton.Visibility = running ? Visibility.Visible : Visibility.Collapsed;
-            BeforeStart.Visibility = running ? Visibility.Collapsed : Visibility.Visible;
-            Running.Visibility = running ? Visibility.Visible : Visibility.Collapsed;
-            StartButton.Visibility = running ? Visibility.Collapsed : Visibility.Visible;
+            var startLarge = Large == TimerFocus.Start;
+            ResetButton.Visibility = ShowStartTimer && running ? Visibility.Visible : Visibility.Collapsed;
+            BeforeStart.Visibility = startLarge && !running ? Visibility.Visible : Visibility.Collapsed;
+            Running.Visibility = startLarge && running ? Visibility.Visible : Visibility.Collapsed;
+            GateLarge.Visibility = startLarge ? Visibility.Collapsed : Visibility.Visible;
+            SmallTimer.Visibility = Small != null ? Visibility.Visible : Visibility.Collapsed;
+            StartButton.Visibility = ShowStartTimer && !running ? Visibility.Visible : Visibility.Collapsed;
 
             switch (Vm.Clock)
             {
@@ -82,6 +101,22 @@ namespace msfsclient.Views
             var zone = Zone;
             var label = $"PC time ({TimeFormat.ZoneLabel(zone)})";
             var origin = Vm.State.TimerOriginMillis;
+            var gate = GateCountdown.Next(Vm.State.ActiveContestants);
+            if (Small == TimerFocus.Start)
+            {
+                SmallLabel.Text = "Start timer";
+                SmallValue.Text = origin == null ? "Not started" : AdaptiveStartTimer.Format(AdaptiveStartTimer.ElapsedMillis(origin.Value, now));
+            }
+            else if (Small == TimerFocus.Gate)
+            {
+                SmallLabel.Text = gate != null ? $"Next gate {gate.Gate}" : "Gate countdown";
+                SmallValue.Text = gate != null ? GateCountdown.Format(gate.RemainingMillis(now)) : "Waiting for the next gate";
+            }
+            if (Large == TimerFocus.Gate)
+            {
+                DrawGate(gate, now, zone);
+                return;
+            }
             if (origin == null)
             {
                 ClockLabel.Text = label;
@@ -96,6 +131,35 @@ namespace msfsclient.Views
             ElapsedLabel.Text = elapsed < 0 ? "Counting down to your start minute" : "Time since your start minute";
             StartMinute.Text = $"Start minute {TimeFormat.FormatMinute(origin.Value, zone)}";
             ClockLine.Text = $"PC time {TimeFormat.FormatClock(now, zone)}  ({TimeFormat.ZoneLabel(zone)})";
+        }
+
+        /// <summary>The countdown to the next gate's required time, large; "+0:04" in red once the required time has passed.</summary>
+        private void DrawGate(GateCountdown? gate, long now, TimeZoneInfo zone)
+        {
+            if (gate == null)
+            {
+                GateName.Text = "Gate countdown";
+                GateRemaining.Visibility = Visibility.Collapsed;
+                GateRequired.Visibility = Visibility.Collapsed;
+                GateClockLine.Visibility = Visibility.Collapsed;
+                GateLabel.Text = "The countdown starts once the next gate's time is known (with an adaptive start: when you cross the starting point).";
+                return;
+            }
+            var remaining = gate.RemainingMillis(now);
+            GateRemaining.Visibility = Visibility.Visible;
+            GateRequired.Visibility = Visibility.Visible;
+            GateClockLine.Visibility = Visibility.Visible;
+            GateName.Text = $"Next gate {gate.Gate}";
+            GateRemaining.Text = GateCountdown.Format(remaining);
+            GateRemaining.Foreground = remaining < 0 ? Ui.Brush("ErrorBrush") : Ui.Brush("TextBrush");
+            GateLabel.Text = remaining < 0 ? "Past the gate's required time" : "Counting down to the gate's required time";
+            GateRequired.Text = $"Required time {TimeFormat.FormatClock(gate.RequiredMillis, zone)}";
+            GateClockLine.Text = $"PC time {TimeFormat.FormatClock(now, zone)}  ({TimeFormat.ZoneLabel(zone)})";
+        }
+
+        private void SmallTimer_Click(object sender, RoutedEventArgs e)
+        {
+            if (Small is { } small) Vm.Controller.SetTimerFocus(small);
         }
 
         private void Start_Click(object sender, RoutedEventArgs e) => Vm.Controller.StartTimer(Now());

@@ -3,6 +3,7 @@ using msfsclient.Core.Api;
 using msfsclient.Core.Auth;
 using msfsclient.Core.Observations;
 using msfsclient.Core.Tracking;
+using msfsclient.Core.Training;
 
 namespace msfsclient.Core.App;
 
@@ -61,6 +62,8 @@ public sealed record UiState
     public bool TrainingMode { get; init; } = true;
     /// <summary>Whole minutes of countdown buffer before the start minute on the timer (0 = none).</summary>
     public int TimerBufferMinutes { get; init; }
+    /// <summary>Which timer the Timer page shows large when it has both the start timer and the gate countdown.</summary>
+    public TimerFocus TimerFocus { get; init; }
     /// <summary>The first load of the pilot's flights has finished (Home shows a quiet "checking" line until then).</summary>
     public bool HomeLoaded { get; init; }
     /// <summary>The latest end of a tracking window seen while tracking, to warn when tracking stays on after it closed.</summary>
@@ -151,7 +154,7 @@ public sealed class AppController
             {
                 try { cached = AirsportsJson.Deserialize<Person>(json); } catch (Exception) { }
             }
-            _state = _state with { TimerBufferMinutes = settings.TimerBufferMinutes, DismissedQuickstarts = settings.DismissedQuickstartIds, Person = cached, Screen = cached != null ? Screen.Home : _state.Screen };
+            _state = _state with { TimerBufferMinutes = settings.TimerBufferMinutes, TimerFocus = settings.TimerFocus, DismissedQuickstarts = settings.DismissedQuickstartIds, Person = cached, Screen = cached != null ? Screen.Home : _state.Screen };
         }
     }
 
@@ -166,6 +169,7 @@ public sealed class AppController
         Screen = screen,
         Notice = notice,
         TimerBufferMinutes = _settings?.TimerBufferMinutes ?? 0,
+        TimerFocus = _settings?.TimerFocus ?? TimerFocus.Start,
         DismissedQuickstarts = _settings?.DismissedQuickstartIds ?? new HashSet<int>(),
     };
 
@@ -694,10 +698,13 @@ public sealed class AppController
         return LoadFlightsAsync(past);
     }
 
-    /// <summary>The start timer exists only for adaptive-start tasks; it is ignored (not an error) for any other task.</summary>
+    /// <summary>
+    /// The Timer page exists for adaptive-start tasks (the start timer) and in training mode (the gate countdown); it is ignored
+    /// (not an error) otherwise.
+    /// </summary>
     public Task OpenTimerAsync()
     {
-        if (!State.Tasks.Any(t => t.ActiveContestants.Any(c => c.AdaptiveStart))) return Task.CompletedTask;
+        if (!GateCountdown.TimerAvailable(State.Tasks, State.TrainingMode)) return Task.CompletedTask;
         Update(s => s with { Screen = Screen.Timer });
         return MeasureNetworkClockAsync();
     }
@@ -734,6 +741,13 @@ public sealed class AppController
     }
 
     public void ResetTimer() => Update(s => s with { TimerOriginMillis = null });
+
+    /// <summary>Which of the two timers the Timer page shows large; kept for the next flight.</summary>
+    public void SetTimerFocus(TimerFocus focus)
+    {
+        if (_settings != null) _settings.TimerFocus = focus;
+        Update(s => s with { TimerFocus = focus });
+    }
 
     public void CloseTimer() => Update(s => s with { Screen = Screen.Home });
 
@@ -962,7 +976,7 @@ public sealed class AppController
                 Tasks = tasks,
                 LastWindowEndMillis = MaxOfNotNull(s.LastWindowEndMillis, WindowClosed.LatestWindowEnd(tasks)),
                 TimerOriginMillis = stillAdaptive ? s.TimerOriginMillis : null,
-                Screen = s.Screen == Screen.Timer && !stillAdaptive ? Screen.Home : s.Screen,
+                Screen = s.Screen == Screen.Timer && !GateCountdown.TimerAvailable(tasks, s.TrainingMode) ? Screen.Home : s.Screen,
             };
         });
     }
@@ -1053,7 +1067,12 @@ public sealed class AppController
 
     public void ClosePreflight() => Update(s => s with { Screen = Screen.Home });
 
-    public void SetTrainingMode(bool on) => Update(s => s with { TrainingMode = on });
+    /// <summary>Turning training mode off also leaves a Timer page that only had the gate countdown.</summary>
+    public void SetTrainingMode(bool on) => Update(s => s with
+    {
+        TrainingMode = on,
+        Screen = s.Screen == Screen.Timer && !GateCountdown.TimerAvailable(s.Tasks, on) ? Screen.Home : s.Screen,
+    });
 
     public void DismissFinishedFlight() => Update(s => s with { FinishedFlight = null });
 

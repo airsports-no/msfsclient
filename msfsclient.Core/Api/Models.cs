@@ -110,6 +110,10 @@ public sealed record TrainingFeedback
 {
     public string? LastGate { get; init; }
     public double? LastGateTimeOffset { get; init; }
+    /// <summary>The next gate the pilot is shown, for the training countdown (older servers: null).</summary>
+    public string? NextGate { get; init; }
+    /// <summary>Its required time, ISO 8601.</summary>
+    public string? NextGateTime { get; init; }
 }
 
 public sealed record DeleteAccountRequest(string Email);
