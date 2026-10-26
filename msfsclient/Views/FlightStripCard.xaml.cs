@@ -5,7 +5,7 @@ using msfsclient.Helpers;
 
 namespace msfsclient.Views
 {
-    /// <summary>One flight as a strip, with its links (live map or results, share, flight orders, directions, cancel).</summary>
+    /// <summary>One flight as a strip, with its links (live map or my track, share, flight orders, directions, cancel).</summary>
     public sealed partial class FlightStripCard : UserControl
     {
         public static readonly DependencyProperty ItemProperty = DependencyProperty.Register(
@@ -37,6 +37,8 @@ namespace msfsclient.Views
         }
 
         private void LiveMap_Click(object sender, RoutedEventArgs e) => Vm.Controller.OpenMap(ItemOf(sender)?.Target.MapLink);
+
+        private void AllMap_Click(object sender, RoutedEventArgs e) => Vm.Controller.OpenMap(ItemOf(sender)?.Target.AllMapLink);
 
         /// <summary>Flight orders are a PDF download: the browser handles that better than the embedded page.</summary>
         private void FlightOrders_Click(object sender, RoutedEventArgs e)

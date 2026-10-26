@@ -40,6 +40,8 @@ public sealed record UiState
     public int? CancellingFlightId { get; init; }
     public string? FlightsNotice { get; init; }
     public bool ShowPastFlights { get; init; }
+    /// <summary>Counts how often My flights was opened from Home: the list's scroll position and search are kept across a map, not across visits.</summary>
+    public int FlightsVisit { get; init; }
     public OpenTodayUi OpenToday { get; init; } = new();
     /// <summary>Epoch millis of the whole minute the adaptive-start timer counts from; null until Start is pressed.</summary>
     public long? TimerOriginMillis { get; init; }
@@ -685,7 +687,7 @@ public sealed class AppController
 
     public Task OpenFlightsAsync()
     {
-        Update(s => s with { Screen = Screen.Flights, ShowPastFlights = false });
+        Update(s => s with { Screen = Screen.Flights, ShowPastFlights = false, FlightsVisit = s.FlightsVisit + 1 });
         return LoadFlightsAsync(past: false);
     }
 

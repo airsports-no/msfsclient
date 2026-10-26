@@ -22,6 +22,8 @@
                 <SelectorBarItem x:Name="UpcomingItem" Text="Upcoming" />
                 <SelectorBarItem x:Name="PastItem" Text="Past" />
             </SelectorBar>
+            <TextBox x:Name="SearchBox" PlaceholderText="Search contest, task, type or country" TextChanged="Search_TextChanged"
+                     Visibility="{x:Bind ShowSearch, Mode=OneWay}" AutomationProperties.Name="Search past flights" />
         </StackPanel>
         <StackPanel Grid.Row="1" Spacing="4">
             <TextBlock Text="{x:Bind helpers:Ui.OrEmpty(Vm.State.Error), Mode=OneWay, FallbackValue=''}" Visibility="{x:Bind helpers:Ui.ShowText(Vm.State.Error), Mode=OneWay, FallbackValue=Collapsed}"
@@ -30,7 +32,7 @@
                        Style="{StaticResource NoticeText}" AutomationProperties.LiveSetting="Polite" />
         </StackPanel>
         <Grid Grid.Row="2">
-            <ScrollViewer Visibility="{x:Bind ShowList, Mode=OneWay}">
+            <ScrollViewer x:Name="ListScroll" Visibility="{x:Bind ShowList, Mode=OneWay}" ViewChanged="ListScroll_ViewChanged">
                 <ItemsControl ItemsSource="{x:Bind Days, Mode=OneWay}" IsTabStop="False">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="local:DayGroup">
@@ -51,6 +53,8 @@
             </ScrollViewer>
             <ProgressRing IsActive="{x:Bind ShowLoading, Mode=OneWay}" Visibility="{x:Bind ShowLoading, Mode=OneWay}" Width="48" Height="48"
                           HorizontalAlignment="Center" VerticalAlignment="Center" AutomationProperties.Name="Loading your flights" />
+            <TextBlock Text="{x:Bind NoMatchText, Mode=OneWay}" Visibility="{x:Bind ShowNoMatch, Mode=OneWay}" Style="{StaticResource MutedText}"
+                       HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,24,0,0" TextWrapping="Wrap" />
             <StackPanel Visibility="{x:Bind ShowEmpty, Mode=OneWay}" Spacing="12" MaxWidth="420" HorizontalAlignment="Center" VerticalAlignment="Center">
                 <TextBlock Text="{x:Bind EmptyText, Mode=OneWay}" Style="{StaticResource BodyText}" FontFamily="{StaticResource BarlowSemiBold}" FontSize="20" TextAlignment="Center" TextWrapping="Wrap" />
                 <TextBlock Text="Find an event that is open for registration today, or register on the website." Style="{StaticResource MutedText}" TextAlignment="Center" TextWrapping="Wrap"

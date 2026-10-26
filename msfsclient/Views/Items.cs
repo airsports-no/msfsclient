@@ -33,8 +33,10 @@ namespace msfsclient.Views
     /// </summary>
     public sealed record StripItem(TrackingTarget Target, bool Live, MyFlight? Cancellable, bool Cancelling, bool Past = false)
     {
-        /// <summary>The map button: the live map, or the results of a flight in the past.</summary>
-        public string MapText => Past ? "Results" : "Live map";
+        /// <summary>The map button: the live map, or for a flight in the past the pilot's own track (the live map following them).</summary>
+        public string MapText => Past ? "My track" : "Live map";
+        /// <summary>A flight in the past also offers the live map of the whole task, to compare with the other contestants.</summary>
+        public bool HasAllMap => Past && Target.AllMapLink != null;
         public string PrivateNote => Past ? "Results are not available to you: this task is private to the organizer." : "The live map of this task is private to the organizer.";
         /// <summary>Only a flight that can still be followed live is worth sharing.</summary>
         public bool CanShare => !Past && HasMap;

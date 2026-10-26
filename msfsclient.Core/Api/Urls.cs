@@ -29,6 +29,10 @@ public static partial class Urls
     public static string CompetitionMapPath(int contestId, int navigationTaskId, int contestantId) =>
         $"/competition-map/{contestId}/{navigationTaskId}?contestantIds={contestantId}";
 
+    /// <summary>The competition map page for a whole task: every contestant, none selected.</summary>
+    public static string CompetitionTaskMapPath(int contestId, int navigationTaskId) =>
+        $"/competition-map/{contestId}/{navigationTaskId}";
+
     [GeneratedRegex("^https?://([^/?#]+)([^#]*)")]
     private static partial Regex AbsoluteLink();
 

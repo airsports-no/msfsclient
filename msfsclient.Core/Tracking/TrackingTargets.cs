@@ -21,6 +21,8 @@ public sealed record TrackingTarget
     public string? Country { get; init; }
     /// <summary>Path or URL of the live map for this task.</summary>
     public string? MapLink { get; init; }
+    /// <summary>The live map of the whole task with every contestant, for a past flight whose <see cref="MapLink"/> shows only the pilot's own track.</summary>
+    public string? AllMapLink { get; init; }
     public string? WebsiteUrl { get; init; }
     /// <summary>The contest's page on the Air Sports website (<c>/mission-dashboard/&lt;id&gt;</c>), opened in the browser; null when the contest is not known.</summary>
     public string? ContestPagePath { get; init; }
@@ -148,6 +150,7 @@ public sealed record TrackingTargets(IReadOnlyList<TrackingTarget> Now, Tracking
             Country = Urls.NotBlank(f.Contest?.Country),
             MapPrivate = fl?.MapViewable == false,
             MapLink = fl?.MapViewable == false ? null : f.MapLink,
+            AllMapLink = fl is null || fl.MapViewable == false ? null : Urls.CompetitionTaskMapPath(fl.ContestId, fl.NavigationTask),
             WebsiteUrl = Urls.NotBlank(f.Contest?.Website),
             ContestPagePath = fl?.ContestId is { } nextId ? Urls.ContestPagePath(nextId) : null,
             DirectionsUrl = Directions(f.Contest?.Location),

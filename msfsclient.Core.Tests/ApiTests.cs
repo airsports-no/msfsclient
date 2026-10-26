@@ -289,6 +289,33 @@ public class FlightsTest
     }
 
     [Fact]
+    public void AFlightStripOffersTheWholeTasksMapBesideThePilotsOwnTrack()
+    {
+        var flight = new Flight { Id = 55, ContestId = 10, NavigationTask = 100, TakeoffTime = "2026-10-10T10:00:00Z" };
+        var card = TrackingTargets.FlightTarget(Urls.JoinFlights([flight], []).Single(), t => t ?? "-", t => t ?? "-", DateTimeOffset.UnixEpoch);
+        Assert.Equal("/competition-map/10/100?contestantIds=55", card.MapLink);
+        Assert.Equal("/competition-map/10/100", card.AllMapLink);
+        var hidden = TrackingTargets.FlightTarget(Urls.JoinFlights([flight with { MapViewable = false }], []).Single(), t => t ?? "-", t => t ?? "-", DateTimeOffset.UnixEpoch);
+        Assert.Null(hidden.AllMapLink);
+    }
+
+    [Fact]
+    public void SearchingFlightsNeedsEveryWordInTheContestTaskTypeOrCountry()
+    {
+        var cup = new ContestSummary
+        {
+            Id = 10, Name = "Elverum Cup", Country = "NO",
+            NavigationTasks = [new TaskSummary { Pk = 100, Name = "Day 1", TaskType = new TaskType { DisplayName = "Precision" } }],
+        };
+        var rows = Urls.JoinFlights([new Flight { Id = 55, ContestId = 10, NavigationTask = 100, TakeoffTime = "2026-10-10T10:00:00Z" }], [cup]);
+        Assert.Single(FlightFilter.Filter(rows, ""));
+        Assert.Single(FlightFilter.Filter(rows, "  elverum precision "));
+        Assert.Single(FlightFilter.Filter(rows, "day 1"));
+        Assert.Single(FlightFilter.Filter(rows, "no"));
+        Assert.Empty(FlightFilter.Filter(rows, "elverum rally"));
+    }
+
+    [Fact]
     public void TheTrackingStripShowsAPrivateFlightButOffersNoMap()
     {
         var flight = new Flight
