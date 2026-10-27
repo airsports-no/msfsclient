@@ -289,14 +289,14 @@ public class FlightsTest
     }
 
     [Fact]
-    public void AFlightStripOffersTheWholeTasksMapBesideThePilotsOwnTrack()
+    public void APastFlightsMyFlightOpensTheWholeTasksMapWithThePilotSelected()
     {
         var flight = new Flight { Id = 55, ContestId = 10, NavigationTask = 100, TakeoffTime = "2026-10-10T10:00:00Z" };
         var card = TrackingTargets.FlightTarget(Urls.JoinFlights([flight], []).Single(), t => t ?? "-", t => t ?? "-", DateTimeOffset.UnixEpoch);
         Assert.Equal("/competition-map/10/100?contestantIds=55", card.MapLink);
-        Assert.Equal("/competition-map/10/100", card.AllMapLink);
+        Assert.Equal("/competition-map/10/100?contestant=55", card.MyFlightLink);
         var hidden = TrackingTargets.FlightTarget(Urls.JoinFlights([flight with { MapViewable = false }], []).Single(), t => t ?? "-", t => t ?? "-", DateTimeOffset.UnixEpoch);
-        Assert.Null(hidden.AllMapLink);
+        Assert.Null(hidden.MyFlightLink);
     }
 
     [Fact]

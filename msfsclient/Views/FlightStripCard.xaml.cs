@@ -36,9 +36,7 @@ namespace msfsclient.Views
             }
         }
 
-        private void LiveMap_Click(object sender, RoutedEventArgs e) => Vm.Controller.OpenMap(ItemOf(sender)?.Target.MapLink);
-
-        private void AllMap_Click(object sender, RoutedEventArgs e) => Vm.Controller.OpenMap(ItemOf(sender)?.Target.AllMapLink);
+        private void LiveMap_Click(object sender, RoutedEventArgs e) => Vm.Controller.OpenMap(ItemOf(sender)?.MapTarget);
 
         /// <summary>Flight orders are a PDF download: the browser handles that better than the embedded page.</summary>
         private void FlightOrders_Click(object sender, RoutedEventArgs e)
